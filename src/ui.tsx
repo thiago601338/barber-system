@@ -1,0 +1,50 @@
+import type { ReactNode } from 'react'
+import { AlertCircle, ArrowUpRight, LoaderCircle, Plus, Search, X } from 'lucide-react'
+import type { Row } from './types'
+
+export function PageHeader({ eyebrow, title, description, action }: { eyebrow?: string; title: string; description?: string; action?: ReactNode }) {
+  return <div className="page-header"><div><div className="eyebrow">{eyebrow || 'BARBER SYSTEM'}</div><h1>{title}</h1>{description && <p>{description}</p>}</div>{action && <div className="page-actions">{action}</div>}</div>
+}
+
+export function Panel({ title, subtitle, action, children, className = '' }: { title?: string; subtitle?: string; action?: ReactNode; children: ReactNode; className?: string }) {
+  return <section className={`panel ${className}`}><div className="panel-head">{(title || subtitle) && <div>{title && <h2>{title}</h2>}{subtitle && <p>{subtitle}</p>}</div>}{action}</div>{children}</section>
+}
+
+export function Empty({ title, text, action }: { title: string; text: string; action?: ReactNode }) {
+  return <div className="empty"><div className="empty-icon"><Search size={21} /></div><h3>{title}</h3><p>{text}</p>{action}</div>
+}
+
+export function Notice({ text, kind = 'error' }: { text: string | null | undefined; kind?: 'error' | 'info' | 'success' }) {
+  if (!text) return null
+  return <div className={`notice ${kind}`}><AlertCircle size={17}/><span>{text}</span></div>
+}
+
+export function Loading({ text = 'Carregando dados...' }: { text?: string }) { return <div className="loading"><LoaderCircle size={20} className="spin"/> {text}</div> }
+
+export function PrimaryButton({ children, onClick, type = 'button', disabled = false }: { children: ReactNode; onClick?: () => void; type?: 'button' | 'submit'; disabled?: boolean }) {
+  return <button className="button primary" type={type} onClick={onClick} disabled={disabled}>{children}</button>
+}
+
+export function AddButton({ children, onClick }: { children: ReactNode; onClick: () => void }) { return <PrimaryButton onClick={onClick}><Plus size={17}/>{children}</PrimaryButton> }
+
+export function Modal({ title, subtitle, onClose, children, wide = false }: { title: string; subtitle?: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+  return <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}><div className={`modal ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}><div className="modal-head"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="icon-button" onClick={onClose} aria-label="Fechar"><X size={19}/></button></div>{children}</div></div>
+}
+
+export function Stat({ label, value, foot, icon }: { label: string; value: string | number; foot?: string; icon?: ReactNode }) {
+  return <div className="stat"><div className="stat-top"><span>{label}</span><div className="stat-icon">{icon || <ArrowUpRight size={19}/>}</div></div><strong>{value}</strong><small>{foot || 'Dados atualizados'}</small></div>
+}
+
+export function DataTable({ rows, columns, empty, onRowClick }: { rows: Row[]; columns: { key: string; label: string; render?: (row: Row) => ReactNode }[]; empty: string; onRowClick?: (row: Row) => void }) {
+  if (rows.length === 0) return <Empty title={empty} text="Os registros aparecerão aqui assim que forem cadastrados." />
+  return <div className="table-scroll"><table><thead><tr>{columns.map(column => <th key={column.key}>{column.label}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.id} className={onRowClick ? 'clickable' : ''} onClick={() => onRowClick?.(row)}>{columns.map(column => <td key={column.key}>{column.render ? column.render(row) : String(row[column.key] ?? '—')}</td>)}</tr>)}</tbody></table></div>
+}
+
+export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) { return <label className="field"><span>{label}</span>{children}{hint && <small>{hint}</small>}</label> }
+
+export function Status({ value }: { value: unknown }) {
+  const text = String(value || '—')
+  const tone = ['paid', 'active', 'completed', 'confirmed', 'delivered', 'done'].includes(text) ? 'good' : ['pending', 'scheduled', 'draft', 'open'].includes(text) ? 'warn' : ['cancelled', 'failed', 'overdue'].includes(text) ? 'bad' : ''
+  const labels: Record<string, string> = { paid: 'Pago', active: 'Ativo', completed: 'Concluído', confirmed: 'Confirmado', delivered: 'Entregue', done: 'Feito', pending: 'Pendente', scheduled: 'Agendado', draft: 'Rascunho', open: 'Aberto', cancelled: 'Cancelado', failed: 'Falhou', overdue: 'Vencido', paused: 'Pausado' }
+  return <span className={`status ${tone}`}>{labels[text] || text}</span>
+}

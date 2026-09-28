@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap');
+
+:root{font-family:'DM Sans',ui-sans-serif,system-ui,sans-serif;color:#17251e;background:#f5f2ec}
+body{background:#f5f2ec}
+h1,h2,h3{letter-spacing:-.028em}
+h1,.page-header h1,.auth-brand h1,.auth-form h2,.public-hero h1,.public-section-title h1,.public-section-title h2,.dashboard-hero h2{font-family:'Instrument Serif',Georgia,serif;font-weight:400;letter-spacing:-.018em}
+.page-header h1{font-size:clamp(37px,3.6vw,54px);line-height:1.04;margin-bottom:11px}
+.page-header p{color:#7e867b;font-size:13px;line-height:1.6}
+.eyebrow{color:#aa8b5f;letter-spacing:.24em;font-size:10px}
+.brand-lockup{display:inline-flex;align-items:center;gap:12px;min-width:0}
+.brand-symbol{width:49px;height:49px;display:block;flex:none;filter:drop-shadow(0 7px 10px #00000024)}
+.brand-lockup.compact .brand-symbol{width:40px;height:40px}
+.brand-wordmark{display:flex;flex-direction:column;align-items:flex-start;line-height:.92;white-space:nowrap}
+.brand-wordmark strong,.brand-wordmark b{font-family:'DM Sans',sans-serif;font-weight:800;letter-spacing:.065em;font-size:18px}
+.brand-wordmark b{font-weight:500;letter-spacing:.23em;font-size:11px;margin-top:7px}
+.brand-lockup.dark .brand-wordmark{color:#f6efe1}.brand-lockup.dark .brand-wordmark b{color:#d9c198}
+.brand-lockup.light .brand-wordmark{color:#172b24}.brand-lockup.light .brand-wordmark b{color:#8b704b}
+.brand-lockup.compact .brand-wordmark strong{font-size:15px}.brand-lockup.compact .brand-wordmark b{font-size:9px;margin-top:5px}
+
+.auth-layout{grid-template-columns:minmax(0,55fr) minmax(0,45fr);background:#f8f5ef}
+.auth-brand{background:linear-gradient(90deg,rgba(12,22,18,.94) 0%,rgba(12,22,18,.72) 45%,rgba(12,22,18,.18) 100%),linear-gradient(0deg,rgba(10,18,15,.82),transparent 52%),url('./assets/barbershop-hero.png') center center/cover no-repeat;color:#fff;padding:38px clamp(36px,4.5vw,78px) 46px;min-height:100vh}
+.auth-brand>.brand-lockup{position:relative;z-index:2}
+.auth-brand h1{font-size:clamp(56px,5.7vw,90px);line-height:.95;max-width:690px;margin:auto 0 18px;text-shadow:0 5px 22px #0008;position:relative;z-index:1}
+.auth-brand p{font-size:14px;line-height:1.75;max-width:430px;color:#e6e2d7;text-shadow:0 2px 7px #0009;position:relative;z-index:1;margin-bottom:27px}
+.auth-deco{height:auto;margin-top:0;padding:19px 0 0;border-top:1px solid #d9c29673}
+.auth-deco .deco-circle{display:none}.auth-deco span{color:#d7c49e;font-size:9px;letter-spacing:.26em}
+.auth-form-wrap{padding:54px clamp(30px,5vw,90px);background:radial-gradient(circle at top right,#fffdf8 0,#f8f5ef 66%)}
+.auth-form{max-width:410px}
+.auth-form h2{font-size:clamp(43px,3.5vw,61px);line-height:.98;margin-bottom:13px;color:#18271f}
+.auth-form>p{font-size:13px;line-height:1.7;color:#7e867a;margin-bottom:30px}
+.auth-form .field{margin:18px 0}.auth-form .field>span{font-size:11px;letter-spacing:.035em;color:#394b40}
+.auth-form .field input{height:48px;background:#fffefa;border-color:#deded4;border-radius:8px;padding:12px 14px;font-size:13px}
+.auth-form .field input:focus{border-color:#b99c71;box-shadow:0 0 0 3px #c8ae8240}
+.auth-submit{min-height:49px;margin-top:13px;background:#1b332a!important;border-radius:8px;box-shadow:0 10px 22px #15291e1e!important;font-size:12px;letter-spacing:.03em}
+.auth-links button{color:#735d40}.auth-form>small{color:#a6a89f}
+
+.sidebar{width:274px;flex-basis:274px;background:linear-gradient(155deg,#162820,#0e1d18 70%);border-right:1px solid #2e4033}
+.sidebar-brand{padding:25px 20px 22px;min-height:89px;border-bottom:1px solid #ffffff15}
+.shop-switcher{background:#ffffff0a;border-color:#ffffff1e;margin:18px 16px 7px;padding:13px;border-radius:10px}
+.shop-avatar,.member-avatar{background:#dbceac;color:#193127;border-radius:8px}
+.shop-switcher strong{font-size:12px}.shop-switcher small{color:#a7b4a2}
+.nav-list{padding:0 12px 20px}.nav-group{color:#a38e69;font-size:9px;letter-spacing:.21em;padding:21px 14px 8px}
+.nav-item{color:#b8c2b6;font-size:12px;font-weight:600;padding:10px 13px;border-radius:8px;margin:2px 0;position:relative}
+.nav-item svg{color:#a4b0a2;stroke-width:1.6}
+.nav-item:hover{background:#ffffff0d;color:#fff}.nav-item:hover svg{color:#d3c29e}
+.nav-item.active{background:#e8ddc41a;color:#f6e9cf;font-weight:750;box-shadow:inset 0 0 0 1px #dbcda53c}
+.nav-item.active svg{color:#e3c58e}.nav-item.active:before{content:'';position:absolute;left:-12px;top:8px;bottom:8px;width:2px;background:#d8bb82;border-radius:2px}
+.sidebar-bottom{border-top-color:#ffffff18}.help-card{background:linear-gradient(135deg,#263c30,#1d3026);border-color:#ffffff1f;border-radius:11px}
+.help-icon,.stat-icon,.insight-icon{background:#efe5d2;color:#846b42;border-radius:9px}
+.help-card p{color:#b1c0ad}.sidebar-logout{color:#aab9a7}
+
+.main-area{background:#f5f2ec}.topbar{height:76px;background:#fcfaf6eb;backdrop-filter:blur(16px);border-color:#e3e1d8;padding:0 38px}
+.topbar-crumb{color:#949d90;font-size:12px}.topbar-crumb strong{color:#293b30;font-weight:750}
+.profile-pill div{background:#e2d8c4;color:#4b4030;border:1px solid #d0c09f}
+.topbar-select{background:#fffdf9;border-color:#deded2}
+.content{padding:38px 43px 74px;max-width:1600px}.page-stack{gap:24px}
+.panel,.stat,.tutorial-module{background:#fffefa;border:1px solid #e5e4d9;border-radius:14px;box-shadow:0 9px 30px #2735220b,0 2px 5px #27352205}
+.panel{padding:24px}.panel-head h2{font-size:17px;color:#1d3025;font-weight:750}.panel-head p{color:#8b9186}
+.stats-grid{gap:17px}.stat{padding:22px;min-height:142px;position:relative;overflow:hidden}.stat-top>span{color:#687969;font-weight:750;font-size:11px}.stat strong{font-size:clamp(25px,2.3vw,33px);font-weight:700;margin:22px 0 4px;letter-spacing:-.05em}.stat small{color:#8d968a}
+.stats-grid>.stat:first-child{background:linear-gradient(135deg,#1b3529,#10241d);border-color:#1b3529;color:#f9f5e8;box-shadow:0 14px 28px #16342526}
+.stats-grid>.stat:first-child .stat-top>span,.stats-grid>.stat:first-child small{color:#b5c5b2}.stats-grid>.stat:first-child .stat-icon{background:#dfc89629;color:#e4c68e}
+.stats-grid>.stat:first-child:after{content:'';position:absolute;width:160px;height:160px;border:1px solid #e5d2a21e;border-radius:50%;right:-42px;bottom:-100px;box-shadow:0 0 0 27px #e5d2a209,0 0 0 55px #e5d2a207}
+.button{border-radius:8px;font-weight:750;letter-spacing:.01em}.button.primary{background:#173126;box-shadow:0 7px 16px #1836231c}.button.primary:hover:not(:disabled){background:#315541}.button.outline{border-color:#dcded1;background:#fffefa;color:#2b4233}.button.outline:hover:not(:disabled){border-color:#bca173;background:#faf6ec}
+.field input,.field select,.field textarea,.search-wrap input,.calendar-toolbar input{border-color:#dedfd3;border-radius:8px;background:#fffefa}.field input:focus,.field select:focus,.field textarea:focus,.search-wrap input:focus,.calendar-toolbar input:focus{border-color:#bda271;box-shadow:0 0 0 3px #d6ba8340}
+table th{color:#8d907f;border-color:#e8e8df}table td{color:#49594b;border-color:#edeee7}tr.clickable:hover{background:#faf7ef}
+.chart-bar{background:linear-gradient(180deg,#d2b47d,#8f754b);box-shadow:0 2px 10px #a1845350}.chart-bar-wrap{border-color:#e9e6d9}
+.segmented{background:#edeadd}.segmented button.selected{color:#1e392b;background:#fffefa}
+.status.good{background:#eaf1df;color:#557743}.status.warn{background:#f8eee0;color:#9a7845}
+.modal{background:#fffefa;border:1px solid #e5e2d7;border-radius:16px}
+.dashboard-hero{min-height:214px;border-radius:15px;overflow:hidden;padding:32px 38px;background:linear-gradient(90deg,rgba(13,24,20,.96) 0%,rgba(13,24,20,.76) 45%,rgba(13,24,20,.08) 100%),url('./assets/barber-detail.png') center 45%/cover no-repeat;display:flex;flex-direction:column;justify-content:center;color:#fff;box-shadow:0 17px 35px #202b211d}
+.dashboard-hero span{font-size:9px;letter-spacing:.24em;color:#dfc792;font-weight:800}.dashboard-hero h2{font-size:clamp(34px,4vw,56px);line-height:.95;margin:14px 0 9px}.dashboard-hero p{font-size:12px;max-width:400px;line-height:1.55;color:#d2d9cf;margin:0}
+.tutorial-overview{background:linear-gradient(90deg,#162a21e8,#162a21b8),url('./assets/barber-detail.png') center center/cover no-repeat;border:1px solid #3a4837;border-radius:14px;box-shadow:0 15px 30px #132d1b24}
+.tutorial-overview-copy span{color:#e1c790}.tutorial-progress-ring{background:conic-gradient(#d8b77d var(--tutorial-progress),#ffffff26 0)}.tutorial-progress-ring>div{background:#1e3328}
+.tutorial-module-head{background:#faf8f1}.tutorial-module-icon,.tutorial-step-index{background:#efe6d6;color:#8f744a;border-radius:8px}.tutorial-step.is-done .tutorial-step-index{background:#dfebd4;color:#4e7744}
+.tutorial-complete.completed{color:#557b49}.tutorial-module-head>span{background:#ede7d8;color:#79643f}
+.public-layout,.client-layout{background:#f5f2ec}.client-header,.public-header{background:#fffefa;border-color:#e4e2d6}.client-brand{gap:9px;color:#1b3125}.shop-monogram{display:grid;place-items:center;width:35px;height:35px;background:#1b332a;color:#e5cb98;border-radius:8px;font-family:'Instrument Serif',Georgia,serif;font-size:25px}
+.public-emblem{font-family:'Instrument Serif',Georgia,serif;font-size:57px;border-radius:18px;background:#192f25;color:#e3c48a;box-shadow:0 12px 27px #203a241d}
+.public-hero h1{font-size:clamp(51px,6vw,78px)}.public-section-title h2{font-size:43px}
+.public-link,.public-service,.public-booking-form>section{background:#fffefa;border-color:#e3e0d3;border-radius:11px}.public-link.primary{background:#193427;border-color:#193427}.public-link:hover{border-color:#c9ad78}.public-service .service-icon,.plan-icon{background:#efe6d1;color:#8a6b41}
+.phone-avatar{background:#1e342a;color:#e6c791;font-family:'Instrument Serif',Georgia,serif;font-size:42px}
+.instagram-tools{border-top:1px solid #e9e6db;margin-top:16px;padding-top:15px}.instagram-selection{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}.instagram-selection>.button{grid-column:1/-1;justify-self:start}.instagram-insights{display:flex;gap:18px;flex-wrap:wrap;margin-top:17px}.instagram-insights>div{display:flex;flex-direction:column;gap:2px}.instagram-insights strong{font-size:21px;color:#263b2c}.instagram-insights small{font-size:10px;color:#879184}
+
+@media(max-width:1100px){.sidebar{width:250px;flex-basis:250px}.content{padding:30px 27px 60px}.auth-brand{padding-left:36px;padding-right:36px}.auth-brand h1{font-size:clamp(52px,5.3vw,74px)}}
+@media(max-width:980px){.sidebar{width:274px;flex-basis:274px}.topbar{padding:0 20px}.content{padding:26px 20px 55px}}
+@media(max-width:650px){.auth-layout{grid-template-columns:1fr}.auth-brand{min-height:280px;height:39vh;max-height:370px;padding:22px 24px 18px;background-position:58% center}.auth-brand .brand-symbol{width:39px;height:39px}.auth-brand .brand-wordmark strong{font-size:14px}.auth-brand .brand-wordmark b{font-size:9px;margin-top:5px}.auth-brand h1{font-size:clamp(38px,10vw,55px);margin:auto 0 8px;max-width:520px}.auth-brand p{font-size:11px;max-width:330px;margin:0 0 11px}.auth-deco{padding-top:9px}.auth-deco span{font-size:8px}.auth-form-wrap{padding:33px 24px 45px}.auth-form h2{font-size:42px}.page-header h1{font-size:39px}.content{padding:23px 15px 50px}.topbar{background:#fffefa}.panel{padding:19px}.stat{min-height:130px}.dashboard-hero{min-height:190px;padding:24px;background-position:58% center}.dashboard-hero h2{font-size:37px}.dashboard-hero p{font-size:11px;max-width:260px}.public-hero h1{font-size:51px}.public-section-title h2{font-size:37px}.client-header .brand-lockup.compact .brand-wordmark strong{font-size:12px}.client-header .brand-lockup.compact .brand-wordmark b{font-size:7px}.client-header .brand-lockup.compact .brand-symbol{width:30px;height:30px}.instagram-selection{grid-template-columns:1fr}}
