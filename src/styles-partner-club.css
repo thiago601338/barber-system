@@ -56,6 +56,10 @@
 .partner-club-partner>p,.partner-club-offer>p{flex:1;margin:0;color:#627997;font-size:11px;line-height:1.55}
 .partner-club-partner-meta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;padding-top:10px;border-top:1px solid #e9eef6;color:#7f91a8;font-size:10px}
 .partner-club-partner-meta a{display:inline-flex;align-items:center;gap:4px;color:#2f66ae;font-weight:750}
+.partner-club-partner-performance{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:10px 0;border-top:1px solid #e9eef6;border-bottom:1px solid #e9eef6}
+.partner-club-partner-performance>div{display:flex;flex-direction:column;gap:2px}
+.partner-club-partner-performance strong{color:var(--club-ink);font-size:15px;letter-spacing:-.03em;overflow-wrap:anywhere}
+.partner-club-partner-performance span{color:var(--club-muted);font-size:10px}
 .partner-club-card-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:auto;padding-top:8px}
 .partner-club-card-actions .button{min-height:34px;font-size:11px}
 .partner-club-offer-partner{color:#7189a4;font-size:11px;font-weight:700;text-align:right}
@@ -73,6 +77,16 @@
 .partner-club-table-scroll{overflow-x:auto}
 .partner-club-table-scroll table{min-width:650px}
 .partner-club-table-scroll td strong{color:#345e96}
+.partner-club-detail-link{border:0;background:transparent;padding:5px;color:var(--club-blue);font-size:11px;font-weight:800;white-space:nowrap}
+.partner-club-detail-link:hover{text-decoration:underline}
+.partner-club-detail-link:focus-visible{outline:3px solid #7eaff0;outline-offset:2px}
+.partner-club-history{display:flex;flex-direction:column;gap:14px}
+.partner-club-history>.detail-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 20px}
+.partner-club-history>.detail-list>div{min-width:0}
+.partner-club-history>.detail-list strong{overflow-wrap:anywhere}
+.partner-club-history>p,.partner-club-history-terms p{white-space:pre-wrap;color:var(--club-muted);font-size:12px;margin:0}
+.partner-club-history-terms{padding:13px 15px;border:1px solid var(--club-border);border-radius:10px}
+.partner-club-history-terms>strong{display:block;color:var(--club-ink);font-size:12px;margin-bottom:6px}
 .partner-club-report-controls{display:grid;gap:13px;padding:17px 19px;border:1px solid var(--club-border);border-radius:14px;background:#fff}
 .partner-club-quick-ranges{display:flex;flex-wrap:wrap;gap:7px}
 .partner-club-quick-ranges button{min-height:34px;padding:7px 12px;border:1px solid #ccddf1;border-radius:8px;background:#f1f6fd;color:#315f9d;font-size:11px;font-weight:800}
@@ -97,11 +111,12 @@
 .shop-themed .partner-club-offer-code{background:color-mix(in srgb,var(--shop-accent) 12%,var(--shop-surface));border-color:var(--shop-accent)}
 .shop-themed .partner-club-offer-code strong{color:var(--shop-text)}
 .shop-themed .partner-club-search{background:var(--shop-surface);border-color:var(--shop-border)}
+.shop-themed .partner-club-partner-performance{border-color:var(--shop-border)}
 .shop-themed .partner-club-report-controls{background:var(--shop-surface);border-color:var(--shop-border)}
 .shop-themed .partner-club-quick-ranges button{background:color-mix(in srgb,var(--shop-accent) 12%,var(--shop-surface));border-color:var(--shop-border);color:var(--shop-text)}
 @media(max-width:1180px){.partner-club-partners,.partner-club-offers{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:980px){.partner-club-overview-grid{grid-template-columns:1fr}.partner-club-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:650px){.partner-club-hero{padding:23px 20px}.partner-club-hero-mark{display:none}.partner-club-hero h2{font-size:27px}.partner-club-stats{gap:9px}.partner-club-stats>div{padding:15px 13px}.partner-club-stats strong{font-size:22px}.partner-club-section-head{align-items:stretch;flex-direction:column}.partner-club-section-head>.button{width:100%}.partner-club-partners,.partner-club-offers{grid-template-columns:1fr}.partner-club-tabs{align-self:stretch}.partner-club-tabs button{font-size:11px;padding:8px 10px}.partner-club-filter{justify-content:space-between}.partner-club-filter select{max-width:65vw}.partner-club-card-actions .button{flex:1}.partner-club-report-controls{padding:13px}.partner-club-range>.button,.partner-club-export .button,.partner-club-search select{width:100%}.partner-club-search small{width:100%;text-align:right}}
+@media(max-width:650px){.partner-club-hero{padding:23px 20px}.partner-club-hero-mark{display:none}.partner-club-hero h2{font-size:27px}.partner-club-stats{gap:9px}.partner-club-stats>div{padding:15px 13px}.partner-club-stats strong{font-size:22px}.partner-club-section-head{align-items:stretch;flex-direction:column}.partner-club-section-head>.button{width:100%}.partner-club-partners,.partner-club-offers{grid-template-columns:1fr}.partner-club-tabs{align-self:stretch}.partner-club-tabs button{font-size:11px;padding:8px 10px}.partner-club-filter{justify-content:space-between}.partner-club-filter select{max-width:65vw}.partner-club-card-actions .button{flex:1}.partner-club-report-controls{padding:13px}.partner-club-range>.button,.partner-club-export .button,.partner-club-search select{width:100%}.partner-club-search small{width:100%;text-align:right}.partner-club-history>.detail-list{grid-template-columns:1fr}}
 
 .public-partner-section .public-section-title p{max-width:660px;color:#718299;font-size:12px}
 .public-partner-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}

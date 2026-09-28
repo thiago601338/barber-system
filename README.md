@@ -2,7 +2,7 @@
 
 Sistema de gestão de barbearias com painel master, painéis próprios por barbearia e barbeiro, área do cliente e página pública de agendamento. Frontend em React/Vite, dados e autenticação no Supabase, APIs no Netlify.
 
-**Site publicado:** https://barber-system-yqu5.netlify.app — alterações enviadas ao ramo `main` do GitHub acionam a implantação contínua na Netlify.
+**Site publicado:** https://barber-system-yqu5.netlify.app — após enviar alterações ao ramo `main` do GitHub, publique uma nova versão no projeto Netlify vinculado e confirme o estado `ready` antes de anunciar o resultado.
 
 O esquema e as migrações deste repositório já foram aplicados ao projeto Supabase `oyjiiqbsbshfdgdaxbus`. A cobrança central permanece desativada até configuração e ativação pelo master. Mercado Pago e Meta/Instagram ainda precisam das credenciais dos aplicativos e de testes controlados antes de uso real.
 
@@ -15,7 +15,7 @@ O esquema e as migrações deste repositório já foram aplicados ao projeto Sup
 - Assinaturas de clientes ligadas à conta Mercado Pago da própria barbearia; consumo e agendamentos ligados aos limites de uso.
 - Admin master cria barbearias, convida administradores e define o preço mensal por barbeiro da plataforma. A cobrança central permanece desativada até configuração explícita.
 - Administrador da barbearia libera abas individualmente para cada barbeiro. O banco limita cada barbeiro aos dados de clientes atendidos por ele.
-- **Clube do Parceiro** com perfil da parceria, logo, ofertas, código próprio, link de indicação, vigência, desconto, serviço elegível, gasto mínimo e limites de uso. No agendamento público, o cliente consulta o desconto e o valor final antes de reservar; a confirmação revalida as regras e registra a atribuição ao parceiro. Resultados por parceiro e cupom, período de até 370 dias, reservas, visitas concluídas e CSV das 500 reservas mais recentes carregadas.
+- **Clube do Parceiro** com perfil da parceria, logo, ofertas, código próprio, link de indicação, vigência opcional, desconto, serviço elegível, gasto mínimo e limites de uso. No agendamento público, o cliente consulta o desconto e o valor final antes de reservar; a confirmação revalida as regras e registra a atribuição ao parceiro com uma cópia das condições da oferta. Resultados por parceiro e cupom, período de até 370 dias, reservas, visitas concluídas, uso total por cupom e CSV das 500 reservas mais recentes carregadas.
 - **Ajuda de IA** para master, administrador e barbeiro autorizado: descreve uma ação, mostra um plano com os campos que serão gravados e só executa após confirmação separada. O histórico pertence ao solicitante. As cotas em 24 horas são de 50 planos para master, 20 para administrador e 10 para barbeiro. O barbeiro também precisa das permissões Metas ou Marketing para ações desses módulos. Ações disponíveis: criar barbearia (master), serviço, produto, meta e tarefa de marketing conforme o perfil. A IA não altera pagamentos, convites, permissões nem clientes.
 - Guia de marketing guardado no banco e conexão opcional do Instagram profissional/conta de anúncios.
 - Mini bio por barbearia com links para produtos, assinatura, WhatsApp e agendamento.
@@ -59,6 +59,8 @@ Se o serviço de e-mail atingir o limite ao convidar um integrante, o painel ger
 Os clientes criam conta pelo link público `/b/slug-da-barbearia`. O administrador pode associá-los à sua barbearia. O agendamento e a área do cliente consultam o limite da assinatura confirmado no banco.
 
 O cupom do Clube do Parceiro altera o **valor da reserva**, mas a reserva não é um pagamento. Os resultados do Clube mostram valores reservados e descontos, não receita recebida nem comissão de parceiros. Serviços mantêm o preço de tabela no histórico; o total do agendamento guarda o valor com desconto. Catálogo de produtos exibe itens e permite pedir pelo WhatsApp; não há pagamento de produtos nessa página. Cupom e uso de assinatura não são acumuláveis.
+
+O Clube atribui agendamentos da própria barbearia; não oferece login separado ao parceiro, comissão automática ou resgate em estabelecimentos externos. As regras completas do cupom são preservadas apenas nas reservas feitas após a migração de histórico da oferta; reservas anteriores não recebem condições reconstruídas.
 
 ## Segurança e validação
 
