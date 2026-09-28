@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { isValidElement, useEffect, useRef, type ReactNode } from 'react'
 import { AlertCircle, ArrowUpRight, LoaderCircle, Plus, Search, X } from 'lucide-react'
 import type { Row } from './types'
 
@@ -28,7 +28,41 @@ export function PrimaryButton({ children, onClick, type = 'button', disabled = f
 export function AddButton({ children, onClick }: { children: ReactNode; onClick: () => void }) { return <PrimaryButton onClick={onClick}><Plus size={17}/>{children}</PrimaryButton> }
 
 export function Modal({ title, subtitle, onClose, children, wide = false }: { title: string; subtitle?: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
-  return <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}><div className={`modal ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}><div className="modal-head"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="icon-button" onClick={onClose} aria-label="Fechar"><X size={19}/></button></div>{children}</div></div>
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
+  useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const frame = window.requestAnimationFrame(() => {
+      const first = dialogRef.current?.querySelector<HTMLElement>('input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), a[href]')
+      ;(first || dialogRef.current)?.focus()
+    })
+    function handleKey(event: KeyboardEvent) {
+      const dialog = dialogRef.current
+      const dialogs = document.querySelectorAll('[role="dialog"]:not([aria-hidden="true"])')
+      if (!dialog || dialogs.item(dialogs.length - 1) !== dialog) return
+      if (event.key === 'Escape') { event.preventDefault(); closeRef.current(); return }
+      if (event.key !== 'Tab') return
+      const focusable = [...dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+        .filter(element => element.getClientRects().length > 0)
+      if (!focusable.length) { event.preventDefault(); dialog.focus(); return }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+      else if (!dialog.contains(document.activeElement)) { event.preventDefault(); first.focus() }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      document.removeEventListener('keydown', handleKey)
+      document.body.style.overflow = previousOverflow
+      previousFocus?.focus()
+    }
+  }, [])
+  return <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}><div ref={dialogRef} tabIndex={-1} className={`modal ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}><div className="modal-head"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="icon-button" onClick={onClose} aria-label="Fechar"><X size={19}/></button></div>{children}</div></div>
 }
 
 export function Stat({ label, value, foot, icon }: { label: string; value: string | number; foot?: string; icon?: ReactNode }) {
@@ -37,10 +71,14 @@ export function Stat({ label, value, foot, icon }: { label: string; value: strin
 
 export function DataTable({ rows, columns, empty, onRowClick }: { rows: Row[]; columns: { key: string; label: string; render?: (row: Row) => ReactNode }[]; empty: string; onRowClick?: (row: Row) => void }) {
   if (rows.length === 0) return <Empty title={empty} text="Os registros aparecerão aqui assim que forem cadastrados." />
-  return <div className="table-scroll"><table><thead><tr>{columns.map(column => <th key={column.key}>{column.label}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.id} className={onRowClick ? 'clickable' : ''} onClick={() => onRowClick?.(row)}>{columns.map(column => <td key={column.key}>{column.render ? column.render(row) : String(row[column.key] ?? '—')}</td>)}</tr>)}</tbody></table></div>
+  return <div className="table-scroll"><table><thead><tr>{columns.map(column => <th key={column.key}>{column.label}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.id} className={onRowClick ? 'clickable' : ''} tabIndex={onRowClick ? 0 : undefined} onClick={event => { if (event.target instanceof Element && event.target.closest('button, a, input, select, textarea')) return; onRowClick?.(row) }} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (onRowClick && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onRowClick(row) } }}>{columns.map(column => <td key={column.key}>{column.render ? column.render(row) : String(row[column.key] ?? '—')}</td>)}</tr>)}</tbody></table></div>
 }
 
-export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) { return <label className="field"><span>{label}</span>{children}{hint && <small>{hint}</small>}</label> }
+export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
+  const directControl = isValidElement(children) && typeof children.type === 'string' && ['input', 'select', 'textarea'].includes(children.type)
+  if (directControl) return <label className="field"><span>{label}</span>{children}{hint && <small>{hint}</small>}</label>
+  return <div className="field" role="group" aria-label={label}><span>{label}</span>{children}{hint && <small>{hint}</small>}</div>
+}
 
 export function Status({ value }: { value: unknown }) {
   const text = String(value || '—')

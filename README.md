@@ -9,14 +9,18 @@ O esquema e as migrações deste repositório já foram aplicados ao projeto Sup
 ## Funcionalidades
 
 - Painel e relatórios de faturamento, ticket médio, primeira visita, clientes novos, retenção e desempenho por profissional.
+- Em Relatórios, a aba **Fluxo** mostra atendimentos concluídos por hora, dia e mês no fuso da barbearia, em períodos de até 370 dias. A permissão Relatórios é independente da permissão Agenda.
 - Agenda com disponibilidade por barbeiro, serviços, histórico do cliente, procedimentos e química.
 - Produtos, comanda do bar/cozinha, despesas, estrutura, lucro alvo, metas da barbearia e metas pessoais.
 - Assinaturas de clientes ligadas à conta Mercado Pago da própria barbearia; consumo e agendamentos ligados aos limites de uso.
 - Admin master cria barbearias, convida administradores e define o preço mensal por barbeiro da plataforma. A cobrança central permanece desativada até configuração explícita.
 - Administrador da barbearia libera abas individualmente para cada barbeiro. O banco limita cada barbeiro aos dados de clientes atendidos por ele.
-- Parceiros, guia de marketing guardado no banco, solicitações de análise por IA e conexão opcional do Instagram profissional/conta de anúncios.
+- **Clube do Parceiro** com perfil da parceria, logo, ofertas, código próprio, link de indicação, vigência, desconto, serviço elegível, gasto mínimo e limites de uso. No agendamento público, o cliente consulta o desconto e o valor final antes de reservar; a confirmação revalida as regras e registra a atribuição ao parceiro. Resultados por parceiro e cupom, período de até 370 dias, reservas, visitas concluídas e CSV das 500 reservas mais recentes carregadas.
+- **Ajuda de IA** para master, administrador e barbeiro autorizado: descreve uma ação, mostra um plano com os campos que serão gravados e só executa após confirmação separada. O histórico pertence ao solicitante. As cotas em 24 horas são de 50 planos para master, 20 para administrador e 10 para barbeiro. O barbeiro também precisa das permissões Metas ou Marketing para ações desses módulos. Ações disponíveis: criar barbearia (master), serviço, produto, meta e tarefa de marketing conforme o perfil. A IA não altera pagamentos, convites, permissões nem clientes.
+- Guia de marketing guardado no banco e conexão opcional do Instagram profissional/conta de anúncios.
 - Mini bio por barbearia com links para produtos, assinatura, WhatsApp e agendamento.
-- Aba Passo a Passo com 66 etapas em português, trilhas por perfil e módulo, atalhos para a tela certa e progresso individual salvo no Supabase.
+- Identidade visual própria por barbearia: link do Instagram, proposta de cores e tipografia com IA, prévia e publicação pelo administrador. Gestão, barbeiro, cliente, acesso e página pública usam o tema aprovado. A [Kingsman](https://barber-system-yqu5.netlify.app/b/kingsman) é a primeira identidade configurada; detalhes em [docs/branding.md](docs/branding.md).
+- Aba Passo a Passo com tour interativo: pop-up, seta e destaque na tela; avança entre as abas disponíveis conforme o perfil e as permissões. O progresso dos guias vistos fica neste dispositivo.
 
 ## Iniciar localmente
 
@@ -50,13 +54,17 @@ No **build** do Netlify, configure também `VITE_SUPABASE_URL` e `VITE_SUPABASE_
 3. Entre e clique em **Ativar acesso master**. A API compara o e-mail confirmado com `MASTER_EMAIL` e recusa outro usuário.
 4. No painel master, crie a barbearia e convide seus administradores. Cada administrador configura equipe, serviços, preços, agenda e integrações.
 
+Se o serviço de e-mail atingir o limite ao convidar um integrante, o painel gera um link individual para o administrador copiar e compartilhar com a pessoa. O e-mail não é enviado nessa alternativa. O convite também pode ser gerado novamente para uma conta ainda não confirmada.
+
 Os clientes criam conta pelo link público `/b/slug-da-barbearia`. O administrador pode associá-los à sua barbearia. O agendamento e a área do cliente consultam o limite da assinatura confirmado no banco.
+
+O cupom do Clube do Parceiro altera o **valor da reserva**, mas a reserva não é um pagamento. Os resultados do Clube mostram valores reservados e descontos, não receita recebida nem comissão de parceiros. Serviços mantêm o preço de tabela no histórico; o total do agendamento guarda o valor com desconto. Catálogo de produtos exibe itens e permite pedir pelo WhatsApp; não há pagamento de produtos nessa página. Cupom e uso de assinatura não são acumuláveis.
 
 ## Segurança e validação
 
 Dados de cada barbearia são separados no PostgreSQL por `barbershop_id` e políticas RLS. Tokens de provedores ficam cifrados em uma tabela acessível apenas ao servidor. Webhooks Mercado Pago verificam assinatura, consultam o recurso oficial e aplicam idempotência. O navegador nunca recebe chaves secretas.
 
-Rode `npm run typecheck` e `npm run build` antes de publicar. Após implantar, teste com contas reais separadas (master, admin, barbeiro e cliente) para comprovar isolamento, convites, agendamento, assinatura e retorno de webhook. Conexões Mercado Pago, Pix recorrente, anúncios e IA só funcionam após credenciais e validação controlada de cada provedor.
+Rode `npm run typecheck` e `npm run build` antes de publicar. Após implantar, teste com contas reais separadas (master, admin, barbeiro e cliente) para comprovar isolamento, convites, agendamento, assinatura e retorno de webhook. Mercado Pago, Pix recorrente e anúncios dependem das credenciais e da validação controlada de cada provedor. As análises de IA dependem do AI Gateway habilitado na Netlify e de teste na implantação publicada.
 
 ## Referência observada no Cashbarber
 

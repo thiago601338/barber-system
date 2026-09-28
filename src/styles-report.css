@@ -1,0 +1,261 @@
+.reports-page {
+  --report-surface: var(--shop-surface, #fffefa);
+  --report-border: var(--shop-border, #e5e2d7);
+  --report-text: var(--shop-text, #20352a);
+  --report-muted: var(--shop-muted, #69796d);
+  --report-accent: var(--shop-accent, #ba9964);
+  --report-deep: var(--shop-sidebar, #193629);
+  --report-deep-text: var(--shop-sidebar-foreground, #fff9ec);
+}
+
+.report-section-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  width: max-content;
+  max-width: 100%;
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid var(--report-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--report-surface) 78%, var(--report-accent));
+}
+
+.report-section-tabs button {
+  flex: 1 1 auto;
+  min-height: 38px;
+  padding: 9px 15px;
+  border-radius: 8px;
+  color: var(--report-text);
+  font-size: 12px;
+  transition: background .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.report-section-tabs button:hover:not(.selected) {
+  background: color-mix(in srgb, var(--report-surface) 75%, transparent);
+}
+
+.report-section-tabs button.selected {
+  background: var(--report-surface);
+  color: var(--report-text);
+  box-shadow: 0 3px 10px #172a1d16;
+}
+
+.report-filter-panel {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--report-surface) 96%, var(--report-accent)), var(--report-surface) 55%);
+  border-color: var(--report-border);
+  box-shadow: 0 17px 38px #182b2110, 0 2px 6px #182b2108;
+}
+
+.report-filter-panel .panel-head {
+  align-items: center;
+  margin-bottom: 21px;
+  padding-bottom: 19px;
+  border-bottom: 1px solid var(--report-border);
+}
+
+.report-filter-panel .panel-head h2 {
+  margin-bottom: 5px;
+  color: var(--report-text);
+  font-family: var(--shop-heading-font, 'Instrument Serif', Georgia, serif);
+  font-size: clamp(27px, 2.2vw, 34px);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.report-filter-panel .panel-head p {
+  max-width: 610px;
+  color: var(--report-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.report-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  padding: 8px 11px;
+  border: 1px solid color-mix(in srgb, var(--report-accent) 36%, var(--report-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--report-accent) 11%, var(--report-surface));
+  color: var(--report-text);
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.report-filter-badge svg { color: var(--report-accent); }
+
+.report-filter-label {
+  margin-bottom: 11px;
+  color: var(--report-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+
+.report-quick-ranges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.report-quick-range {
+  min-height: 37px;
+  padding: 9px 14px;
+  border: 1px solid var(--report-border);
+  border-radius: 999px;
+  background: var(--report-surface);
+  box-shadow: 0 2px 5px #20372b08;
+  color: var(--report-text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.2;
+  transition: border-color .18s ease, background .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.report-quick-range:hover:not(.active) {
+  transform: translateY(-1px);
+  border-color: var(--report-accent);
+  background: color-mix(in srgb, var(--report-accent) 9%, var(--report-surface));
+}
+
+.report-quick-range.active {
+  border-color: var(--report-deep);
+  background: var(--report-deep);
+  box-shadow: 0 7px 14px color-mix(in srgb, var(--report-deep) 22%, transparent);
+  color: var(--report-deep-text);
+}
+
+.report-section-tabs button:focus-visible,
+.report-quick-range:focus-visible,
+.report-filter-actions .button:focus-visible {
+  outline: 3px solid var(--report-accent);
+  outline-offset: 3px;
+}
+
+.report-filter-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+  gap: 15px;
+  margin-top: 22px;
+  padding-top: 22px;
+  border-top: 1px solid var(--report-border);
+}
+
+.report-filter-form .field { margin: 0; }
+.report-filter-form .field > span {
+  color: var(--report-text);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.report-filter-form .field input,
+.report-filter-form .field select {
+  min-height: 44px;
+  border-color: var(--report-border);
+  border-radius: 9px;
+  background: var(--report-surface);
+  color: var(--report-text);
+  font-size: 12px;
+}
+
+.report-filter-form .field input:focus,
+.report-filter-form .field select:focus {
+  border-color: var(--report-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--report-accent) 24%, transparent);
+}
+
+.report-filter-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 2px;
+  padding: 12px;
+  border: 1px solid var(--report-border);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--report-surface) 91%, var(--report-accent));
+}
+
+.report-filter-current {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--report-text);
+}
+
+.report-filter-current > svg {
+  flex: none;
+  color: var(--report-accent);
+}
+
+.report-filter-current span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.report-filter-current small {
+  color: var(--report-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.report-filter-current strong { font-size: 12px; font-weight: 750; }
+
+.report-filter-actions .button {
+  min-height: 42px;
+  padding: 10px 17px;
+  border-radius: 8px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.report-filter-footnote {
+  margin: 13px 0 0;
+  color: var(--report-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.flow-report { display: grid; gap: 18px; min-width: 0; }
+.flow-stats { margin: 0; }
+.flow-map-scroll { overflow-x: auto; padding: 4px 0 11px; scrollbar-color: var(--report-accent) transparent; }
+.flow-map { display: grid; gap: 5px; min-width: max-content; align-items: center; }
+.flow-map-corner, .flow-map-hour, .flow-map-day, .flow-map-total { color: var(--report-muted); font-size: 10px; font-weight: 750; text-align: center; }
+.flow-map-day { color: var(--report-text); text-align: left; }
+.flow-map-cell { display: grid; place-items: center; height: 31px; border-radius: 6px; background: color-mix(in srgb, var(--report-accent) 5%, var(--report-surface)); color: var(--report-muted); font-size: 10px; font-weight: 700; }
+.flow-map-cell.filled { background: color-mix(in srgb, var(--report-accent) var(--cell-intensity), var(--report-surface)); }
+.flow-secondary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+.flow-months { display: grid; gap: 11px; padding-top: 5px; }
+.flow-month-row { display: grid; grid-template-columns: 75px minmax(0, 1fr) 34px; align-items: center; gap: 10px; color: var(--report-text); font-size: 11px; }
+.flow-month-row > span { text-transform: capitalize; white-space: nowrap; }
+.flow-month-row > strong { text-align: right; }
+.flow-month-track { height: 13px; border-radius: 999px; background: color-mix(in srgb, var(--report-accent) 9%, var(--report-surface)); overflow: hidden; }
+.flow-month-track > div { height: 100%; border-radius: inherit; background: var(--report-accent); }
+.flow-insights { display: grid; gap: 10px; }
+.flow-insights > div { display: flex; flex-direction: column; gap: 4px; padding: 13px; border: 1px solid var(--report-border); border-radius: 9px; background: color-mix(in srgb, var(--report-surface) 91%, var(--report-accent)); }
+.flow-insights span { color: var(--report-muted); font-size: 10px; }
+.flow-insights strong { color: var(--report-text); font-size: 15px; }
+.flow-insights small { color: var(--report-muted); font-size: 10px; }
+.report-flow-footnote { margin: -4px 2px 0; color: var(--report-muted); font-size: 10px; line-height: 1.5; }
+
+@media (max-width: 1180px) {
+  .report-filter-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 650px) {
+  .flow-secondary { grid-template-columns: 1fr; }
+  .report-section-tabs { width: 100%; }
+  .report-section-tabs button { flex: 1 1 auto; }
+  .report-filter-panel .panel-head { align-items: flex-start; gap: 10px; }
+  .report-filter-badge { align-self: flex-start; }
+  .report-quick-ranges { gap: 7px; }
+  .report-quick-range { min-height: 35px; padding: 8px 11px; }
+  .report-filter-form { grid-template-columns: 1fr; gap: 13px; }
+  .report-filter-actions { flex-direction: column; align-items: stretch; }
+  .report-filter-actions .button { width: 100%; }
+}

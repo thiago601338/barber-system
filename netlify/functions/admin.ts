@@ -1,5 +1,6 @@
 import type { Config } from '@netlify/functions'
-import { body, db, email, failure, HttpError, json, optionalSetting, requirePlatformAdmin, requireShopAdmin, text, userFromRequest, uuid } from './_shared/core'
+import { body, db, email, failure, HttpError, json, optionalSetting, requirePlatformAdmin, requireShopAdmin, setting, text, userFromRequest, uuid } from './_shared/core'
+import { InviteFlowError, prepareAndSaveMemberInvite } from './_shared/inviteFallback'
 
 type Payload = Record<string, unknown>
 
@@ -27,6 +28,16 @@ export default async (request: Request) => {
       const { error } = await client.from('platform_admins').upsert({ user_id: user.id })
       if (error) throw error
       return json({ ok: true })
+    }
+
+    if (request.method === 'GET' && action === 'bootstrap-eligibility') {
+      const configured = optionalSetting('MASTER_EMAIL')?.toLowerCase()
+      if (!configured || !user.email_confirmed_at || user.email?.toLowerCase() !== configured) {
+        return json({ eligible: false })
+      }
+      const { data: existing, error } = await client.from('platform_admins').select('user_id').limit(1)
+      if (error) throw error
+      return json({ eligible: !existing?.length || existing[0].user_id === user.id })
     }
 
     if (action === 'overview' && request.method === 'GET') {
@@ -74,20 +85,38 @@ export default async (request: Request) => {
       if (!role) throw new HttpError(400, 'Papel inválido.')
       const { data: profile, error: profileError } = await client.from('profiles').select('user_id').eq('email', address).maybeSingle()
       if (profileError) throw profileError
-      let targetUserId = profile?.user_id as string | undefined
-      let invited = false
-      if (!targetUserId) {
-        const { data: invitation, error: inviteError } = await client.auth.admin.inviteUserByEmail(address, {
-          redirectTo: new URL('/entrar', request.url).toString(),
-        })
-        if (inviteError || !invitation.user) throw new HttpError(502, inviteError?.message || 'Convite não enviado.')
-        targetUserId = invitation.user.id
-        invited = true
-      }
       const displayName = typeof input.display_name === 'string' && input.display_name.trim() ? text(input.display_name, 'Nome', 120) : address
-      const { error } = await client.from('memberships').upsert({ barbershop_id: shopId, user_id: targetUserId, role, display_name: displayName, active: true }, { onConflict: 'barbershop_id,user_id' })
-      if (error) throw error
-      return json({ ok: true, invited })
+      const redirectTo = new URL('/entrar', request.url).toString()
+      try {
+        const result = await prepareAndSaveMemberInvite({
+          email: address,
+          existingUserId: profile?.user_id,
+          authOrigin: new URL(setting('SUPABASE_URL')).origin,
+          redirectTo,
+          lookupExistingUser: targetUserId => client.auth.admin.getUserById(targetUserId),
+          sendInvite: () => client.auth.admin.inviteUserByEmail(address, { redirectTo }),
+          generateInvite: () => client.auth.admin.generateLink({ type: 'invite', email: address, options: { redirectTo } }),
+          saveMembership: async targetUserId => {
+            const { error } = await client.from('memberships').upsert({
+              barbershop_id: shopId, user_id: targetUserId, role, display_name: displayName, active: true,
+            }, { onConflict: 'barbershop_id,user_id' })
+            return { error }
+          },
+        })
+        return json({ ok: true, ...result })
+      } catch (error) {
+        if (error instanceof InviteFlowError) {
+          const message = error.stage === 'generate'
+            ? 'Não foi possível gerar o link manual de convite. Tente novamente mais tarde.'
+            : error.stage === 'lookup'
+              ? 'Não foi possível verificar a conta existente. Tente novamente.'
+            : error.stage === 'membership'
+              ? 'A conta foi preparada, mas não foi possível vincular o integrante à barbearia. Tente novamente.'
+              : error.message
+          throw new HttpError(502, message)
+        }
+        throw error
+      }
     }
 
     if (action === 'permission') {

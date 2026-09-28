@@ -1,0 +1,154 @@
+.partner-club{--club-ink:#1a3357;--club-muted:#74869f;--club-border:#dce7f3;--club-blue:#245dc4;max-width:1350px;margin-inline:auto}
+.partner-club *{min-width:0}
+.partner-club-tabs{display:flex;align-self:flex-start;gap:5px;padding:5px;border:1px solid var(--club-border);border-radius:13px;background:#f1f6fd;overflow-x:auto;max-width:100%}
+.partner-club-tabs button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:38px;padding:8px 14px;border:0;border-radius:9px;background:transparent;color:#6981a0;font-size:12px;font-weight:800;white-space:nowrap}
+.partner-club-tabs button.active{background:#fff;color:#1f58a9;box-shadow:0 2px 9px #2d5e9e1c}
+.partner-club-tabs button:focus-visible,.partner-club-offer-code button:focus-visible,.partner-club-featured button:focus-visible{outline:3px solid #7eaff0;outline-offset:2px}
+.partner-club-overview,.partner-club-section{display:flex;flex-direction:column;gap:19px}
+.partner-club-hero{display:flex;align-items:center;justify-content:space-between;gap:26px;padding:28px 34px;border-radius:19px;border:1px solid #174fa5;color:#fff;background:radial-gradient(circle at 87% 50%,#397cd0 0%,#1d58b1 38%,#153b7b 100%);box-shadow:0 18px 35px #1b4d9623}
+.partner-club-hero>div:first-child{max-width:700px}
+.partner-club-hero span{color:#bdd9ff;font-size:10px;letter-spacing:.17em;font-weight:850}
+.partner-club-hero h2{color:#fff;font-family:'DM Sans',Inter,sans-serif;font-size:clamp(25px,2.7vw,35px);font-weight:750;letter-spacing:-.045em;margin:8px 0 7px}
+.partner-club-hero p{max-width:560px;margin:0 0 17px;color:#dbe9ff;font-size:12px}
+.partner-club-hero .button{color:#1d4c98;border-color:#ffffffa8;background:#fff;box-shadow:0 6px 14px #0f366a1a}
+.partner-club-hero-mark{display:grid;place-items:center;flex:none;width:108px;height:108px;border:1px solid #ffffff5c;border-radius:28px;background:#ffffff20;color:#f3d993;transform:rotate(-9deg)}
+.partner-club-hero-mark svg{transform:rotate(9deg)}
+.partner-club-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
+.partner-club-stats>div{display:flex;flex-direction:column;gap:4px;padding:19px 20px;border:1px solid var(--club-border);border-radius:14px;background:#fff;box-shadow:0 7px 18px #2647790c}
+.partner-club-stats span{color:#788ba4;font-size:11px;font-weight:750}
+.partner-club-stats strong{color:#1c385f;font-size:clamp(21px,2vw,29px);line-height:1.15;letter-spacing:-.04em;overflow-wrap:anywhere}
+.partner-club-stats small{color:#93a1b3;font-size:10px}
+.partner-club-overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.partner-club-steps{display:flex;flex-direction:column;gap:14px;margin:0;padding:0;list-style:none}
+.partner-club-steps li{display:flex;gap:11px;align-items:flex-start}
+.partner-club-steps li>span{display:grid;place-items:center;width:28px;height:28px;flex:none;border-radius:9px;background:#e9f2ff;color:#2a66b5;font-size:11px;font-weight:850}
+.partner-club-steps strong{display:block;color:#27496f;font-size:12px}
+.partner-club-steps p{margin:2px 0 0;color:#8091a6;font-size:11px}
+.partner-club-featured{display:flex;flex-direction:column;gap:9px}
+.partner-club-featured>div{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid #e3eaf3;border-radius:11px;background:#fbfdff}
+.partner-club-featured-icon{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:10px;background:#e8f1ff;color:#306ab7}
+.partner-club-featured>div>div{flex:1}
+.partner-club-featured strong,.partner-club-featured small{display:block}
+.partner-club-featured strong{color:#29476e;font-size:12px}
+.partner-club-featured small{margin-top:2px;color:#8495a9;font-size:10px}
+.partner-club-featured button{display:grid;place-items:center;width:30px;height:30px;flex:none;border:1px solid #d9e5f4;border-radius:8px;background:#fff;color:#3b71b4}
+.partner-club-section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:15px}
+.partner-club-section-head h2{margin:0 0 4px;color:var(--club-ink);font-size:24px}
+.partner-club-section-head p{margin:0;color:var(--club-muted);font-size:12px}
+.partner-club-search{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px;border:1px solid var(--club-border);border-radius:12px;background:#fff}
+.partner-club-search label{display:flex;align-items:center;gap:9px;flex:2 1 230px;min-height:39px;padding:0 11px;border:1px solid #d7e3f1;border-radius:9px;color:#6685ae}
+.partner-club-search input{flex:1;width:100%;border:0;outline:0;background:transparent;color:#294b73;font-size:12px}
+.partner-club-search input::placeholder{color:#91a0b4}
+.partner-club-search select{flex:1 1 150px;min-height:39px;padding:7px 11px;border:1px solid #d7e3f1;border-radius:9px;background:#fff;color:#294b73;font-size:12px}
+.partner-club-search small{color:#8b9db0;font-size:10px;white-space:nowrap}
+.partner-club-search label:focus-within,.partner-club-search select:focus-visible{outline:3px solid #7eaff0;outline-offset:2px}
+.partner-club-partners,.partner-club-offers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+.partner-club-partner,.partner-club-offer{display:flex;flex-direction:column;gap:10px;padding:20px;border:1px solid var(--club-border);border-radius:16px;background:#fff;box-shadow:0 7px 18px #2647790c}
+.partner-club-partner-head,.partner-club-offer-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.partner-club-avatar{display:grid;place-items:center;width:52px;height:52px;flex:none;overflow:hidden;border-radius:14px;border:1px solid #cddff5;background:linear-gradient(145deg,#e6f0ff,#cbdff8);color:#2f65aa;font-size:16px;font-weight:850}
+.partner-club-avatar img{width:100%;height:100%;object-fit:contain}
+.partner-club-badge{display:inline-flex;align-items:center;min-height:23px;padding:4px 9px;border-radius:999px;background:#e8f1ff;color:#326aa9;font-size:10px;font-weight:800;white-space:nowrap}
+.partner-club-badge.active{background:#e5f6ec;color:#298257}
+.partner-club-badge.paused,.partner-club-badge.ended{background:#f0f2f5;color:#73839a}
+.partner-club-badge.scheduled{background:#fff3dc;color:#9c7127}
+.partner-club-partner h3,.partner-club-offer h3{margin:0;color:#213e64;font-size:17px;line-height:1.2}
+.partner-club-partner>small{color:#7b91ac;font-size:11px}
+.partner-club-partner>p,.partner-club-offer>p{flex:1;margin:0;color:#627997;font-size:11px;line-height:1.55}
+.partner-club-partner-meta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;padding-top:10px;border-top:1px solid #e9eef6;color:#7f91a8;font-size:10px}
+.partner-club-partner-meta a{display:inline-flex;align-items:center;gap:4px;color:#2f66ae;font-weight:750}
+.partner-club-card-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:auto;padding-top:8px}
+.partner-club-card-actions .button{min-height:34px;font-size:11px}
+.partner-club-offer-partner{color:#7189a4;font-size:11px;font-weight:700;text-align:right}
+.partner-club-benefit{display:flex;align-items:center;gap:8px;color:#1e5ba8;font-size:14px}
+.partner-club-benefit svg{flex:none}
+.partner-club-offer-code{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px dashed #a8c7ed;border-radius:10px;background:#f0f7ff}
+.partner-club-offer-code>span{font-size:9px;color:#6f8bad;letter-spacing:.1em;font-weight:850}
+.partner-club-offer-code>strong{flex:1;color:#215a9e;font-size:13px;letter-spacing:.08em;overflow-wrap:anywhere}
+.partner-club-offer-code button{display:grid;place-items:center;width:27px;height:27px;border:0;border-radius:7px;background:#dcecff;color:#285d9d}
+.partner-club-offer-rules{display:flex;flex-wrap:wrap;gap:5px}
+.partner-club-offer-rules span{display:inline-flex;align-items:center;gap:4px;padding:5px 7px;border-radius:6px;background:#f3f6fa;color:#687f9b;font-size:10px}
+.partner-club-offer-terms{border-top:1px solid #ebeff4;padding-top:9px;color:#8292a7!important;font-size:10px!important}
+.partner-club-filter{display:flex;align-items:center;gap:9px;color:#5e728f;font-size:11px;font-weight:750;white-space:nowrap}
+.partner-club-filter select{min-height:36px;max-width:220px;border:1px solid #d9e3f0;border-radius:8px;padding:7px 10px;background:#fff;color:#314c70}
+.partner-club-table-scroll{overflow-x:auto}
+.partner-club-table-scroll table{min-width:650px}
+.partner-club-table-scroll td strong{color:#345e96}
+.partner-club-report-controls{display:grid;gap:13px;padding:17px 19px;border:1px solid var(--club-border);border-radius:14px;background:#fff}
+.partner-club-quick-ranges{display:flex;flex-wrap:wrap;gap:7px}
+.partner-club-quick-ranges button{min-height:34px;padding:7px 12px;border:1px solid #ccddf1;border-radius:8px;background:#f1f6fd;color:#315f9d;font-size:11px;font-weight:800}
+.partner-club-quick-ranges button:hover{background:#e4efff}
+.partner-club-range,.partner-club-report-filters{display:flex;align-items:end;gap:10px;flex-wrap:wrap}
+.partner-club-range label,.partner-club-report-filters label{display:flex;flex:1 1 160px;flex-direction:column;gap:5px;color:#5a7492;font-size:11px;font-weight:800}
+.partner-club-range input,.partner-club-report-filters select{width:100%;min-height:39px;padding:7px 11px;border:1px solid #d7e3f1;border-radius:9px;background:#fff;color:#274669;font:inherit;font-size:12px}
+.partner-club-range>.button{min-height:39px}
+.partner-club-export{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px;color:#7d90a7;font-size:11px}
+.partner-club-export .button{min-height:35px;white-space:nowrap}
+.partner-club-export .button:disabled{opacity:.5;cursor:not-allowed}
+.partner-club-quick-ranges button:focus-visible,.partner-club-range input:focus-visible,.partner-club-report-filters select:focus-visible{outline:3px solid #7eaff0;outline-offset:2px}
+.partner-club-form .form-row{align-items:start}
+.shop-themed .partner-club{--club-ink:var(--shop-text);--club-muted:var(--shop-muted);--club-border:var(--shop-border);--club-blue:var(--shop-accent)}
+.shop-themed .partner-club-hero{background:linear-gradient(110deg,var(--shop-sidebar),color-mix(in srgb,var(--shop-sidebar) 78%,var(--shop-accent)));border-color:var(--shop-sidebar);color:var(--shop-sidebar-foreground)}
+.shop-themed .partner-club-hero h2{color:var(--shop-sidebar-foreground)}
+.shop-themed .partner-club-hero p,.shop-themed .partner-club-hero span{color:color-mix(in srgb,var(--shop-sidebar-foreground) 80%,var(--shop-sidebar))}
+.shop-themed .partner-club-tabs,.shop-themed .partner-club-stats>div,.shop-themed .partner-club-partner,.shop-themed .partner-club-offer,.shop-themed .partner-club-featured>div{background:var(--shop-surface);border-color:var(--shop-border)}
+.shop-themed .partner-club-tabs button.active,.shop-themed .partner-club-benefit{color:var(--shop-sidebar)}
+.shop-themed .partner-club-stats strong,.shop-themed .partner-club-partner h3,.shop-themed .partner-club-offer h3,.shop-themed .partner-club-steps strong,.shop-themed .partner-club-featured strong{color:var(--shop-text)}
+.shop-themed .partner-club-steps p,.shop-themed .partner-club-featured small,.shop-themed .partner-club-partner>p,.shop-themed .partner-club-offer>p{color:var(--shop-muted)}
+.shop-themed .partner-club-offer-code{background:color-mix(in srgb,var(--shop-accent) 12%,var(--shop-surface));border-color:var(--shop-accent)}
+.shop-themed .partner-club-offer-code strong{color:var(--shop-text)}
+.shop-themed .partner-club-search{background:var(--shop-surface);border-color:var(--shop-border)}
+.shop-themed .partner-club-report-controls{background:var(--shop-surface);border-color:var(--shop-border)}
+.shop-themed .partner-club-quick-ranges button{background:color-mix(in srgb,var(--shop-accent) 12%,var(--shop-surface));border-color:var(--shop-border);color:var(--shop-text)}
+@media(max-width:1180px){.partner-club-partners,.partner-club-offers{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:980px){.partner-club-overview-grid{grid-template-columns:1fr}.partner-club-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.partner-club-hero{padding:23px 20px}.partner-club-hero-mark{display:none}.partner-club-hero h2{font-size:27px}.partner-club-stats{gap:9px}.partner-club-stats>div{padding:15px 13px}.partner-club-stats strong{font-size:22px}.partner-club-section-head{align-items:stretch;flex-direction:column}.partner-club-section-head>.button{width:100%}.partner-club-partners,.partner-club-offers{grid-template-columns:1fr}.partner-club-tabs{align-self:stretch}.partner-club-tabs button{font-size:11px;padding:8px 10px}.partner-club-filter{justify-content:space-between}.partner-club-filter select{max-width:65vw}.partner-club-card-actions .button{flex:1}.partner-club-report-controls{padding:13px}.partner-club-range>.button,.partner-club-export .button,.partner-club-search select{width:100%}.partner-club-search small{width:100%;text-align:right}}
+
+.public-partner-section .public-section-title p{max-width:660px;color:#718299;font-size:12px}
+.public-partner-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+.public-partner-card{display:flex;flex-direction:column;gap:10px;min-width:0;padding:20px;border:1px solid #dce6f2;border-radius:15px;background:#fff;box-shadow:0 8px 24px #233f700d}
+.public-partner-card-top{display:flex;align-items:center;gap:10px}
+.public-partner-card-top small{color:#6a83a1;font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
+.public-partner-icon{display:grid;place-items:center;flex:none;width:39px;height:39px;border-radius:11px;background:#e9f2ff;color:#2c6db8}
+.public-partner-icon img{width:100%;height:100%;object-fit:contain;border-radius:inherit}
+.public-partner-card h3{margin:3px 0 0;color:#203d63;font-size:18px;line-height:1.2}
+.public-partner-card>p{flex:1;margin:0;color:#6f819a;font-size:11px}
+.public-partner-value{display:flex;align-items:center;gap:7px;color:#235fab;font-size:13px}
+.public-partner-code{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border:1px dashed #a7c2e8;border-radius:9px;background:#f2f7ff}
+.public-partner-code span{color:#738cad;font-size:10px}
+.public-partner-code strong{color:#285b9d;font-size:12px;letter-spacing:.07em;overflow-wrap:anywhere}
+.public-partner-terms{display:block;color:#8191a5;font-size:10px;line-height:1.45}
+.public-partner-card>.button{align-self:flex-start;margin-top:5px}
+.public-partner-more{margin-top:16px}
+.public-partner-empty{display:flex;align-items:center;gap:13px;padding:19px;border:1px dashed #ccdcef;border-radius:13px;background:#f9fbfe;color:#7489a4}
+.public-partner-empty svg{flex:none;color:#2f6db7}
+.public-partner-empty p{margin:0;font-size:12px}
+.public-coupon-heading{display:flex;align-items:flex-start;gap:12px}
+.public-coupon-heading>span{display:grid;place-items:center;flex:none;width:37px;height:37px;border-radius:10px;background:#e7f1ff;color:#2b68b1}
+.public-coupon-heading h2{margin:0 0 3px!important}
+.public-coupon-heading p{margin:0;color:#7b8ca2;font-size:11px}
+.public-coupon-entry{display:flex;align-items:end;gap:9px;flex-wrap:wrap;margin-top:17px}
+.public-coupon-entry .field{flex:1 1 210px;margin:0}
+.public-coupon-entry .button{min-height:41px}
+.public-coupon-entry input{text-transform:uppercase;letter-spacing:.06em}
+.public-coupon-note{color:#9a6c38;font-size:11px;margin:10px 0 0}
+.public-coupon-section>.notice{margin-top:13px}
+.public-coupon-applied{margin-top:15px;padding:15px;border:1px solid #bddfc9;border-radius:12px;background:#f0f9f3}
+.public-coupon-applied>div:first-child{display:flex;align-items:center;gap:7px;flex-wrap:wrap;color:#26734c}
+.public-coupon-applied>div:first-child strong{font-size:12px}
+.public-coupon-applied>div:first-child span{color:#568366;font-size:11px}
+.public-coupon-applied dl{display:grid;gap:6px;margin:11px 0 0}
+.public-coupon-applied dl>div{display:flex;justify-content:space-between;gap:12px;color:#486b58;font-size:11px}
+.public-coupon-applied dl>div:last-child{padding-top:7px;border-top:1px solid #cce7d2;color:#215a3d;font-weight:850;font-size:13px}
+.public-coupon-applied dd{margin:0;font-weight:800;white-space:nowrap}
+.public-coupon-applied>small{display:block;margin-top:10px;color:#699479;font-size:10px}
+.public-confirm-benefit{display:flex;align-items:center;justify-content:center;gap:8px;max-width:440px;margin:13px auto;padding:11px 13px;border:1px solid #bde0cb;border-radius:10px;background:#eef9f2;color:#2e704a;font-size:12px}
+.public-confirm-benefit svg{flex:none}
+.shop-themed .public-partner-card{background:var(--shop-surface);border-color:var(--shop-border)}
+.shop-themed .public-partner-card h3,.shop-themed .public-partner-code strong{color:var(--shop-text)}
+.shop-themed .public-partner-card>p,.shop-themed .public-partner-section .public-section-title p{color:var(--shop-muted)}
+.shop-themed .public-partner-empty{background:var(--shop-surface);border-color:var(--shop-border);color:var(--shop-muted)}
+.shop-themed .public-partner-icon,.shop-themed .public-coupon-heading>span,.shop-themed .public-partner-code{background:color-mix(in srgb,var(--shop-accent) 15%,var(--shop-surface));color:var(--shop-sidebar);border-color:var(--shop-border)}
+.shop-themed .public-partner-value{color:var(--shop-sidebar)}
+.shop-themed .public-coupon-applied,.shop-themed .public-confirm-benefit{background:color-mix(in srgb,var(--shop-accent) 14%,var(--shop-surface));border-color:var(--shop-border);color:var(--shop-text)}
+@media(max-width:980px){.public-partner-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.public-partner-grid{grid-template-columns:1fr}.public-coupon-entry{align-items:stretch;flex-direction:column}.public-coupon-entry .field{flex:0 0 auto;width:100%}.public-coupon-entry .button{width:100%}.public-partner-card>.button{width:100%}}

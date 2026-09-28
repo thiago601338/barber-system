@@ -1,0 +1,215 @@
+/* Platform colors apply to master and shops without a published identity. */
+:root{color:#172b4c;background:#f4f7fc}
+body{background:#f4f7fc}
+.brand-lockup.dark .brand-wordmark{color:#f5f9ff}
+.brand-lockup.dark .brand-wordmark b{color:#9cc7ff}
+.brand-lockup.light .brand-wordmark{color:#162e54}
+.brand-lockup.light .brand-wordmark b{color:#3477d5}
+.auth-layout:not(.shop-themed){background:#f4f7fc}
+.auth-layout:not(.shop-themed) .auth-brand{background-image:linear-gradient(90deg,#0b1d3bf2 0%,#102d58d9 48%,#16477d69 100%),linear-gradient(0deg,#0a1e3dde,transparent 52%),url('./assets/barbershop-hero.png');background-color:#10264a;color:#fff}
+.auth-layout:not(.shop-themed) .auth-brand h1{font-family:'DM Sans',Arial,sans-serif;font-weight:800;font-size:clamp(44px,5vw,76px);letter-spacing:-.065em;line-height:1.03}
+.auth-layout:not(.shop-themed) .auth-brand p{color:#d6e6fa}
+.auth-layout:not(.shop-themed) .auth-deco{border-color:#9fc3f477}
+.auth-layout:not(.shop-themed) .auth-deco span{color:#aaccff}
+.auth-layout:not(.shop-themed) .auth-form-wrap{background:radial-gradient(circle at top right,#fff,#f4f8ff 68%)}
+.auth-layout:not(.shop-themed) .auth-form h2{font-family:'DM Sans',Arial,sans-serif;font-weight:800;letter-spacing:-.055em;color:#172e52}
+.auth-layout:not(.shop-themed) .auth-form>p,.auth-layout:not(.shop-themed) .auth-form>small{color:#687c9b}
+.auth-layout:not(.shop-themed) .auth-form .field>span{color:#365272}
+.auth-layout:not(.shop-themed) .auth-form .field input{background:#fff;border-color:#d6e2f2;color:#1a3458}
+.auth-layout:not(.shop-themed) .auth-form .field input:focus{border-color:#4d8de8;box-shadow:0 0 0 3px #76a9f342}
+.auth-layout:not(.shop-themed) .auth-submit{background:#245dc4!important;box-shadow:0 10px 22px #245dc42e!important}
+.auth-layout:not(.shop-themed) .auth-links button{color:#245dc4}
+.client-layout:not(.shop-themed),.public-layout:not(.shop-themed){background:#f4f7fc;color:#172b4c}
+.client-layout:not(.shop-themed) .client-header,.public-layout:not(.shop-themed) .public-header{border-color:#dfe8f5;background:#fff}
+.client-layout:not(.shop-themed) .panel,.public-layout:not(.shop-themed) .public-service,.public-layout:not(.shop-themed) .public-link,.public-layout:not(.shop-themed) .public-booking-form>section{background:#fff;border-color:#dce6f3}
+.client-layout:not(.shop-themed) .button.primary,.public-layout:not(.shop-themed) .button.primary,.public-layout:not(.shop-themed) .public-link.primary{background:#245dc4;border-color:#245dc4;color:#fff}
+.client-layout:not(.shop-themed) .plan-icon,.public-layout:not(.shop-themed) .confirm-icon,.public-layout:not(.shop-themed) .public-emblem{background:#e8f1ff;color:#245dc4}
+.public-layout:not(.shop-themed) .public-hero{border-radius:18px;background:linear-gradient(120deg,#e8f2ff,#fbfdff);padding:48px 28px}
+.public-layout:not(.shop-themed) .public-hero h1,.public-layout:not(.shop-themed) .public-section-title h2{font-family:'DM Sans',Arial,sans-serif;font-weight:800;letter-spacing:-.055em;color:#173a6f}
+.public-layout:not(.shop-themed) .public-hero p,.public-layout:not(.shop-themed) .public-service p{color:#6c819d}
+.public-layout:not(.shop-themed) .public-link:hover,.public-layout:not(.shop-themed) .public-service:hover{border-color:#81aeee}
+.client-layout:not(.shop-themed) .client-brand,.public-layout:not(.shop-themed) .client-brand{color:#1b3d70}
+.state-screen,.fullscreen-loading{background:#f4f7fc}
+.state-card{border-color:#dce6f3}
+.state-card>svg{color:#2867c4}
+.app-layout:not(.shop-themed){
+  --shop-background:#f4f7fc!important;
+  --shop-surface:#ffffff!important;
+  --shop-sidebar:#ffffff!important;
+  --shop-sidebar-foreground:#172f58!important;
+  --shop-text:#172b4c!important;
+  --shop-muted:#667994!important;
+  --shop-accent:#275dc6!important;
+  --shop-accent-text:#ffffff!important;
+  --shop-border:#dce4f0!important;
+  --shop-heading-font:'DM Sans',Arial,sans-serif!important;
+  --shop-body-font:'DM Sans',Arial,sans-serif!important;
+  color:#172b4c;
+  background:#f4f7fc;
+}
+.app-layout:not(.shop-themed) .sidebar{background:#fff;border-right:1px solid #e0e7f2;box-shadow:8px 0 30px #1a39700a}
+.app-layout:not(.shop-themed) .sidebar-brand{border-color:#e6ebf3}
+.app-layout:not(.shop-themed) .sidebar-brand .shop-brand-lockup.dark,
+.app-layout:not(.shop-themed) .sidebar-brand .brand-lockup.dark .brand-wordmark{color:#172b4c}
+.app-layout:not(.shop-themed) .sidebar-brand .brand-lockup.dark .brand-wordmark b{color:#5675a2}
+.app-layout:not(.shop-themed) .shop-switcher{background:#f5f8fe;border:1px solid #dce6f5}
+.app-layout:not(.shop-themed) .shop-switcher strong{color:#233b60}
+.app-layout:not(.shop-themed) .shop-switcher small{color:#72839d}
+.app-layout:not(.shop-themed) .shop-switcher svg{color:#6b83a7}
+.app-layout:not(.shop-themed) .shop-avatar{background:#dce9ff;color:#1f52a8}
+.app-layout:not(.shop-themed) .nav-group{color:#8c9bb2}
+.app-layout:not(.shop-themed) .nav-item{color:#51647e}
+.app-layout:not(.shop-themed) .nav-item svg{color:#7d91ad}
+.app-layout:not(.shop-themed) .nav-item:hover{background:#f1f6ff;color:#214f9e}
+.app-layout:not(.shop-themed) .nav-item:hover svg{color:#275dc6}
+.app-layout:not(.shop-themed) .nav-item.active{background:#eaf1ff;color:#164aaf;box-shadow:none;font-weight:800}
+.app-layout:not(.shop-themed) .nav-item.active svg{color:#275dc6}
+.app-layout:not(.shop-themed) .nav-item.active:before{background:#2765d2;width:3px}
+.app-layout:not(.shop-themed) .sidebar-bottom{border-color:#e6ebf3}
+.app-layout:not(.shop-themed) .help-card{background:linear-gradient(145deg,#eef4ff,#f7faff);border-color:#dae6f8}
+.app-layout:not(.shop-themed) .help-card strong{color:#1b3d78}
+.app-layout:not(.shop-themed) .help-card p{color:#6a7d99}
+.app-layout:not(.shop-themed) .help-icon{background:#dbe9ff;color:#2255b1}
+.app-layout:not(.shop-themed) .sidebar-logout{color:#627897}
+.app-layout:not(.shop-themed) .sidebar-logout:hover{color:#1d54b3}
+.app-layout:not(.shop-themed) .main-area{background:#f4f7fc}
+.app-layout:not(.shop-themed) .topbar{background:#ffffffed;border-bottom-color:#e0e8f3;box-shadow:0 4px 20px #173f8008}
+.app-layout:not(.shop-themed) .topbar-crumb{color:#72839c}
+.app-layout:not(.shop-themed) .topbar-crumb strong{color:#193660}
+.app-layout:not(.shop-themed) .topbar-select{background:#f8faff;border-color:#dce5f1;color:#254469}
+.app-layout:not(.shop-themed) .profile-pill{color:#24466f}
+.app-layout:not(.shop-themed) .profile-pill div{background:#e4eeff;color:#1a4fa8;border-color:#d5e3fa}
+.app-layout:not(.shop-themed) .page-header h1{font-family:'DM Sans',Arial,sans-serif;font-size:clamp(31px,3.2vw,45px);font-weight:750;letter-spacing:-.055em;color:#142a4b}
+.app-layout:not(.shop-themed) .page-header p{color:#70829b}
+.app-layout:not(.shop-themed) .eyebrow{color:#2a62bf}
+.app-layout:not(.shop-themed) .panel,.app-layout:not(.shop-themed) .stat,.app-layout:not(.shop-themed) .tutorial-module{background:#fff;border-color:#dfe7f1;box-shadow:0 12px 34px #2447790a,0 2px 6px #24477905}
+.app-layout:not(.shop-themed) .panel-head h2{color:#183254}
+.app-layout:not(.shop-themed) .panel-head p{color:#7a8ba4}
+.app-layout:not(.shop-themed) .stat{border-radius:16px}
+.app-layout:not(.shop-themed) .stats-grid>.stat:first-child{background:linear-gradient(145deg,#2156b9,#173e8c);border-color:#2156b9;color:#fff;box-shadow:0 16px 32px #234e9b2e}
+.app-layout:not(.shop-themed) .stats-grid>.stat:first-child strong{color:#fff}
+.app-layout:not(.shop-themed) .stats-grid>.stat:first-child small,.app-layout:not(.shop-themed) .stats-grid>.stat:first-child .stat-top>span{color:#dce8ff}
+.app-layout:not(.shop-themed) .stat-icon,.app-layout:not(.shop-themed) .insight-icon,.app-layout:not(.shop-themed) .service-icon,.app-layout:not(.shop-themed) .integration-icon,.app-layout:not(.shop-themed) .social-icon{background:#eaf2ff;color:#2660bf}
+.app-layout:not(.shop-themed) .stats-grid>.stat:first-child .stat-icon{background:#ffffff24;color:#fff}
+.app-layout:not(.shop-themed) .button.primary,.app-layout:not(.shop-themed) .slot.selected{background:#245dc4;border-color:#245dc4;color:#fff;box-shadow:0 7px 17px #245dc42a}
+.app-layout:not(.shop-themed) .button.primary:hover:not(:disabled){background:#17499f}
+.app-layout:not(.shop-themed) .button.outline,.app-layout:not(.shop-themed) .icon-button{background:#fff;border-color:#d9e4f3;color:#28578e}
+.app-layout:not(.shop-themed) .button.outline:hover:not(:disabled),.app-layout:not(.shop-themed) .icon-button:hover{background:#f1f6ff;border-color:#92b4ee}
+.app-layout:not(.shop-themed) .field input,.app-layout:not(.shop-themed) .field select,.app-layout:not(.shop-themed) .field textarea,.app-layout:not(.shop-themed) .search-wrap input,.app-layout:not(.shop-themed) .calendar-toolbar input{background:#fff;border-color:#d8e2ef;color:#1e3556}
+.app-layout:not(.shop-themed) .field input:focus,.app-layout:not(.shop-themed) .field select:focus,.app-layout:not(.shop-themed) .field textarea:focus,.app-layout:not(.shop-themed) .search-wrap input:focus,.app-layout:not(.shop-themed) .calendar-toolbar input:focus{border-color:#4280e5;box-shadow:0 0 0 3px #6fa4f035}
+.app-layout:not(.shop-themed) .field>span{color:#355473}
+.app-layout:not(.shop-themed) .field small,.app-layout:not(.shop-themed) .muted{color:#71839b}
+.app-layout:not(.shop-themed) .segmented{background:#edf3fc}
+.app-layout:not(.shop-themed) .segmented button{color:#647e9f}
+.app-layout:not(.shop-themed) .segmented button.selected{background:#fff;color:#1954ac;box-shadow:0 3px 10px #285ba618}
+.app-layout:not(.shop-themed) .chart-bar{background:linear-gradient(180deg,#4e8af4,#2155b7);box-shadow:0 2px 10px #2f67c943}
+.app-layout:not(.shop-themed) .chart-bar-wrap{border-color:#e5ecf6}
+.app-layout:not(.shop-themed) table th{color:#778ba5;border-color:#e6edf6}
+.app-layout:not(.shop-themed) table td{color:#405875;border-color:#edf2f9}
+.app-layout:not(.shop-themed) tr.clickable:hover{background:#f3f7ff}
+.app-layout:not(.shop-themed) .person-cell strong,.app-layout:not(.shop-themed) .detail-list strong{color:#1b3558}
+.app-layout:not(.shop-themed) .member-avatar{background:#e6efff;color:#285ab0}
+.app-layout:not(.shop-themed) .table-action,.app-layout:not(.shop-themed) .table-action-button,.app-layout:not(.shop-themed) .back-button,.app-layout:not(.shop-themed) .public-url a{color:#2862c1}
+.app-layout:not(.shop-themed) .status.good{background:#eaf5f0;color:#2d8564}
+.app-layout:not(.shop-themed) .status.warn{background:#fff5e8;color:#9d7131}
+.app-layout:not(.shop-themed) .notice.info{background:#eef5ff;border-color:#d4e4ff;color:#285aa4}
+.app-layout:not(.shop-themed) .integration-box,.app-layout:not(.shop-themed) .analysis-result,.app-layout:not(.shop-themed) .public-url{background:#f6f9ff;border-color:#dfe9f7;color:#23446d}
+.app-layout:not(.shop-themed) .permission-person,.app-layout:not(.shop-themed) .choice-card,.app-layout:not(.shop-themed) .slot{background:#fff;border-color:#dce6f3;color:#2a4c73}
+.app-layout:not(.shop-themed) .permission-person:hover,.app-layout:not(.shop-themed) .choice-card.selected{background:#f0f6ff;border-color:#a9c8f3}
+.app-layout:not(.shop-themed) .permission-toggle.on,.app-layout:not(.shop-themed) .progress>div{background:#3675da}
+.app-layout:not(.shop-themed) .modal{background:#fff;border-color:#dfe7f2}
+.app-layout:not(.shop-themed) .calendar-shell{border-color:#dae4f1}
+.app-layout:not(.shop-themed) .calendar-time.header,.app-layout:not(.shop-themed) .calendar-barber{background:#f5f8fe;border-color:#e4ecf6}
+.app-layout:not(.shop-themed) .calendar-cell:hover{background:#eef5ff}
+.app-layout:not(.shop-themed) .appointment-block{border-left-color:#3471d5;background:#eaf2ff;color:#234e8e}
+.app-layout:not(.shop-themed) .appointment-block:hover{background:#dbeaff}
+.app-layout:not(.shop-themed) .toast{background:#194a9b}
+.app-layout:not(.shop-themed) .mobile-close{background:#f1f6ff;border-color:#d6e5fa;color:#2053a1}
+.app-layout:not(.shop-themed) .mobile-scrim{background:#17294791}
+
+/* The report filters and guided help share the same blue controls as the rest of the app. */
+.app-layout:not(.shop-themed) .reports-page{--report-surface:#fff;--report-border:#dce5f2;--report-text:#1a355b;--report-muted:#6d809a;--report-accent:#2a67d0;--report-deep:#245dc4;--report-deep-text:#fff}
+.app-layout:not(.shop-themed) .tour-hub-hero{background:linear-gradient(118deg,#1b4ea8,#2770d5 68%,#5b9ceb);border-color:#397bdf;color:#fff}
+.app-layout:not(.shop-themed) .tour-hub-hero h1,.app-layout:not(.shop-themed) .tour-hub-hero p{color:#fff}
+.app-layout:not(.shop-themed) .tour-hub-eyebrow{color:#d9e9ff}
+.app-layout:not(.shop-themed) .tour-hub-start{background:#fff;color:#1b54ae}
+.app-layout:not(.shop-themed) .tour-hub-card{background:#fff;border-color:#dce6f2}
+.app-layout:not(.shop-themed) .tour-hub-card-index{background:#eaf2ff;color:#245db7}
+.app-layout:not(.shop-themed) .tour-hub-card button{background:#245dc4;color:#fff}
+.app-layout:not(.shop-themed) .guided-tour{--tour-accent:#71a7ff;--tour-dark:#122d56}
+
+/* Dashboard: daily pulse, live appointments, revenue, setup and direct actions. */
+.dashboard-page{gap:19px}
+.dashboard-page .dashboard-hero{min-height:242px;display:grid;grid-template-columns:minmax(0,1fr) 224px;gap:28px;align-items:center;padding:31px 35px;border:1px solid #bcd3fa;border-radius:18px;background:radial-gradient(circle at 55% 120%,#b9d6ff8c,transparent 42%),linear-gradient(115deg,#e9f2ff,#f8fbff 68%);box-shadow:0 18px 36px #2b5bab15;color:#153866}
+.dashboard-page .dashboard-hero-copy{min-width:0}
+.dashboard-page .dashboard-hero-copy>span{color:#2864c0}
+.dashboard-page .dashboard-hero h2{font-family:'DM Sans',Arial,sans-serif;font-size:clamp(35px,3.5vw,50px);font-weight:800;letter-spacing:-.06em;line-height:1.04;color:#123a78;margin:10px 0}
+.dashboard-page .dashboard-hero p{max-width:510px;font-size:13px;line-height:1.65;color:#5b7395}
+.dashboard-hero-action{display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:11px 15px;border:0;border-radius:9px;background:#235bc3;color:#fff;font-size:12px;font-weight:800;box-shadow:0 7px 15px #245dc42a}
+.dashboard-hero-action:hover{background:#184aa0}
+.dashboard-day-card{display:flex;flex-direction:column;align-items:flex-start;min-height:180px;border:1px solid #c9dbf7;border-radius:14px;padding:18px;background:#ffffffd9;box-shadow:0 9px 24px #1b58a912}
+.dashboard-day-card small{font-size:9px;font-weight:800;letter-spacing:.16em;color:#6984a9}
+.dashboard-day-card>strong{font-size:52px;line-height:1;color:#1b4fa5;letter-spacing:-.07em;margin:10px 0 2px}
+.dashboard-day-card>span{font-size:11px;color:#607896;letter-spacing:0;font-weight:600}
+.dashboard-day-card>div{display:flex;flex-direction:column;gap:5px;border-top:1px solid #e0e9f7;margin-top:auto;padding-top:10px;width:100%}
+.dashboard-day-card>div span{display:flex;align-items:center;gap:6px;font-size:10px;color:#355a86;letter-spacing:0;font-weight:650}
+.dashboard-operational{grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr)}
+.dashboard-page .dashboard-operational>.panel{min-height:330px}
+.dashboard-agenda-list{display:flex;flex-direction:column}
+.dashboard-agenda-item{display:flex;align-items:center;gap:13px;padding:12px 0;border-bottom:1px solid #edf1f8}
+.dashboard-agenda-item:last-child{border-bottom:0}
+.dashboard-agenda-time{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;width:62px;min-height:48px;border-radius:8px;background:#edf4ff;color:#1d58b5}
+.dashboard-agenda-time strong{font-size:14px;line-height:1}
+.dashboard-agenda-time small{font-size:9px;margin-top:4px;color:#6285b4}
+.dashboard-agenda-details{min-width:0;flex:1}
+.dashboard-agenda-details strong{display:block;font-size:12px;color:#243b5e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dashboard-agenda-details small{display:block;font-size:10px;color:#8190a5;margin-top:3px}
+.dashboard-text-link{display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;color:#1e5fc0;font-weight:800;font-size:11px;padding:9px 0;margin-top:9px}
+.dashboard-text-link:hover{text-decoration:underline}
+.dashboard-chart-total{display:flex;flex-direction:column;gap:3px;padding:3px 0}
+.dashboard-chart-total span{font-size:10px;color:#7a8aa1}
+.dashboard-chart-total strong{font-size:22px;color:#1b3c6c}
+.dashboard-page .bar-chart{height:174px}
+.dashboard-page .chart-bar-wrap{height:135px}
+.dashboard-secondary{align-items:stretch}
+.dashboard-secondary>.panel{min-height:245px}
+.dashboard-checklist,.dashboard-shortcuts{display:flex;flex-direction:column;gap:7px}
+.dashboard-checklist button,.dashboard-shortcuts button{display:flex;align-items:center;gap:11px;width:100%;padding:11px 12px;border:1px solid #e0e8f3;border-radius:9px;background:#f9fbff;color:#233e66;text-align:left}
+.dashboard-checklist button:hover,.dashboard-shortcuts button:hover{background:#edf5ff;border-color:#bed3f4}
+.dashboard-checklist button>strong{flex:1;font-size:11px}
+.dashboard-checklist button>svg:last-child,.dashboard-shortcuts button>svg:last-child{color:#3b70c3}
+.dashboard-check-icon{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:#e8f0ff;color:#497cc9}
+.dashboard-checklist button.done{opacity:.64}
+.dashboard-checklist button.done .dashboard-check-icon{background:#e1f5ea;color:#38956c}
+.dashboard-shortcuts button>svg:first-child{flex:none;color:#2a65c4}
+.dashboard-shortcuts button>span{display:flex;flex-direction:column;flex:1;gap:2px}
+.dashboard-shortcuts strong{font-size:11px}
+.dashboard-shortcuts small{font-size:10px;color:#788aa4}
+.dashboard-retention-foot{font-size:10px;color:#7b8ba0;margin:13px 0 0}
+.dashboard-page .return-row{border-color:#eaf0f8}
+.dashboard-page .return-count.zero strong{color:#c66558}
+@media(max-width:1080px){.dashboard-operational{grid-template-columns:1fr}}
+@media(max-width:680px){.dashboard-page .dashboard-hero{grid-template-columns:1fr;padding:22px;gap:17px}.dashboard-page .dashboard-hero h2{font-size:36px}.dashboard-hero-action{margin-top:14px}.dashboard-day-card{min-height:0;padding:14px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 12px}.dashboard-day-card small,.dashboard-day-card>span{grid-column:1}.dashboard-day-card>strong{grid-column:2;grid-row:1/3;font-size:42px;margin:0}.dashboard-day-card>div{grid-column:1/-1;margin-top:8px;flex-direction:row;justify-content:space-between}.dashboard-agenda-item{gap:8px}.dashboard-agenda-item .status{font-size:9px;padding:4px 6px}.dashboard-agenda-time{width:52px}.dashboard-page .chart-value{font-size:8px}}
+
+/* The same dashboard layout follows each shop's published visual identity. */
+.app-layout.shop-themed .dashboard-page .dashboard-hero{border-color:var(--shop-border);background-image:linear-gradient(90deg,color-mix(in srgb,var(--shop-sidebar) 94%,transparent),color-mix(in srgb,var(--shop-sidebar) 52%,transparent)),var(--shop-hero-image,none);background-color:var(--shop-sidebar);background-size:cover;background-position:center;box-shadow:0 18px 36px color-mix(in srgb,var(--shop-sidebar) 19%,transparent);color:var(--shop-sidebar-foreground)}
+.app-layout.shop-themed .dashboard-page .dashboard-hero-copy>span{color:var(--shop-accent)}
+.app-layout.shop-themed .dashboard-page .dashboard-hero h2{font-family:var(--shop-heading-font);color:var(--shop-sidebar-foreground)}
+.app-layout.shop-themed .dashboard-page .dashboard-hero p{color:color-mix(in srgb,var(--shop-sidebar-foreground) 80%,var(--shop-sidebar))}
+.app-layout.shop-themed .dashboard-hero-action{background:var(--shop-accent);color:var(--shop-accent-text);box-shadow:0 7px 15px color-mix(in srgb,var(--shop-sidebar) 25%,transparent)}
+.app-layout.shop-themed .dashboard-hero-action:hover{background:color-mix(in srgb,var(--shop-accent) 85%,var(--shop-surface))}
+.app-layout.shop-themed .dashboard-day-card{background:var(--shop-surface);border-color:var(--shop-border);box-shadow:0 9px 24px color-mix(in srgb,var(--shop-sidebar) 10%,transparent)}
+.app-layout.shop-themed .dashboard-day-card small,.app-layout.shop-themed .dashboard-day-card>span,.app-layout.shop-themed .dashboard-day-card>div span{color:var(--shop-muted)}
+.app-layout.shop-themed .dashboard-day-card>strong,.app-layout.shop-themed .dashboard-chart-total strong{color:var(--shop-text)}
+.app-layout.shop-themed .dashboard-day-card>div,.app-layout.shop-themed .dashboard-agenda-item,.app-layout.shop-themed .dashboard-page .return-row{border-color:var(--shop-border)}
+.app-layout.shop-themed .dashboard-agenda-time,.app-layout.shop-themed .dashboard-check-icon{background:color-mix(in srgb,var(--shop-accent) 17%,var(--shop-surface));color:var(--shop-text)}
+.app-layout.shop-themed .dashboard-agenda-time small,.app-layout.shop-themed .dashboard-agenda-details small,.app-layout.shop-themed .dashboard-chart-total span,.app-layout.shop-themed .dashboard-shortcuts small,.app-layout.shop-themed .dashboard-retention-foot{color:var(--shop-muted)}
+.app-layout.shop-themed .dashboard-agenda-details strong,.app-layout.shop-themed .dashboard-checklist button,.app-layout.shop-themed .dashboard-shortcuts button{color:var(--shop-text)}
+.app-layout.shop-themed .dashboard-checklist button,.app-layout.shop-themed .dashboard-shortcuts button{background:var(--shop-surface);border-color:var(--shop-border)}
+.app-layout.shop-themed .dashboard-checklist button:hover,.app-layout.shop-themed .dashboard-shortcuts button:hover{background:color-mix(in srgb,var(--shop-accent) 10%,var(--shop-surface));border-color:var(--shop-accent)}
+.app-layout.shop-themed .dashboard-text-link,.app-layout.shop-themed .dashboard-checklist button>svg:last-child,.app-layout.shop-themed .dashboard-shortcuts button>svg,.app-layout.shop-themed .dashboard-checklist button>svg{color:var(--shop-text)}
+.app-layout.shop-themed .dashboard-page .chart-bar{background:linear-gradient(180deg,var(--shop-accent),color-mix(in srgb,var(--shop-accent) 62%,var(--shop-sidebar)))}
+.app-layout.shop-themed .dashboard-page .chart-bar-wrap{border-color:var(--shop-border)}
+.app-layout.shop-themed .reports-page{--report-surface:var(--shop-surface);--report-border:var(--shop-border);--report-text:var(--shop-text);--report-muted:var(--shop-muted);--report-accent:var(--shop-accent);--report-deep:var(--shop-sidebar);--report-deep-text:var(--shop-sidebar-foreground)}
+.app-layout.shop-themed .guided-tour{--tour-accent:var(--shop-accent);--tour-dark:var(--shop-sidebar)}
+.app-layout.shop-themed .modal{background:var(--shop-surface);color:var(--shop-text);border-color:var(--shop-border)}

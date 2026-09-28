@@ -27,6 +27,19 @@ function callbackUri(): string {
   return uri
 }
 
+function shopOauthConfigured(): boolean {
+  if (!['MP_CLIENT_ID', 'MP_CLIENT_SECRET', 'MP_OAUTH_REDIRECT_URI', 'TOKEN_ENCRYPTION_KEY']
+    .every(name => Boolean(optionalSetting(name)))) return false
+  try {
+    callbackUri()
+    const key = optionalSetting('TOKEN_ENCRYPTION_KEY') || ''
+    if (!/^[A-Za-z0-9_+/-]+={0,2}$/.test(key)) return false
+    const normalized = key.replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/g, '')
+    return atob(normalized + '='.repeat((4 - normalized.length % 4) % 4)).length === 32
+  }
+  catch { return false }
+}
+
 async function oauthStart(request: Request): Promise<Response> {
   const client = db()
   const user = await userFromRequest(request, client)
@@ -77,10 +90,15 @@ async function oauthCallback(request: Request): Promise<Response> {
     }
     await saveShopToken(client, saved.shopId, token)
     const returnUrl = optionalSetting('MP_OAUTH_RETURN_URL')
-    response = returnUrl ? Response.redirect(mpPublicUrl('MP_OAUTH_RETURN_URL'), 303)
-      : new Response('Conta Mercado Pago conectada. Você pode voltar ao Barber System.', {
-        status: 200, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
-      })
+    if (returnUrl) response = Response.redirect(mpPublicUrl('MP_OAUTH_RETURN_URL'), 303)
+    else {
+      const { data: shop, error: shopError } = await client.from('barbershops').select('slug').eq('id', saved.shopId).single()
+      if (shopError) throw shopError
+      const destination = new URL('/', request.url)
+      destination.searchParams.set('shop', shop.slug)
+      destination.searchParams.set('page', 'settings')
+      response = Response.redirect(destination, 303)
+    }
   } catch (error) {
     response = failure(error)
   }
@@ -96,7 +114,7 @@ async function shopConnection(request: Request): Promise<Response> {
   const { data, error } = await client.from('integration_credentials')
     .select('provider_account_id,expires_at,updated_at').eq('barbershop_id', shopId).eq('provider', 'mercadopago').maybeSingle()
   if (error) throw error
-  return json({ connected: !!data, account_id: data?.provider_account_id || null,
+  return json({ connected: !!data, configured: shopOauthConfigured(), account_id: data?.provider_account_id || null,
     expires_at: data?.expires_at || null, updated_at: data?.updated_at || null })
 }
 

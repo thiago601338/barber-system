@@ -1,0 +1,63 @@
+/* Shared layout refinements for narrow dashboards and touch screens. */
+.topbar-crumb{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar-right{min-width:0;flex:none}
+.page-header>div:first-child{min-width:0}
+.toolbar .search-wrap{min-width:0;flex:1 1 300px;max-width:420px}
+.toolbar .search-wrap svg{z-index:1;pointer-events:none;flex:none}
+.toolbar .search-wrap input{min-width:0;width:100%;padding:11px 14px 11px 44px;line-height:1.35}
+.toolbar .search-wrap input::placeholder{color:#8d998f;opacity:1}
+.person-cell{min-width:0}
+.person-cell>div:last-child{min-width:0}
+.person-cell strong,.person-cell small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tour-hub-meta{flex-wrap:wrap}
+.table-scroll,.calendar-shell{max-width:100%;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.page-stack,.page-header,.panel-head,.dashboard-grid,.form-grid,.form-row,.order-grid,.goal-grid{min-width:0}
+.panel-head>div:first-child,.modal-head>div:first-child,.guide-step>div:last-child{min-width:0}
+.panel-head h2,.modal-head h2,.guide-step h3{overflow-wrap:anywhere}
+.modal{overscroll-behavior:contain}
+.segmented{max-width:100%}
+.app-layout .field input[type=checkbox],.app-layout .field input[type=radio],.field input[type=checkbox],.field input[type=radio]{appearance:auto;flex:none;width:16px;height:16px;min-height:0;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;accent-color:var(--shop-accent,#2767c9)}
+.choice-card span{min-width:0}
+.choice-card strong,.choice-card small{overflow-wrap:anywhere}
+
+@media(max-width:980px){
+  .topbar-crumb{flex:1}
+  .content .page-header{flex-wrap:wrap}
+  .content .page-actions{max-width:100%}
+  .panel-head{flex-wrap:wrap}
+}
+
+@media(max-width:650px){
+  .topbar{gap:10px}
+  .topbar-crumb{flex:1;min-width:0}
+  .topbar-right{gap:6px}
+  .topbar-select{max-width:min(118px,31vw)}
+  .toolbar{flex-direction:column;align-items:stretch;gap:8px}
+  .toolbar .search-wrap{flex:0 0 auto;max-width:none;width:100%}
+  .toolbar>span{align-self:flex-end;white-space:nowrap}
+  .content .page-actions{width:100%}
+  .content .page-actions .button{min-width:0}
+  .content .page-actions>.button-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+  .content .page-actions>.button-row .button{width:100%;white-space:normal}
+  .calendar-toolbar .date-nav{width:100%;justify-content:space-between;margin-right:0}
+  .calendar-toolbar .date-nav strong{min-width:0;flex:1}
+  .calendar-toolbar>input{min-width:0}
+  .table-scroll:has(th:nth-child(4)) table{min-width:560px}
+  .modal{max-height:calc(100dvh - 12px);padding-bottom:max(18px,env(safe-area-inset-bottom) + 12px)}
+  .modal-head h2{font-size:20px}
+  .form-actions{flex-wrap:wrap}
+  .form-actions>.button{flex:1 1 130px}
+  .tour-hub-meta{align-items:flex-start;flex-direction:column;gap:4px}
+  .client-header{gap:8px}
+  .client-header .client-brand{min-width:0;flex:1}
+  .client-header .shop-brand-lockup{min-width:0}
+  .client-header .shop-brand-words{min-width:0;overflow:hidden}
+  .client-header .shop-brand-words strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .client-header>div{flex:none;gap:5px}
+}
+
+@media(max-width:380px){
+  .content .page-actions>.button-row{grid-template-columns:1fr}
+  .topbar-select{max-width:92px}
+  .tour-hub-card{align-items:flex-start}
+}

@@ -5,16 +5,21 @@ export type Role = 'master' | 'admin' | 'barber' | 'client'
 export type ModuleKey =
   | 'dashboard' | 'reports' | 'appointments' | 'clients' | 'services' | 'subscriptions'
   | 'products' | 'bar' | 'finance' | 'goals' | 'partners' | 'marketing'
-  | 'ai' | 'bio' | 'settings'
+  | 'ai' | 'bio' | 'branding' | 'settings'
   | 'tutorial'
 
 export interface Shop {
   id: string
   name: string
   slug: string
+  timezone?: string | null
   phone?: string | null
   whatsapp?: string | null
   instagram_url?: string | null
+  bio_title?: string | null
+  bio_description?: string | null
+  logo_url?: string | null
+  brand_theme?: unknown
   pix_key?: string | null
   active?: boolean
 }
@@ -26,6 +31,7 @@ export interface Membership {
   role: 'admin' | 'barber'
   active: boolean
   display_name: string
+  avatar_path?: string | null
 }
 
 export interface Identity {
@@ -43,8 +49,8 @@ export const moduleLabels: Record<ModuleKey, string> = {
   dashboard: 'Visão geral', reports: 'Relatórios', appointments: 'Agenda', clients: 'Clientes',
   services: 'Serviços', subscriptions: 'Assinaturas', products: 'Produtos',
   bar: 'Bar e cozinha', finance: 'Financeiro', goals: 'Metas',
-  partners: 'Parceiros', marketing: 'Marketing', ai: 'Solicitações à IA',
-  bio: 'Mini bio', settings: 'Configurações', tutorial: 'Passo a passo',
+  partners: 'Parceiros', marketing: 'Marketing', ai: 'Ajuda de IA',
+  bio: 'Mini bio', branding: 'Identidade visual', settings: 'Configurações', tutorial: 'Passo a passo',
 }
 
 export function money(cents: unknown): string {
@@ -54,7 +60,9 @@ export function money(cents: unknown): string {
 
 export function date(value: unknown): string {
   if (!value) return '—'
-  const parsed = new Date(String(value))
+  const raw = String(value)
+  // A bare SQL date has no timezone. Parsing it as UTC shifts it to yesterday in Brazil.
+  const parsed = new Date(/^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T12:00:00` : raw)
   return Number.isNaN(parsed.getTime()) ? '—' : new Intl.DateTimeFormat('pt-BR').format(parsed)
 }
 
@@ -66,7 +74,10 @@ export function dateTime(value: unknown): string {
 
 export function asText(value: unknown): string { return value == null || value === '' ? '—' : String(value) }
 export function cents(value: string): number { return Math.round(Number(value.replace(',', '.')) * 100) }
-export function today(): string { return new Date().toISOString().slice(0, 10) }
+export function today(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
 export function startOfWeek(): string {
   const now = new Date()
   const day = (now.getDay() + 6) % 7

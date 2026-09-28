@@ -1,0 +1,59 @@
+.tour-hub{display:flex;flex-direction:column;gap:23px}
+.tour-hub-hero{position:relative;isolation:isolate;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:28px;align-items:end;padding:clamp(25px,3vw,43px);min-height:244px;border:1px solid color-mix(in srgb,var(--shop-accent,#c9aa73) 32%,transparent);border-radius:20px;background:linear-gradient(115deg,color-mix(in srgb,var(--shop-sidebar,#172b23) 98%,transparent) 0%,color-mix(in srgb,var(--shop-sidebar,#172b23) 88%,transparent) 61%,color-mix(in srgb,var(--shop-accent,#c9aa73) 40%,var(--shop-sidebar,#172b23)) 100%);color:var(--shop-sidebar-foreground,#fff);box-shadow:0 20px 52px #13231d24}
+.tour-hub-hero:before,.tour-hub-hero:after{content:'';position:absolute;z-index:-1;border:1px solid color-mix(in srgb,var(--shop-accent,#d2b176) 48%,transparent);border-radius:50%;width:330px;height:330px;right:-60px;top:-160px}
+.tour-hub-hero:after{width:480px;height:480px;right:-138px;top:-240px;opacity:.45}
+.tour-hub-eyebrow{font-size:10px;letter-spacing:.22em;font-weight:800;color:var(--shop-accent,#d6ba83)}
+.tour-hub-hero h1{font-family:var(--shop-heading-font,'Instrument Serif',Georgia,serif);font-size:clamp(35px,4.5vw,63px);line-height:1.02;font-weight:400;max-width:720px;margin:14px 0 13px;color:var(--shop-sidebar-foreground,#fff)}
+.tour-hub-hero p{font-size:13px;line-height:1.65;max-width:650px;color:color-mix(in srgb,var(--shop-sidebar-foreground,#fff) 79%,var(--shop-sidebar,#172b23));margin:0}
+.tour-hub-start,.tour-hub-card button{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:0;border-radius:10px;font-weight:800;white-space:nowrap}
+.tour-hub-start{padding:15px 20px;min-height:49px;background:var(--shop-accent,#d1b17a);color:var(--shop-accent-text,#17251d);box-shadow:0 10px 24px #0003;font-size:12px}
+.tour-hub-start:hover{filter:brightness(1.07);transform:translateY(-1px)}
+.tour-hub-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--shop-muted,#778278);font-size:11px}
+.tour-hub-meta strong{color:var(--shop-text,#24362a)}
+.tour-hub-group{display:flex;flex-direction:column;gap:12px}
+.tour-hub-group-heading{display:flex;align-items:center;gap:12px;margin-top:5px}
+.tour-hub-group-heading span{font-size:10px;letter-spacing:.18em;font-weight:850;color:var(--shop-muted,#829084)}
+.tour-hub-group-heading i{height:1px;flex:1;background:var(--shop-border,#e2e4d9)}
+.tour-hub-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.tour-hub-card{display:flex;align-items:center;gap:17px;min-width:0;padding:20px;border:1px solid var(--shop-border,#e3e5db);border-radius:14px;background:var(--shop-surface,#fffefa);box-shadow:0 7px 24px #1b2f2010;transition:transform .18s,border-color .18s,box-shadow .18s}
+.tour-hub-card:hover{transform:translateY(-2px);border-color:var(--shop-accent,#ccb07b);box-shadow:0 14px 34px #1b2f201a}
+.tour-hub-card-index{display:grid;place-items:center;flex:none;width:49px;height:49px;border-radius:12px;background:color-mix(in srgb,var(--shop-accent,#d5b77c) 18%,var(--shop-surface,#fff));color:var(--shop-text,#24362a);font-family:'Instrument Serif',Georgia,serif;font-size:24px}
+.tour-hub-card-copy{flex:1;min-width:0}
+.tour-hub-card-copy small{font-size:9px;letter-spacing:.15em;font-weight:850;color:var(--shop-muted,#849085)}
+.tour-hub-card h2{font-family:var(--shop-heading-font,'Instrument Serif',Georgia,serif);font-size:23px;font-weight:500;line-height:1.1;margin:5px 0 6px;color:var(--shop-text,#223529)}
+.tour-hub-card p{font-size:11px;line-height:1.5;color:var(--shop-muted,#839084);margin:0}
+.tour-hub-card button{background:var(--shop-sidebar,#183127);color:var(--shop-sidebar-foreground,#fff);width:38px;height:38px;flex:none}
+.tour-hub-card button:hover{background:var(--shop-accent,#cdb079);color:var(--shop-accent-text,#1b261e)}
+.tour-hub-card.is-finished .tour-hub-card-index{background:color-mix(in srgb,var(--shop-accent,#cdb079) 36%,var(--shop-surface,#fff))}
+
+.guided-tour{position:fixed;inset:0;z-index:150;pointer-events:none;--tour-accent:var(--shop-accent,#d3b57d);--tour-dark:#14251d;font-family:'DM Sans',Arial,sans-serif}
+.guided-tour-shade{position:fixed;background:#07120cbd;backdrop-filter:blur(2px);pointer-events:auto}
+.guided-tour-focus{position:fixed;border:2px solid var(--tour-accent);border-radius:12px;box-shadow:0 0 0 4px color-mix(in srgb,var(--tour-accent) 22%,transparent),0 0 36px color-mix(in srgb,var(--tour-accent) 53%,transparent);pointer-events:auto;animation:tour-pulse 2s ease-in-out infinite}
+.guided-tour-focus-arrow{position:absolute;top:-17px;right:-16px;width:31px;height:31px;display:grid;place-items:center;background:var(--tour-accent);border-radius:50%;font-family:Arial,sans-serif;font-size:23px;line-height:1;color:var(--shop-accent-text,#16281e);box-shadow:0 5px 18px #0007}
+.guided-tour-card{position:fixed;z-index:1;pointer-events:auto;max-height:calc(100dvh - 32px);overflow:auto;padding:24px 25px 17px;border:1px solid color-mix(in srgb,var(--tour-accent) 43%,transparent);border-radius:18px;background:linear-gradient(150deg,color-mix(in srgb,var(--tour-dark) 96%,#000),color-mix(in srgb,var(--tour-dark) 84%,#000));color:#f9f6ec;box-shadow:0 25px 75px #0008;outline:0}
+.guided-tour-card-arrow{position:fixed;z-index:1;pointer-events:none;width:13px;height:13px;background:var(--tour-dark);border-top:1px solid color-mix(in srgb,var(--tour-accent) 43%,transparent);border-left:1px solid color-mix(in srgb,var(--tour-accent) 43%,transparent);transform:rotate(-45deg)}
+.guided-tour-card-arrow.side-left{transform:rotate(135deg)}
+.guided-tour-card-arrow.side-bottom{transform:rotate(45deg)}
+.guided-tour-card-arrow.side-top{transform:rotate(225deg)}
+.guided-tour-topline,.guided-tour-counter,.guided-tour-actions,.guided-tour-actions>div{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.guided-tour-topline>span{font-size:9px;letter-spacing:.2em;font-weight:850;color:var(--tour-accent)}
+.guided-tour-close{border:1px solid #ffffff2e;background:#ffffff12;color:#fff;border-radius:8px;width:30px;height:30px;display:grid;place-items:center}
+.guided-tour-close:hover{background:#ffffff24}
+.guided-tour-counter{margin:17px 0 13px}.guided-tour-counter>span{font-size:10px;font-weight:800;color:#d9dfd3;white-space:nowrap}
+.guided-tour-progress{height:4px;border-radius:8px;background:#ffffff2d;overflow:hidden;flex:1;max-width:165px}.guided-tour-progress i{display:block;height:100%;border-radius:inherit;background:var(--tour-accent);transition:width .22s}
+.guided-tour-card h2{font-family:var(--shop-heading-font,'Instrument Serif',Georgia,serif);font-size:clamp(30px,3vw,39px);line-height:1.04;font-weight:500;margin:0 0 12px;color:#fff}
+.guided-tour-card p{font-size:12px;line-height:1.65;color:#d3ddcf;margin:0 0 20px}
+.guided-tour-hint{display:block;margin:-8px 0 17px;color:#e1c997;font-size:10px}
+.guided-tour-actions{border-top:1px solid #ffffff25;padding-top:15px}
+.guided-tour-actions button{border:0;font-size:11px;font-weight:800;min-height:37px}
+.guided-tour-skip{background:transparent;color:#d4ddce;padding:7px 0}
+.guided-tour-skip:hover{text-decoration:underline;color:#fff}
+.guided-tour-back{display:inline-flex;align-items:center;gap:5px;background:#ffffff19;color:#fff;border-radius:8px;padding:9px 11px}
+.guided-tour-back:hover{background:#ffffff2a}
+.guided-tour-next{display:inline-flex;align-items:center;gap:8px;border-radius:8px;background:var(--tour-accent);color:var(--shop-accent-text,#16281e);padding:9px 12px}
+.guided-tour-next:hover{filter:brightness(1.08)}
+.guided-tour-keyboard{font-size:9px;color:#a6b7aa;margin-top:13px;text-align:right}
+.guided-tour button:focus-visible,.tour-hub button:focus-visible{outline:3px solid var(--shop-accent,#d3b57d);outline-offset:3px}
+@keyframes tour-pulse{50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--tour-accent) 11%,transparent),0 0 44px color-mix(in srgb,var(--tour-accent) 58%,transparent)}}
+@media(max-width:760px){.tour-hub-hero{display:flex;flex-direction:column;align-items:flex-start;min-height:0;padding:27px}.tour-hub-hero h1{font-size:40px}.tour-hub-start{width:100%}.tour-hub-grid{grid-template-columns:1fr}.tour-hub-card{padding:16px;gap:12px}.tour-hub-card h2{font-size:22px}.tour-hub-card-index{width:43px;height:43px}.guided-tour-card{padding:20px;box-shadow:0 0 0 1px #ffffff17,0 18px 56px #000a}.guided-tour-card h2{font-size:30px}.guided-tour-keyboard{display:none}.guided-tour-focus-arrow{top:-15px;right:-12px}.guided-tour-actions{gap:6px}.guided-tour-actions>div{gap:5px}}
+@media(prefers-reduced-motion:reduce){.guided-tour-focus{animation:none}.tour-hub-card,.tour-hub-start,.guided-tour-progress i{transition:none}}
