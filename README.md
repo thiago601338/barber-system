@@ -2,6 +2,10 @@
 
 Sistema de gestão de barbearias com painel master, painéis próprios por barbearia e barbeiro, área do cliente e página pública de agendamento. Frontend em React/Vite, dados e autenticação no Supabase, APIs no Netlify.
 
+**Site publicado:** https://barber-system-yqu5.netlify.app — alterações enviadas ao ramo `main` do GitHub acionam a implantação contínua na Netlify.
+
+O esquema e as migrações deste repositório já foram aplicados ao projeto Supabase `oyjiiqbsbshfdgdaxbus`. A cobrança central permanece desativada até configuração e ativação pelo master. Mercado Pago e Meta/Instagram ainda precisam das credenciais dos aplicativos e de testes controlados antes de uso real.
+
 ## Funcionalidades
 
 - Painel e relatórios de faturamento, ticket médio, primeira visita, clientes novos, retenção e desempenho por profissional.
