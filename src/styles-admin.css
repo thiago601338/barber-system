@@ -213,3 +213,9 @@ body{background:#f4f7fc}
 .app-layout.shop-themed .reports-page{--report-surface:var(--shop-surface);--report-border:var(--shop-border);--report-text:var(--shop-text);--report-muted:var(--shop-muted);--report-accent:var(--shop-accent);--report-deep:var(--shop-sidebar);--report-deep-text:var(--shop-sidebar-foreground)}
 .app-layout.shop-themed .guided-tour{--tour-accent:var(--shop-accent);--tour-dark:var(--shop-sidebar)}
 .app-layout.shop-themed .modal{background:var(--shop-surface);color:var(--shop-text);border-color:var(--shop-border)}
+
+/* Empty states follow the platform palette or the selected shop identity. */
+.app-layout:not(.shop-themed) .empty-icon{background:#eaf2ff;color:#2660bf}
+.app-layout.shop-themed .empty-icon{background:color-mix(in srgb,var(--shop-accent) 18%,var(--shop-surface));color:var(--shop-text)}
+.app-layout.shop-themed .empty p{color:var(--shop-muted)}
+.dashboard-page .dashboard-hero h2{overflow-wrap:anywhere}
