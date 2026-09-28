@@ -1,6 +1,8 @@
 import type { Config } from '@netlify/functions'
 import { body, db, email, failure, HttpError, json, optionalSetting, requirePlatformAdmin, requireShopAdmin, setting, text, userFromRequest, uuid } from './_shared/core'
 import { InviteFlowError, prepareAndSaveMemberInvite } from './_shared/inviteFallback'
+import { paymentConfiguration } from './_shared/mpConfiguration'
+import { readAllPages, summarizePlatformOverview } from './_shared/platformOverview'
 
 type Payload = Record<string, unknown>
 
@@ -42,14 +44,22 @@ export default async (request: Request) => {
 
     if (action === 'overview' && request.method === 'GET') {
       await requirePlatformAdmin(client, user.id)
-      const [shops, settings, memberships, invoices] = await Promise.all([
-        client.from('barbershops').select('id,name,slug,active,created_at').order('name'),
+      const [shops, settings, memberships, invoices, subscriptions] = await Promise.all([
+        readAllPages(async (from, to) => client.from('barbershops')
+          .select('id,name,slug,active,base_monthly_cents,per_barber_monthly_cents,created_at').order('name').order('id').range(from, to)),
         client.from('platform_settings').select('seat_price_cents,billing_enabled,updated_at').eq('id', 1).single(),
-        client.from('memberships').select('barbershop_id,role,active'),
-        client.from('platform_invoices').select('id,barbershop_id,period_start,period_end,seat_count,amount_cents,status,created_at').order('created_at', { ascending: false }).limit(100),
+        readAllPages(async (from, to) => client.from('memberships')
+          .select('id,barbershop_id,role,active').order('id').range(from, to)),
+        readAllPages(async (from, to) => client.from('platform_invoices')
+          .select('id,barbershop_id,period_start,period_end,seat_count,amount_cents,status,created_at')
+          .order('created_at', { ascending: false }).order('id', { ascending: false }).range(from, to)),
+        readAllPages(async (from, to) => client.from('platform_subscriptions')
+          .select('barbershop_id,status,amount_cents,seat_count,updated_at').order('barbershop_id').range(from, to)),
       ])
-      for (const item of [shops, settings, memberships, invoices]) if (item.error) throw item.error
-      return json({ shops: shops.data, settings: settings.data, memberships: memberships.data, invoices: invoices.data })
+      if (settings.error) throw settings.error
+      const metrics = summarizePlatformOverview({ shops, memberships, invoices, subscriptions, settings: settings.data })
+      return json({ shops, settings: settings.data, memberships, invoices: invoices.slice(0, 100),
+        subscriptions, payment_configuration: paymentConfiguration(), ...metrics })
     }
 
     if (request.method !== 'POST') throw new HttpError(405, 'Método não permitido.')
@@ -75,6 +85,28 @@ export default async (request: Request) => {
       const { error } = await client.from('platform_settings').update({ seat_price_cents: price, billing_enabled: enabled }).eq('id', 1)
       if (error) throw error
       return json({ ok: true })
+    }
+
+    if (action === 'set-shop-pricing') {
+      await requirePlatformAdmin(client, user.id)
+      const shopId = uuid(input.barbershop_id)
+      const base = input.base_monthly_cents
+      const perBarber = input.per_barber_monthly_cents
+      if (!Number.isSafeInteger(base) || Number(base) < 0 || Number(base) > 100_000_00) {
+        throw new HttpError(400, 'Mensalidade base inválida.')
+      }
+      if (perBarber !== null && (!Number.isSafeInteger(perBarber) ||
+          Number(perBarber) < 0 || Number(perBarber) > 100_000_00)) {
+        throw new HttpError(400, 'Valor por barbeiro inválido.')
+      }
+      const { data: shop, error } = await client.from('barbershops').update({
+        base_monthly_cents: base,
+        per_barber_monthly_cents: perBarber,
+        updated_at: new Date().toISOString(),
+      }).eq('id', shopId).select('id,base_monthly_cents,per_barber_monthly_cents').maybeSingle()
+      if (error) throw error
+      if (!shop) throw new HttpError(404, 'Barbearia não encontrada.')
+      return json({ shop })
     }
 
     if (action === 'invite') {

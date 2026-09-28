@@ -180,6 +180,7 @@ function AuthenticatedApp() {
   const [identity, setIdentity] = useState<Identity | null>(null)
   const [identityError, setIdentityError] = useState<string | null>(null)
   const [selectedShopId, setSelectedShopId] = useState<string | null>(() => localStorage.getItem('barber-selected-shop'))
+  const [masterShopChosen, setMasterShopChosen] = useState(false)
   const [page, setPage] = useState<ModuleKey | 'master'>(() => new URLSearchParams(window.location.search).get('page') === 'settings' ? 'settings' : 'dashboard')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [tourRun, setTourRun] = useState<{ steps: TourStep[]; chapterIds: string[]; index: number } | null>(null)
@@ -227,7 +228,9 @@ function AuthenticatedApp() {
         if (contextResult.error) throw contextResult.error
         if (contextResult.data) shops.push(contextResult.data as Shop)
       }
-      const shop = shops.find(s => s.slug === contextSlug) ?? shops.find(s => s.id === selectedShopId) ?? (isMaster ? null : shops[0] ?? null)
+      const shop = shops.find(s => s.slug === contextSlug) ?? (isMaster
+        ? masterShopChosen ? shops.find(s => s.id === selectedShopId) ?? null : null
+        : shops.find(s => s.id === selectedShopId) ?? shops[0] ?? null)
       const membership = memberships.find(m => m.barbershop_id === shop?.id) ?? null
       const clientRow = clientRows.find(c => c.barbershop_id === shop?.id)
       const permissionResult = shop && membership?.role === 'barber'
@@ -238,7 +241,7 @@ function AuthenticatedApp() {
       for (const item of permissionResult?.data ?? []) permissions[String(item.module)] = Boolean(item.allowed)
       setIdentity({ user: session.user, isMaster, memberships, shops, membership, shop, clientId: clientRow?.id ?? null, permissions })
     } catch (err) { setIdentityError(err instanceof Error ? err.message : 'Falha ao carregar acesso.'); setIdentity(null) }
-  }, [session?.user, selectedShopId])
+  }, [session?.user, selectedShopId, masterShopChosen])
 
   useEffect(() => { void loadIdentity() }, [loadIdentity])
   useEffect(() => { if (identity?.isMaster && !identity.shop) setPage('master') }, [identity?.isMaster, identity?.shop])
@@ -253,6 +256,7 @@ function AuthenticatedApp() {
 
   function changeShop(value: string) {
     const id = value || null
+    setMasterShopChosen(Boolean(id))
     const url = new URL(window.location.href)
     url.searchParams.delete('shop')
     url.searchParams.delete('return')
@@ -329,19 +333,19 @@ function AuthenticatedApp() {
   }
   const visiblePage = page === 'master' ? 'master' : canSee(page) ? page : 'dashboard'
   const allowedNav = navItems.filter(item => canSee(item.key))
-  const activeTheme = readBrandTheme(identity.shop?.brand_theme)
+  const activeTheme = visiblePage === 'master' ? null : readBrandTheme(identity.shop?.brand_theme)
   return <div className={`app-layout ${activeTheme ? 'shop-themed' : ''}`} data-shop-theme={activeTheme ? '' : undefined} style={brandStyle(activeTheme)}>
     {mobileOpen && <div className="mobile-scrim" onClick={() => setMobileOpen(false)} />}
     <aside className={`sidebar ${mobileOpen ? 'open' : ''}`}>
-      <div className="sidebar-brand">{identity.shop ? <ShopBrand shop={identity.shop} compact dark/> : <BrandLogo tone="dark" compact/>}<button className="mobile-close icon-button" onClick={() => setMobileOpen(false)} aria-label="Fechar menu"><X size={20}/></button></div>
-      <div className="shop-switcher"><div className="shop-avatar">{identity.shop?.name?.slice(0, 1) || 'M'}</div><div><strong>{identity.shop?.name || 'Painel master'}</strong><small>{identity.shop ? role === 'master' ? 'Acesso master' : role === 'admin' ? 'Administrador' : 'Profissional' : 'Todas as barbearias'}</small></div><ChevronDown size={15}/></div>
+      <div className="sidebar-brand">{visiblePage !== 'master' && identity.shop ? <ShopBrand shop={identity.shop} compact dark/> : <BrandLogo tone="dark" compact/>}<button className="mobile-close icon-button" onClick={() => setMobileOpen(false)} aria-label="Fechar menu"><X size={20}/></button></div>
+      <div className="shop-switcher"><div className="shop-avatar">{visiblePage === 'master' ? 'M' : identity.shop?.name?.slice(0, 1) || 'M'}</div><div><strong>{visiblePage === 'master' ? 'Visão master' : identity.shop?.name || 'Painel master'}</strong><small>{visiblePage === 'master' ? 'Todas as barbearias' : identity.shop ? role === 'master' ? 'Acesso master' : role === 'admin' ? 'Administrador' : 'Profissional' : 'Todas as barbearias'}</small></div><ChevronDown size={15}/></div>
       <nav className="nav-list">
-        {identity.isMaster && <><div className="nav-group">PLATAFORMA</div><button data-tour-nav="master" className={`nav-item ${visiblePage === 'master' ? 'active' : ''}`} onClick={() => { setPage('master'); setMobileOpen(false) }}><Crown size={19}/><span>Painel master</span></button>{!identity.shop && <><button data-tour-nav="ai" className={`nav-item ${visiblePage === 'ai' ? 'active' : ''}`} onClick={() => { setPage('ai'); setMobileOpen(false) }}><Sparkles size={18}/><span>Ajuda de IA</span></button><button data-tour-nav="tutorial" className={`nav-item ${visiblePage === 'tutorial' ? 'active' : ''}`} onClick={() => { setPage('tutorial'); setMobileOpen(false) }}><BookOpenCheck size={18}/><span>Passo a passo</span></button></>}</>}
-        {identity.shop && allowedNav.map((item, index) => { const Icon = item.icon; const previous = allowedNav[index - 1]; return <div key={item.key}>{(!previous || previous.group !== item.group) && <div className="nav-group">{item.group}</div>}<button data-tour-nav={item.key} className={`nav-item ${visiblePage === item.key ? 'active' : ''}`} onClick={() => { setPage(item.key); setMobileOpen(false) }}><Icon size={18}/><span>{moduleLabels[item.key]}</span></button></div> })}
+        {identity.isMaster && <><div className="nav-group">PLATAFORMA</div><button data-tour-nav="master" className={`nav-item ${visiblePage === 'master' ? 'active' : ''}`} onClick={() => { changeShop(''); setMobileOpen(false) }}><Crown size={19}/><span>Painel master</span></button>{!identity.shop && <><button data-tour-nav="ai" className={`nav-item ${visiblePage === 'ai' ? 'active' : ''}`} onClick={() => { setPage('ai'); setMobileOpen(false) }}><Sparkles size={18}/><span>Ajuda de IA</span></button><button data-tour-nav="tutorial" className={`nav-item ${visiblePage === 'tutorial' ? 'active' : ''}`} onClick={() => { setPage('tutorial'); setMobileOpen(false) }}><BookOpenCheck size={18}/><span>Passo a passo</span></button></>}</>}
+        {identity.shop && visiblePage !== 'master' && allowedNav.map((item, index) => { const Icon = item.icon; const previous = allowedNav[index - 1]; return <div key={item.key}>{(!previous || previous.group !== item.group) && <div className="nav-group">{item.group}</div>}<button data-tour-nav={item.key} className={`nav-item ${visiblePage === item.key ? 'active' : ''}`} onClick={() => { setPage(item.key); setMobileOpen(false) }}><Icon size={18}/><span>{moduleLabels[item.key]}</span></button></div> })}
       </nav>
       <div className="sidebar-bottom"><div className="help-card"><div className="help-icon"><Sparkles size={18}/></div><strong>Decida com clareza</strong><p>Relatórios e ferramentas para evoluir sua operação.</p></div><button className="sidebar-logout" onClick={() => void requireSupabase().auth.signOut()}><LogOut size={17}/> Sair da conta</button></div>
     </aside>
-    <div className="main-area"><header className="topbar"><button className="mobile-menu icon-button" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={22}/></button><div className="topbar-crumb">{identity.shop?.name || 'Barber System'} <span>/</span> <strong>{visiblePage === 'master' ? 'Painel master' : moduleLabels[visiblePage]}</strong></div><div className="topbar-right">{identity.shops.length > 1 || identity.isMaster ? <select className="topbar-select" aria-label="Selecionar barbearia" value={identity.shop?.id || ''} onChange={e => changeShop(e.target.value)}><option value="">Visão master</option>{identity.shops.map(shop => <option value={shop.id} key={shop.id}>{shop.name}</option>)}</select> : null}<div className="profile-pill"><span>{identity.membership?.display_name || identity.user.email?.split('@')[0] || 'Usuário'}</span><TeamAvatar path={identity.membership?.avatar_path} name={identity.membership?.display_name || identity.user.email || 'Usuário'} shopId={identity.membership?.barbershop_id} memberId={identity.membership?.id} className="profile-avatar"/></div></div></header><main className="content">{content[visiblePage]}</main></div>
+    <div className="main-area"><header className="topbar"><button className="mobile-menu icon-button" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={22}/></button><div className="topbar-crumb">{visiblePage === 'master' ? 'Barber System' : identity.shop?.name || 'Barber System'} <span>/</span> <strong>{visiblePage === 'master' ? 'Painel master' : moduleLabels[visiblePage]}</strong></div><div className="topbar-right">{identity.shops.length > 1 || identity.isMaster ? <select className="topbar-select" aria-label="Selecionar barbearia" value={visiblePage === 'master' ? '' : identity.shop?.id || ''} onChange={e => changeShop(e.target.value)}><option value="">Visão master</option>{identity.shops.map(shop => <option value={shop.id} key={shop.id}>{shop.name}</option>)}</select> : null}<div className="profile-pill"><span>{identity.membership?.display_name || identity.user.email?.split('@')[0] || 'Usuário'}</span><TeamAvatar path={identity.membership?.avatar_path} name={identity.membership?.display_name || identity.user.email || 'Usuário'} shopId={identity.membership?.barbershop_id} memberId={identity.membership?.id} className="profile-avatar"/></div></div></header><main className="content">{content[visiblePage]}</main></div>
     {toast && <div className={`toast ${toast.kind}`}>{toast.message}</div>}
     {tourRun && <GuidedTour steps={tourRun.steps} index={tourRun.index} onBack={() => moveTour(-1)} onNext={() => moveTour(1)} onClose={closeTour}/>}
   </div>

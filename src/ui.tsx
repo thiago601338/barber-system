@@ -82,7 +82,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 
 export function Status({ value }: { value: unknown }) {
   const text = String(value || '—')
-  const tone = ['paid', 'active', 'completed', 'confirmed', 'delivered', 'done'].includes(text) ? 'good' : ['pending', 'scheduled', 'draft', 'open'].includes(text) ? 'warn' : ['cancelled', 'failed', 'overdue'].includes(text) ? 'bad' : ''
-  const labels: Record<string, string> = { paid: 'Pago', active: 'Ativo', completed: 'Concluído', confirmed: 'Confirmado', delivered: 'Entregue', done: 'Feito', pending: 'Pendente', scheduled: 'Agendado', draft: 'Rascunho', open: 'Aberto', cancelled: 'Cancelado', failed: 'Falhou', overdue: 'Vencido', paused: 'Pausado' }
+  const tone = ['paid', 'active', 'authorized', 'completed', 'confirmed', 'delivered', 'done'].includes(text) ? 'good' : ['pending', 'in_process', 'in_mediation', 'scheduled', 'draft', 'open'].includes(text) ? 'warn' : ['cancelled', 'canceled', 'failed', 'rejected', 'refunded', 'charged_back', 'overdue'].includes(text) ? 'bad' : ''
+  const labels: Record<string, string> = { paid: 'Pago', active: 'Ativo', authorized: 'Ativa', completed: 'Concluído', confirmed: 'Confirmado', delivered: 'Entregue', done: 'Feito', pending: 'Pendente', in_process: 'Processando', in_mediation: 'Em análise', scheduled: 'Agendado', draft: 'Rascunho', open: 'Aberto', cancelled: 'Cancelado', canceled: 'Cancelado', failed: 'Falhou', rejected: 'Recusado', refunded: 'Estornado', charged_back: 'Contestado', overdue: 'Vencido', paused: 'Pausado' }
   return <span className={`status ${tone}`}>{labels[text] || text}</span>
 }

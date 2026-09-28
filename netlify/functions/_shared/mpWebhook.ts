@@ -79,14 +79,14 @@ async function syncShopPayment(client: SupabaseClient, paymentId: string, accoun
 
 async function platformBillingOwner(client: SupabaseClient, providerId: string) {
   const { data: current, error: currentError } = await client.from('platform_subscriptions')
-    .select('barbershop_id,provider_subscription_id,seat_count,unit_price_cents,amount_cents')
+    .select('barbershop_id,provider_subscription_id,seat_count,base_fee_cents,unit_price_cents,amount_cents')
     .eq('provider_subscription_id', providerId).maybeSingle()
   if (currentError) throw currentError
   if (current) return { ...current, historical_only: false }
   // A cancelled subscription can be replaced before its last invoice webhook
   // arrives. The append-only rate history still identifies the old owner.
   const { data: former, error: historyError } = await client.from('platform_subscription_rates')
-    .select('barbershop_id,provider_subscription_id,seat_count,unit_price_cents,amount_cents')
+    .select('barbershop_id,provider_subscription_id,seat_count,base_fee_cents,unit_price_cents,amount_cents')
     .eq('provider_subscription_id', providerId)
     .order('observed_at', { ascending: false }).limit(1).maybeSingle()
   if (historyError) throw historyError
@@ -136,7 +136,7 @@ export async function savePlatformPayment(client: SupabaseClient, providerId: st
   const invoiceDate = invoice.date_created ? new Date(invoice.date_created) : null
   if (!invoiceDate || Number.isNaN(invoiceDate.getTime())) throw new HttpError(502, 'Fatura SaaS sem data de criação válida.')
   const { data: historical, error: historyError } = await client.from('platform_subscription_rates')
-    .select('seat_count,unit_price_cents,amount_cents')
+    .select('seat_count,base_fee_cents,unit_price_cents,amount_cents')
     .eq('barbershop_id', local.barbershop_id).eq('provider_subscription_id', providerId)
     .eq('amount_cents', cents).lte('observed_at', invoiceDate.toISOString())
     .order('observed_at', { ascending: false }).limit(1).maybeSingle()
@@ -148,7 +148,8 @@ export async function savePlatformPayment(client: SupabaseClient, providerId: st
   const { start, end } = invoicePeriod(invoiceDate.toISOString())
   const record = {
     barbershop_id: local.barbershop_id, period_start: start, period_end: end,
-    seat_count: rate.seat_count, unit_price_cents: rate.unit_price_cents,
+    seat_count: rate.seat_count, base_fee_cents: rate.base_fee_cents ?? 0,
+    unit_price_cents: rate.unit_price_cents,
     amount_cents: cents, status,
     provider_subscription_id: providerId, provider_invoice_id: providerInvoiceId,
     provider_payment_id: String(payment.id), updated_at: new Date().toISOString(),

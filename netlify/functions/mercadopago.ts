@@ -1,7 +1,8 @@
 import type { Config } from '@netlify/functions'
 import { body, db, failure, HttpError, json, optionalSetting, requirePlatformAdmin, requireShopAdmin, setting, userFromRequest, uuid } from './_shared/core'
 import { mpOauthToken, mpPublicUrl, mpRequest, saveShopToken, type MpPreapproval, verifyCollector } from './_shared/mpApi'
-import { cancelCustomerSubscription, cancelSaasSubscription, customerSubscriptionStatus, saasQuote, startCustomerSubscription, startSaasSubscription, syncSaasAmount } from './_shared/mpBilling'
+import { cancelCustomerSubscription, cancelSaasSubscription, checkoutLink, customerSubscriptionStatus, saasQuote, startCustomerSubscription, startSaasSubscription, syncSaasAmount } from './_shared/mpBilling'
+import { oauthCallbackUri, shopOauthConfigured } from './_shared/mpConfiguration'
 import { constantTimeEqual, randomToken, seal, sha256Base64Url, unseal } from './_shared/mpCrypto'
 import { receiveMpWebhook } from './_shared/mpWebhook'
 
@@ -19,27 +20,6 @@ function oauthCookie(value: string, maxAge = 600): string {
   return `${cookieName}=${value}; Max-Age=${maxAge}; Path=/api/mercadopago; HttpOnly; Secure; SameSite=Lax`
 }
 
-function callbackUri(): string {
-  const uri = mpPublicUrl('MP_OAUTH_REDIRECT_URI')
-  if (new URL(uri).pathname !== '/api/mercadopago/oauth-callback') {
-    throw new HttpError(503, 'MP_OAUTH_REDIRECT_URI deve apontar para /api/mercadopago/oauth-callback.')
-  }
-  return uri
-}
-
-function shopOauthConfigured(): boolean {
-  if (!['MP_CLIENT_ID', 'MP_CLIENT_SECRET', 'MP_OAUTH_REDIRECT_URI', 'TOKEN_ENCRYPTION_KEY']
-    .every(name => Boolean(optionalSetting(name)))) return false
-  try {
-    callbackUri()
-    const key = optionalSetting('TOKEN_ENCRYPTION_KEY') || ''
-    if (!/^[A-Za-z0-9_+/-]+={0,2}$/.test(key)) return false
-    const normalized = key.replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/g, '')
-    return atob(normalized + '='.repeat((4 - normalized.length % 4) % 4)).length === 32
-  }
-  catch { return false }
-}
-
 async function oauthStart(request: Request): Promise<Response> {
   const client = db()
   const user = await userFromRequest(request, client)
@@ -48,7 +28,7 @@ async function oauthStart(request: Request): Promise<Response> {
   await requireShopAdmin(client, user.id, shopId)
   const [{ data: shop, error: shopError }, redirectUri] = await Promise.all([
     client.from('barbershops').select('active').eq('id', shopId).single(),
-    Promise.resolve(callbackUri()),
+    Promise.resolve(oauthCallbackUri()),
   ])
   if (shopError) throw shopError
   if (!shop.active) throw new HttpError(409, 'Barbearia inativa.')
@@ -83,7 +63,7 @@ async function oauthCallback(request: Request): Promise<Response> {
     const client = db()
     await requireShopAdmin(client, saved.userId, saved.shopId)
     const token = await mpOauthToken({
-      grant_type: 'authorization_code', code, code_verifier: saved.verifier, redirect_uri: callbackUri(),
+      grant_type: 'authorization_code', code, code_verifier: saved.verifier, redirect_uri: oauthCallbackUri(),
     })
     if (!token.refresh_token || !token.scope?.split(' ').includes('offline_access')) {
       throw new HttpError(502, 'O Mercado Pago não concedeu acesso renovável. Verifique os escopos da aplicação.')
@@ -125,7 +105,7 @@ async function saasStatus(request: Request): Promise<Response> {
   const shopId = uuid(new URL(request.url).searchParams.get('barbershop_id'))
   const quote = await saasQuote(client, shopId)
   const { data, error } = await client.from('platform_subscriptions')
-    .select('provider_subscription_id,status,seat_count,unit_price_cents,amount_cents,payer_email')
+    .select('provider_subscription_id,status,seat_count,base_fee_cents,unit_price_cents,amount_cents,payer_email')
     .eq('barbershop_id', shopId).maybeSingle()
   if (error) throw error
   if (!data?.provider_subscription_id) return json({ quote, subscription: data })
@@ -137,7 +117,8 @@ async function saasStatus(request: Request): Promise<Response> {
   const { error: updateError } = await client.from('platform_subscriptions').update({ status, updated_at: new Date().toISOString() })
     .eq('barbershop_id', shopId)
   if (updateError) throw updateError
-  return json({ quote, subscription: { ...data, status, provider_status: remote.status } })
+  return json({ quote, subscription: { ...data, status, provider_status: remote.status },
+    checkout_url: remote.status === 'pending' ? checkoutLink(remote) : null })
 }
 
 export default async (request: Request): Promise<Response> => {

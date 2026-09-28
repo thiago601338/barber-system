@@ -19,18 +19,20 @@ const compile = childProcess.spawnSync(process.execPath, [
   'netlify/functions/_shared/mpWebhook.ts',
 ], { cwd: project, encoding: 'utf8' })
 if (compile.status !== 0) throw new Error(compile.stderr || compile.stdout || 'TypeScript compilation failed')
-const { syncSaasAmount } = require(path.join(generated, 'mpBilling.js'))
+const { startSaasSubscription, syncSaasAmount } = require(path.join(generated, 'mpBilling.js'))
 const { runSaasReconcileBatch } = require(path.join(generated, 'mpSaasSchedule.js'))
 const { savePlatformPayment, syncPlatformPreapproval } = require(path.join(generated, 'mpWebhook.js'))
 
 global.Netlify = { env: { get(name) {
-  return { MP_PLATFORM_ACCESS_TOKEN: 'test-token', MP_PLATFORM_ACCOUNT_ID: '123' }[name]
+  return { MP_PLATFORM_ACCESS_TOKEN: 'test-token', MP_PLATFORM_ACCOUNT_ID: '123',
+    MP_SAAS_BACK_URL: 'https://barber-system-yqu5.netlify.app/' }[name]
 } } }
 
 function fixture({ enabled = true, active = true, seats = 2, price = 1000,
+  base = 0, override = null,
   remoteStatus = 'authorized', remoteAmount = 20, autoPaused = false } = {}) {
   const local = { barbershop_id: 'shop-1', provider_subscription_id: 'pre-1', status: remoteStatus,
-    seat_count: 2, unit_price_cents: 1000, amount_cents: 2000, auto_paused: autoPaused }
+    seat_count: 2, base_fee_cents: 0, unit_price_cents: 1000, amount_cents: 2000, auto_paused: autoPaused }
   const remote = { id: 'pre-1', collector_id: 123, external_reference: 'saas-shop-1',
     status: remoteStatus, auto_recurring: { transaction_amount: remoteAmount, currency_id: 'BRL' } }
   const calls = { puts: [], updates: [] }
@@ -45,7 +47,8 @@ function fixture({ enabled = true, active = true, seats = 2, price = 1000,
       }
       function execute() {
         if (table === 'platform_settings') return { data: { seat_price_cents: price, billing_enabled: enabled }, error: null }
-        if (table === 'barbershops') return { data: { active }, error: null }
+        if (table === 'barbershops') return { data: { active,
+          base_monthly_cents: base, per_barber_monthly_cents: override }, error: null }
         if (table === 'memberships') return { count: seats, error: null }
         if (table === 'platform_subscriptions' && query.operation === 'select') return { data: { ...local }, error: null }
         if (table === 'platform_subscriptions' && query.operation === 'update') {
@@ -91,6 +94,77 @@ test('a changed seat count updates recurring amount once', async () => {
   await syncSaasAmount(setup.client, 'shop-1')
   assert.equal(setup.calls.puts.length, 1, 'retry must not send a second PUT')
   assert.equal(setup.calls.updates.length, 1, 'retry must not rewrite the same local state')
+})
+
+test('a shop-specific base and barber price determine the central charge', async () => {
+  const setup = fixture({ seats: 3, base: 250, override: 500 })
+  const result = await syncSaasAmount(setup.client, 'shop-1')
+  assert.equal(result.base_monthly_cents, 250)
+  assert.equal(result.unit_price_cents, 500)
+  assert.equal(result.amount_cents, 1750)
+  assert.equal(setup.calls.puts[0].auto_recurring.transaction_amount, 17.5)
+  assert.equal(setup.local.base_fee_cents, 250)
+  assert.equal(setup.local.unit_price_cents, 500)
+})
+
+test('a positive base fee remains billable with no active barbers', async () => {
+  const setup = fixture({ seats: 0, base: 1000 })
+  const result = await syncSaasAmount(setup.client, 'shop-1')
+  assert.equal(result.action, 'amount_updated')
+  assert.equal(setup.calls.puts[0].auto_recurring.transaction_amount, 10)
+  assert.equal(setup.local.seat_count, 0)
+  assert.equal(setup.local.base_fee_cents, 1000)
+  assert.equal(setup.local.auto_paused, false)
+})
+
+test('a base-only subscription is created for the central account with its quoted amount', async () => {
+  const writes = []
+  const client = { from(table) {
+    const query = { operation: 'select', record: null }
+    const builder = {
+      select() { return builder }, eq() { return builder },
+      upsert(record) { query.operation = 'upsert'; query.record = record; return builder },
+      update(record) { query.operation = 'update'; query.record = record; return builder },
+      single() {
+        if (table === 'platform_settings') return Promise.resolve({ data: {
+          seat_price_cents: 0, billing_enabled: true }, error: null })
+        if (table === 'barbershops') return Promise.resolve({ data: {
+          active: true, base_monthly_cents: 1500, per_barber_monthly_cents: 0 }, error: null })
+        throw new Error(`Unexpected single ${table}`)
+      },
+      maybeSingle() { return Promise.resolve({ data: null, error: null }) },
+      then(resolve, reject) {
+        if (table === 'memberships') return Promise.resolve({ count: 0, error: null }).then(resolve, reject)
+        writes.push([table, query.operation, query.record])
+        return Promise.resolve({ error: null }).then(resolve, reject)
+      },
+    }
+    return builder
+  } }
+  global.fetch = async (url, options) => {
+    assert.equal(url, 'https://api.mercadopago.com/preapproval')
+    assert.equal(options.headers.authorization, 'Bearer test-token')
+    const payload = JSON.parse(options.body)
+    assert.equal(payload.external_reference, 'saas-shop-1')
+    assert.equal(payload.auto_recurring.transaction_amount, 15)
+    assert.equal(payload.payer_email, 'owner@example.com')
+    return new Response(JSON.stringify({ id: 'pre-new',
+      init_point: 'https://www.mercadopago.com.br/subscriptions/checkout' }), { status: 200 })
+  }
+  const result = await startSaasSubscription(client, 'shop-1', 'owner@example.com')
+  assert.equal(result.amount_cents, 1500)
+  assert.equal(result.checkout_url, 'https://www.mercadopago.com.br/subscriptions/checkout')
+  assert.equal(writes[0][2].base_fee_cents, 1500)
+  assert.equal(writes[0][2].seat_count, 0)
+})
+
+test('same total with changed breakdown saves a fresh historical rate', async () => {
+  const setup = fixture({ seats: 2, base: 1000, override: 500 })
+  const result = await syncSaasAmount(setup.client, 'shop-1')
+  assert.equal(result.action, 'unchanged')
+  assert.equal(setup.calls.puts.length, 0)
+  assert.equal(setup.local.base_fee_cents, 1000)
+  assert.equal(setup.local.unit_price_cents, 500)
 })
 
 test('zero barbers pauses instead of sending a zero-value charge', async () => {
@@ -179,10 +253,10 @@ test('a late SaaS payment uses the verified historical rate instead of the curre
       maybeSingle() {
         if (table === 'platform_subscriptions') return Promise.resolve({ data: {
           barbershop_id: 'shop-1', provider_subscription_id: 'pre-1', status: 'authorized',
-          seat_count: 3, unit_price_cents: 1000, amount_cents: 3000,
+          seat_count: 3, base_fee_cents: 0, unit_price_cents: 1000, amount_cents: 3000,
         }, error: null })
         if (table === 'platform_subscription_rates') return Promise.resolve({ data: {
-          seat_count: 2, unit_price_cents: 1000, amount_cents: 2000,
+          seat_count: 2, base_fee_cents: 500, unit_price_cents: 1000, amount_cents: 2500,
         }, error: null })
         if (table === 'platform_invoices') return Promise.resolve({ data: null, error: null })
         throw new Error(`Unexpected ${table}`)
@@ -196,14 +270,15 @@ test('a late SaaS payment uses the verified historical rate instead of the curre
     return builder
   } }
   const invoice = { id: 81, preapproval_id: 'pre-1', external_reference: 'saas-shop-1',
-    payment: { id: 52 }, currency_id: 'BRL', transaction_amount: '20.00',
+    payment: { id: 52 }, currency_id: 'BRL', transaction_amount: '25.00',
     date_created: '2026-09-01T10:00:00.000Z' }
-  const payment = { id: 52, status: 'approved', currency_id: 'BRL', transaction_amount: 20,
+  const payment = { id: 52, status: 'approved', currency_id: 'BRL', transaction_amount: 25,
     date_approved: '2026-09-01T10:03:00.000Z' }
   await savePlatformPayment(client, 'pre-1', invoice, payment)
   assert.equal(inserted.length, 1)
-  assert.equal(inserted[0].amount_cents, 2000)
+  assert.equal(inserted[0].amount_cents, 2500)
   assert.equal(inserted[0].seat_count, 2)
+  assert.equal(inserted[0].base_fee_cents, 500)
   assert.equal(inserted[0].unit_price_cents, 1000)
   await assert.rejects(savePlatformPayment(client, 'pre-1',
     { ...invoice, transaction_amount: '19.00' }, payment), /difere da fatura oficial/)

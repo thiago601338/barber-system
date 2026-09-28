@@ -8,7 +8,7 @@ function amount(cents: number): number {
   return cents / 100
 }
 
-function checkoutLink(remote: MpPreapproval): string | null {
+export function checkoutLink(remote: MpPreapproval): string | null {
   if (!remote.init_point) return null
   const parsed = new URL(remote.init_point)
   if (parsed.protocol !== 'https:' || !/(^|\.)mercadopago\.com(\.br|\.ar|\.mx|\.uy)?$/.test(parsed.hostname)) {
@@ -98,6 +98,7 @@ export interface SaasQuote {
   billing_enabled: boolean
   shop_active: boolean
   seat_count: number
+  base_monthly_cents: number
   unit_price_cents: number
   amount_cents: number
 }
@@ -105,7 +106,7 @@ export interface SaasQuote {
 export async function saasQuote(client: SupabaseClient, shopId: string): Promise<SaasQuote> {
   const [{ data: settings, error: settingsError }, { data: shop, error: shopError }, seats] = await Promise.all([
     client.from('platform_settings').select('seat_price_cents,billing_enabled').eq('id', 1).single(),
-    client.from('barbershops').select('active').eq('id', shopId).single(),
+    client.from('barbershops').select('active,base_monthly_cents,per_barber_monthly_cents').eq('id', shopId).single(),
     client.from('memberships').select('id', { count: 'exact', head: true })
       .eq('barbershop_id', shopId).eq('role', 'barber').eq('active', true),
   ])
@@ -113,16 +114,20 @@ export async function saasQuote(client: SupabaseClient, shopId: string): Promise
   if (shopError) throw shopError
   if (seats.error) throw seats.error
   const seatCount = seats.count || 0
-  const total = seatCount * Number(settings.seat_price_cents)
-  if (!Number.isSafeInteger(total)) throw new HttpError(409, 'Valor de cobrança excede o limite.')
+  const base = Number(shop.base_monthly_cents)
+  const unit = Number(shop.per_barber_monthly_cents ?? settings.seat_price_cents)
+  const total = base + seatCount * unit
+  if (![base, unit, total].every(Number.isSafeInteger) || base < 0 || unit < 0 || total > 2_147_483_647) {
+    throw new HttpError(409, 'Valor de cobrança excede o limite.')
+  }
   return { barbershop_id: shopId, billing_enabled: settings.billing_enabled, shop_active: shop.active, seat_count: seatCount,
-    unit_price_cents: settings.seat_price_cents, amount_cents: total }
+    base_monthly_cents: base, unit_price_cents: unit, amount_cents: total }
 }
 
 function requireSaasEnabled(quote: SaasQuote): void {
   if (!quote.billing_enabled) throw new HttpError(409, 'Cobrança SaaS desativada em platform_settings.')
   if (!quote.shop_active) throw new HttpError(409, 'Barbearia inativa.')
-  if (quote.seat_count <= 0 || quote.amount_cents <= 0) throw new HttpError(409, 'É preciso ter barbeiros ativos e preço positivo para cobrar.')
+  if (quote.amount_cents <= 0) throw new HttpError(409, 'Defina uma mensalidade base ou preço positivo por barbeiro ativo.')
 }
 
 function centralCredentials(): { token: string; accountId: string } {
@@ -135,13 +140,18 @@ export async function startSaasSubscription(client: SupabaseClient, shopId: stri
   const payerEmail = email(payer)
   const { token, accountId } = centralCredentials()
   const { data: existing, error: existingError } = await client.from('platform_subscriptions')
-    .select('provider_subscription_id,status,amount_cents,payer_email').eq('barbershop_id', shopId).maybeSingle()
+    .select('provider_subscription_id,status,seat_count,base_fee_cents,unit_price_cents,amount_cents,payer_email')
+    .eq('barbershop_id', shopId).maybeSingle()
   if (existingError) throw existingError
   if (existing?.provider_subscription_id && existing.status !== 'cancelled') {
     const remote = await mpRequest<MpPreapproval>(`/preapproval/${mpId(existing.provider_subscription_id)}`, token)
     verifyCollector(remote, accountId)
     if (remote.external_reference !== `saas-${shopId}`) throw new HttpError(409, 'Cobrança SaaS vinculada a outra referência.')
-    if (existing.amount_cents !== quote.amount_cents) throw new HttpError(409, 'Quantidade/preço mudou. Aguarde a conciliação automática ou atualize a assinatura existente.')
+    if (existing.amount_cents !== quote.amount_cents || existing.seat_count !== quote.seat_count ||
+        existing.base_fee_cents !== quote.base_monthly_cents ||
+        existing.unit_price_cents !== quote.unit_price_cents) {
+      throw new HttpError(409, 'Quantidade/preço mudou. Aguarde a conciliação automática ou atualize a assinatura existente.')
+    }
     return { ...quote, status: existing.status, checkout_url: checkoutLink(remote) }
   }
   if (existing && !existing.provider_subscription_id && existing.status === 'pending') {
@@ -149,13 +159,14 @@ export async function startSaasSubscription(client: SupabaseClient, shopId: stri
   }
   const { error: pendingError } = await client.from('platform_subscriptions').upsert({
     barbershop_id: shopId, payer_email: payerEmail, provider_subscription_id: null,
-    status: 'pending', seat_count: quote.seat_count, unit_price_cents: quote.unit_price_cents,
+    status: 'pending', seat_count: quote.seat_count, base_fee_cents: quote.base_monthly_cents,
+    unit_price_cents: quote.unit_price_cents,
     amount_cents: quote.amount_cents, auto_paused: false, last_reconciled_at: null,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'barbershop_id' })
   if (pendingError) throw pendingError
   const remote = await mpRequest<MpPreapproval>('/preapproval', token, 'POST', {
-    reason: `Barber System — ${quote.seat_count} barbeiro(s) ativo(s)`,
+    reason: `Barber System — mensalidade e ${quote.seat_count} barbeiro(s) ativo(s)`,
     external_reference: `saas-${shopId}`,
     payer_email: payerEmail,
     auto_recurring: { frequency: 1, frequency_type: 'months', transaction_amount: amount(quote.amount_cents), currency_id: 'BRL' },
@@ -173,7 +184,7 @@ export async function startSaasSubscription(client: SupabaseClient, shopId: stri
 export async function syncSaasAmount(client: SupabaseClient, shopId: string) {
   const quote = await saasQuote(client, shopId)
   const { data: existing, error } = await client.from('platform_subscriptions')
-    .select('provider_subscription_id,status,seat_count,unit_price_cents,amount_cents,auto_paused').eq('barbershop_id', shopId).single()
+    .select('provider_subscription_id,status,seat_count,base_fee_cents,unit_price_cents,amount_cents,auto_paused').eq('barbershop_id', shopId).single()
   if (error) throw error
   if (!existing.provider_subscription_id) throw new HttpError(409, 'Não existe assinatura SaaS vinculada para conciliar.')
   const { token, accountId } = centralCredentials()
@@ -184,7 +195,7 @@ export async function syncSaasAmount(client: SupabaseClient, shopId: string) {
   if (!['pending', 'authorized', 'paused', 'canceled', 'expired'].includes(before.status)) {
     throw new HttpError(502, 'Status desconhecido da cobrança SaaS no Mercado Pago.')
   }
-  const billable = quote.billing_enabled && quote.shop_active && quote.seat_count > 0 && quote.amount_cents > 0
+  const billable = quote.billing_enabled && quote.shop_active && quote.amount_cents > 0
   const beforeAmount = Math.round(Number(before.auto_recurring?.transaction_amount) * 100)
   if (billable && ['pending', 'authorized'].includes(before.status) &&
       (!Number.isSafeInteger(beforeAmount) || beforeAmount <= 0 || before.auto_recurring?.currency_id !== 'BRL')) {
@@ -232,10 +243,12 @@ export async function syncSaasAmount(client: SupabaseClient, shopId: string) {
   // still refer to that amount. The current quote is returned separately.
   const persistQuote = amountChanged || (billable && ['pending', 'authorized'].includes(after.status))
   const localAmount = persistQuote
-    ? { seat_count: quote.seat_count, unit_price_cents: quote.unit_price_cents, amount_cents: quote.amount_cents } : {}
+    ? { seat_count: quote.seat_count, base_fee_cents: quote.base_monthly_cents,
+      unit_price_cents: quote.unit_price_cents, amount_cents: quote.amount_cents } : {}
   const status = after.status === 'canceled' ? 'cancelled' : after.status
   const localMatches = existing.status === status && Boolean(existing.auto_paused) === autoPaused &&
     (!persistQuote || (Number(existing.seat_count) === quote.seat_count &&
+      Number(existing.base_fee_cents) === quote.base_monthly_cents &&
       Number(existing.unit_price_cents) === quote.unit_price_cents && Number(existing.amount_cents) === quote.amount_cents))
   if (localMatches) return { ...quote, status, action }
   const { error: saveError } = await client.from('platform_subscriptions').update({
