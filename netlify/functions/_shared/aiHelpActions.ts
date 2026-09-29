@@ -1,4 +1,4 @@
-import { HttpError } from './core'
+import { HttpError } from './core.ts'
 
 export const actionTypes = [
   'create_shop', 'create_service', 'create_product', 'create_shop_goal',

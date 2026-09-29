@@ -43,7 +43,7 @@ const adminChapters: ChapterCopy[] = [
   { module: 'goals', title: 'Defina metas', summary: 'Acompanhe objetivos da loja e da equipe.', group: 'RESULTADOS', focus: 'Veja o andamento das metas da barbearia e dos profissionais.', focusSelector: '.content .goal-grid, .content .page-stack > .panel', action: 'Crie uma meta para a loja ou atribua uma meta individual a um barbeiro.', actionSelector: '.content .page-actions .button' },
   { module: 'partners', title: 'Monte o Clube do Parceiro', summary: 'Cadastre parceiros e crie ofertas com regras próprias.', group: 'CRESCIMENTO', focus: 'Acompanhe parceiros ativos, ofertas e reservas atribuídas ao programa.', focusSelector: '.content .partner-club-stats', action: 'Cadastre o parceiro, crie um cupom com benefício e copie o link de indicação. O cliente verá o desconto antes de confirmar a reserva.', actionSelector: '.content .partner-club-tabs' },
   { module: 'marketing', title: 'Planeje o marketing', summary: 'Siga as tarefas orgânicas e o roteiro de anúncios.', group: 'CRESCIMENTO', focus: 'Leia as etapas de conteúdo orgânico e campanhas pagas antes de criar uma ação.', focusSelector: '.content .page-stack > .panel:first-of-type', action: 'Registre uma tarefa com canal e prazo. Analise os resultados antes de ampliar investimento.', actionSelector: '.content .page-actions .button' },
-  { module: 'ai', title: 'Peça ajuda para criar um registro', summary: 'A IA prepara uma ação para sua revisão.', group: 'CRESCIMENTO', focus: 'Descreva o que deseja cadastrar. A IA mostrará uma prévia com os campos antes de salvar.', focusSelector: '.content .ai-help-composer', action: 'Confira cada campo e use “Confirmar ação” somente se a proposta estiver correta. O histórico mostra o resultado.', actionSelector: '.content .ai-help-preview' },
+  { module: 'ai', title: 'Converse com a IA sobre a barbearia', summary: 'Tire dúvidas, peça orientações ou prepare um cadastro.', group: 'CRESCIMENTO', focus: 'Escreva sua pergunta ou pedido com linguagem natural. A IA considera o contexto disponível desta barbearia.', focusSelector: '.content .ai-help-input textarea', action: 'Respostas não alteram registros. Se houver uma ação disponível, revise a proposta e confirme apenas quando os campos estiverem corretos.', actionSelector: '.content .ai-help-thread' },
   { module: 'bio', title: 'Monte a mini bio', summary: 'Reúna agendamento, produtos, assinatura e contato.', group: 'CRESCIMENTO', focus: 'O endereço público da barbearia aparece aqui. Teste os links antes de compartilhar.', focusSelector: '.content .public-url', action: 'Adicione links com nomes claros e organize a ordem em que o cliente verá cada ação.', actionSelector: '.content .page-actions .button' },
   { module: 'branding', title: 'Crie a identidade da loja', summary: 'Analise o Instagram, revise a prévia e publique.', group: 'SISTEMA', focus: 'Cadastre o link oficial do Instagram. A análise propõe cores, tipografia e tom para esta barbearia.', focusSelector: '.content .brand-studio-grid .panel:first-child', action: 'Revise a prévia e publique somente quando a aparência estiver fiel à empresa.', actionSelector: '.content .brand-review-grid .panel:nth-child(2)' },
   { module: 'settings', title: 'Ajuste equipe e permissões', summary: 'Convide pessoas e libere as abas individualmente.', group: 'SISTEMA', focus: 'Revise os dados e integrações da barbearia nesta tela.', focusSelector: '.content .dashboard-grid', action: 'Convide cada integrante e configure, para cada barbeiro, as abas que ele pode acessar.', actionSelector: '.content .permission-overview' },
@@ -61,7 +61,7 @@ const barberChapters: ChapterCopy[] = [
   { module: 'goals', title: 'Acompanhe suas metas', summary: 'Defina um objetivo pessoal e veja as metas recebidas.', group: 'EVOLUÇÃO', focus: 'Consulte o andamento da sua meta pessoal e das metas atribuídas pelo administrador.', focusSelector: '.content .goal-grid, .content .page-stack > .panel', action: 'Crie uma meta pessoal com indicador, valor e prazo.', actionSelector: '.content .page-actions .button' },
   { module: 'partners', title: 'Conheça o Clube do Parceiro', summary: 'Veja os benefícios e links de indicação.', group: 'EVOLUÇÃO', focus: 'Veja as ofertas ativas na barbearia.', focusSelector: '.content .partner-club-stats', action: 'Abra “Ofertas e cupons” para encontrar regras e copiar o link correto.', actionSelector: '.content .partner-club-tabs' },
   { module: 'marketing', title: 'Siga o plano de marketing', summary: 'Veja tarefas orgânicas e orientações de anúncios.', group: 'EVOLUÇÃO', focus: 'Siga a sequência de ações orgânicas da barbearia.', focusSelector: '.content .page-stack > .panel:first-of-type', action: 'Use o roteiro de anúncios como referência e alinhe a publicação com a administração.', actionSelector: '.content .page-stack > .panel:first-of-type .segmented' },
-  { module: 'ai', title: 'Peça uma ajuda prática', summary: 'A IA prepara metas pessoais ou tarefas conforme seus acessos.', group: 'EVOLUÇÃO', focus: 'Peça uma meta pessoal ou tarefa de marketing ligada ao seu trabalho.', focusSelector: '.content .ai-help-composer', action: 'Revise os campos propostos antes de confirmar. Se faltar acesso, o administrador pode liberar a aba correspondente.', actionSelector: '.content .ai-help-preview' },
+  { module: 'ai', title: 'Converse com a IA sobre seu trabalho', summary: 'Tire dúvidas e prepare ações dentro dos seus acessos.', group: 'EVOLUÇÃO', focus: 'Pergunte sobre seus horários e atividades ou peça ajuda para planejar uma meta pessoal.', focusSelector: '.content .ai-help-input textarea', action: 'A IA responde com os dados que seu perfil pode ver. Um cadastro só é gravado quando você revisa e confirma a proposta.', actionSelector: '.content .ai-help-thread' },
   { module: 'bio', title: 'Compartilhe o link correto', summary: 'Encontre a página pública de agendamento.', group: 'EVOLUÇÃO', focus: 'Copie o endereço público da barbearia para orientar seus clientes.', focusSelector: '.content .public-url', action: 'Confira se o botão de agendamento leva à página certa.', actionSelector: '.content .phone-frame' },
   { module: 'settings', title: 'Entenda seus acessos', summary: 'Confira o que a administração liberou para você.', group: 'SISTEMA', focus: 'O menu lateral mostra as abas liberadas para você. No celular, abra o menu pelo botão no topo.', focusSelector: '.content .page-header', action: 'Se precisar de outra aba, peça ao administrador da sua barbearia.', actionSelector: '.content .dashboard-grid' },
 ]
@@ -92,6 +92,16 @@ const masterChapter: TourChapter = {
   ],
 }
 
+const masterAiChapter: ChapterCopy = {
+  module: 'ai', title: 'Converse com a IA da plataforma',
+  summary: 'Pergunte sobre a operação da plataforma ou prepare o cadastro de uma barbearia.',
+  group: 'PLATAFORMA',
+  focus: 'Sem uma loja selecionada, descreva uma dúvida sobre a plataforma ou peça para preparar uma nova barbearia.',
+  focusSelector: '.content .ai-help-input textarea',
+  action: 'A conversa não muda dados. Para criar uma barbearia, confira a prévia e confirme a ação.',
+  actionSelector: '.content .ai-help-thread',
+}
+
 const clientChapter: TourChapter = {
   id: 'client', module: 'client', title: 'Conheça sua área', group: 'SUA CONTA',
   summary: 'Encontre horários, visitas, assinatura e agendamento.',
@@ -108,8 +118,7 @@ const clientChapter: TourChapter = {
 export function getTourChapters(role: Role, allowedModules: ModuleKey[], hasShop: boolean): TourChapter[] {
   if (role === 'client') return [clientChapter]
   if (role === 'master' && !hasShop) {
-    const helpChapter = adminChapters.find(copy => copy.module === 'ai')
-    return [masterChapter, ...(helpChapter && allowedModules.includes('ai') ? [chapterFromCopy(helpChapter)] : [])]
+    return [masterChapter, ...(allowedModules.includes('ai') ? [chapterFromCopy(masterAiChapter)] : [])]
   }
   const list = role === 'barber' ? barberChapters : adminChapters
   const chapters = list.filter(copy => allowedModules.includes(copy.module as ModuleKey)).map(chapterFromCopy)

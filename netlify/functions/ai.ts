@@ -1,8 +1,8 @@
 import type { Config } from '@netlify/functions'
 import OpenAI from 'openai'
-import { body, db, failure, HttpError, json, optionalSetting, requireShopAdmin, text, userFromRequest, uuid } from './_shared/core'
+import { body, db, failure, HttpError, json, optionalSetting, text, userFromRequest, uuid } from './_shared/core'
 import { instagramSnapshot } from './instagram'
-import { canUseAiKind } from './_shared/aiAccess'
+import { aiAnalysisDailyLimit, canAnalyzeWithAi, type AiAnalysisRole } from './_shared/aiAnalysisPolicy'
 
 type RequestInput = { barbershop_id?: unknown; kind?: unknown; prompt?: unknown }
 type FinancialData = {
@@ -106,26 +106,42 @@ export default async (request: Request) => {
     const prompt = typeof input.prompt === 'string' && input.prompt.trim() ? text(input.prompt, 'Solicitação', 2000) : ''
     const client = db()
     const user = await userFromRequest(request, client)
-    if (kind === 'financial') await requireShopAdmin(client, user.id, shopId)
-    else {
-      const { data: member, error } = await client.from('memberships').select('role').eq('barbershop_id', shopId).eq('user_id', user.id).eq('active', true).maybeSingle()
-      if (error || !member) throw new HttpError(403, 'Sem acesso à barbearia.')
-      if (member.role === 'barber') {
-        const { data: permissions, error: permissionError } = await client.from('module_permissions')
-          .select('module,allowed').eq('barbershop_id', shopId).eq('user_id', user.id)
-          .in('module', ['ai', 'marketing'])
-        if (permissionError) throw permissionError
-        if (!canUseAiKind(kind, (permissions || []).filter(item => item.allowed).map(item => item.module))) {
-          throw new HttpError(403, kind === 'marketing'
-            ? 'As abas de IA e Marketing precisam estar liberadas para esta análise.'
-            : 'A aba de IA não foi liberada para este barbeiro.')
-        }
-      }
+    const [shopResult, platformResult] = await Promise.all([
+      client.from('barbershops').select('id').eq('id', shopId).eq('active', true).maybeSingle(),
+      client.from('platform_admins').select('user_id').eq('user_id', user.id).maybeSingle(),
+    ])
+    if (shopResult.error) throw shopResult.error
+    if (platformResult.error) throw platformResult.error
+    if (!shopResult.data) throw new HttpError(404, 'Barbearia indisponível.')
+
+    let role: AiAnalysisRole = platformResult.data ? 'master' : 'client'
+    if (role !== 'master') {
+      const { data: member, error } = await client.from('memberships').select('role')
+        .eq('barbershop_id', shopId).eq('user_id', user.id).eq('active', true).maybeSingle()
+      if (error) throw error
+      if (!member || (member.role !== 'admin' && member.role !== 'barber')) throw new HttpError(403, 'Sem acesso à Ajuda de IA desta barbearia.')
+      role = member.role
+    }
+
+    let allowedModules: string[] = []
+    if (role === 'barber') {
+      const { data: permissions, error } = await client.from('module_permissions')
+        .select('module,allowed').eq('barbershop_id', shopId).eq('user_id', user.id)
+        .in('module', ['ai', 'marketing'])
+      if (error) throw error
+      allowedModules = (permissions || []).filter(item => item.allowed).map(item => item.module)
+    }
+    if (!canAnalyzeWithAi(kind, role, allowedModules)) {
+      throw new HttpError(403, role === 'barber'
+        ? kind === 'financial' ? 'Análises financeiras são restritas à administração.'
+          : kind === 'marketing' ? 'As abas de IA e Marketing precisam estar liberadas para esta análise.'
+            : 'A aba de IA não foi liberada para este barbeiro.'
+        : 'Sem acesso à Ajuda de IA desta barbearia.')
     }
     const dayAgo = new Date(Date.now() - 86_400_000).toISOString()
     const { count, error: countError } = await client.from('ai_requests').select('id', { count: 'exact', head: true }).eq('requester_user_id', user.id).gte('created_at', dayAgo)
     if (countError) throw countError
-    if ((count || 0) >= 20) throw new HttpError(429, 'Limite diário de análises atingido.')
+    if ((count || 0) >= aiAnalysisDailyLimit(role)) throw new HttpError(429, 'Limite diário de análises atingido.')
 
     const data = kind === 'financial' ? await financialSnapshot(client, shopId) : null
     const marketing = kind === 'marketing' ? await marketingSummary(client, shopId) : ''
