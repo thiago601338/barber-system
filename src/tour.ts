@@ -8,6 +8,10 @@ export interface TourStep {
   selector: string
   title: string
   description: string
+  practice?: {
+    instruction: string
+    completeOn?: 'click' | 'input' | 'focus'
+  }
 }
 
 export interface TourChapter {
@@ -67,6 +71,9 @@ const barberChapters: ChapterCopy[] = [
 ]
 
 function chapterFromCopy(copy: ChapterCopy): TourChapter {
+  const moduleLabel = moduleLabels[copy.module]
+  const focusIsText = copy.focusSelector.includes('textarea') || copy.focusSelector.includes('input')
+  const actionIsText = copy.actionSelector.includes('textarea') || copy.actionSelector.includes('input')
   return {
     id: copy.module,
     module: copy.module,
@@ -74,9 +81,9 @@ function chapterFromCopy(copy: ChapterCopy): TourChapter {
     summary: copy.summary,
     group: copy.group,
     steps: [
-      { module: copy.module, kind: 'nav', selector: `[data-tour-nav="${copy.module}"]`, title: `Abra ${moduleLabels[copy.module]}`, description: `${copy.summary} Clique em “Próximo” para abrir a tela.` },
-      { module: copy.module, kind: 'content', selector: copy.focusSelector, title: 'Onde começar', description: copy.focus },
-      { module: copy.module, kind: 'content', selector: copy.actionSelector, title: 'O que fazer aqui', description: copy.action },
+      { module: copy.module, kind: 'nav', selector: `[data-tour-nav="${copy.module}"]`, title: `Abra ${moduleLabel}`, description: `${copy.summary} Clique na aba destacada para abrir a tela.`, practice: { instruction: `Clique na aba ${moduleLabel} para continuar.`, completeOn: 'click' } },
+      { module: copy.module, kind: 'content', selector: copy.focusSelector, title: 'Onde começar', description: copy.focus, practice: { instruction: focusIsText ? 'Clique no campo destacado e digite um teste curto para praticar.' : 'Clique ou toque na área destacada para reconhecer onde essa informação fica.', completeOn: focusIsText ? 'input' : 'click' } },
+      { module: copy.module, kind: 'content', selector: copy.actionSelector, title: 'Teste rápido', description: copy.action, practice: { instruction: actionIsText ? 'Digite um teste curto no campo destacado. Nada é enviado sem você confirmar.' : 'Faça um teste na área destacada. Pode abrir, clicar ou focar no recurso; nada é salvo sem confirmação.', completeOn: actionIsText ? 'input' : 'click' } },
     ],
   }
 }
@@ -85,10 +92,10 @@ const masterChapter: TourChapter = {
   id: 'master', module: 'master', title: 'Administre a plataforma', group: 'PLATAFORMA',
   summary: 'Crie barbearias, ajuste o valor por barbeiro e acompanhe a cobrança.',
   steps: [
-    { module: 'master', kind: 'nav', selector: '[data-tour-nav="master"]', title: 'Abra o Painel master', description: 'Este acesso reúne todas as barbearias cadastradas na plataforma.' },
-    { module: 'master', kind: 'content', selector: '.content .page-actions .button', title: 'Crie uma barbearia', description: 'Cadastre uma empresa com nome e endereço público. Depois selecione a loja para configurar a operação.' },
-    { module: 'master', kind: 'content', selector: '.content .dashboard-grid .panel:nth-child(2)', title: 'Defina o valor por barbeiro', description: 'Configure aqui a mensalidade central por profissional ativo. Confira o valor antes de habilitar a cobrança.' },
-    { module: 'master', kind: 'content', selector: '.content .dashboard-grid .panel:first-child', title: 'Convide o administrador', description: 'Vincule o administrador à barbearia certa e confira o acesso antes de entregar a conta.' },
+    { module: 'master', kind: 'nav', selector: '[data-tour-nav="master"]', title: 'Abra o Painel master', description: 'Este acesso reúne todas as barbearias cadastradas na plataforma.', practice: { instruction: 'Clique em Painel master para confirmar que você sabe voltar para a visão da plataforma.', completeOn: 'click' } },
+    { module: 'master', kind: 'content', selector: '.content .page-actions .button', title: 'Crie uma barbearia', description: 'Cadastre uma empresa com nome e endereço público. Depois selecione a loja para configurar a operação.', practice: { instruction: 'Clique no botão destacado para abrir o cadastro. Você pode fechar a janela depois; nada é salvo sem confirmar.', completeOn: 'click' } },
+    { module: 'master', kind: 'content', selector: '.content .dashboard-grid .panel:nth-child(2)', title: 'Defina o valor por barbeiro', description: 'Configure aqui a mensalidade central por profissional ativo. Confira o valor antes de habilitar a cobrança.', practice: { instruction: 'Clique neste bloco e identifique onde fica o valor por barbeiro.', completeOn: 'click' } },
+    { module: 'master', kind: 'content', selector: '.content .dashboard-grid .panel:first-child', title: 'Convide o administrador', description: 'Vincule o administrador à barbearia certa e confira o acesso antes de entregar a conta.', practice: { instruction: 'Clique no bloco destacado para revisar onde entram os dados da barbearia.', completeOn: 'click' } },
   ],
 }
 
@@ -106,12 +113,12 @@ const clientChapter: TourChapter = {
   id: 'client', module: 'client', title: 'Conheça sua área', group: 'SUA CONTA',
   summary: 'Encontre horários, visitas, assinatura e agendamento.',
   steps: [
-    { module: 'client', kind: 'content', selector: '[data-tour-client="summary"]', title: 'Sua área pessoal', description: 'Aqui aparecem seus horários e benefícios nesta barbearia.' },
-    { module: 'client', kind: 'content', selector: '[data-tour-client="stats"]', title: 'Seu resumo', description: 'Confira visitas concluídas, valor pago e quantos usos ainda restam no plano, quando houver assinatura ativa.' },
-    { module: 'client', kind: 'content', selector: '[data-tour-client="upcoming"]', title: 'Próximos horários', description: 'Veja os agendamentos confirmados e a data de cada atendimento.' },
-    { module: 'client', kind: 'content', selector: '[data-tour-client="plan"]', title: 'Sua assinatura', description: 'Confira o plano, o ciclo atual e as visitas disponíveis antes de agendar.' },
-    { module: 'client', kind: 'content', selector: '[data-tour-client="history"]', title: 'Histórico de visitas', description: 'Revise os dias em que você foi atendido, os valores e os procedimentos registrados.' },
-    { module: 'client', kind: 'content', selector: '[data-tour-client="book"]', title: 'Faça seu próximo agendamento', description: 'Abra o agendamento, escolha procedimento, barbeiro e um horário disponível. Confira o valor antes de concluir.' },
+    { module: 'client', kind: 'content', selector: '[data-tour-client="summary"]', title: 'Sua área pessoal', description: 'Aqui aparecem seus horários e benefícios nesta barbearia.', practice: { instruction: 'Toque neste resumo para identificar onde começa sua área.', completeOn: 'click' } },
+    { module: 'client', kind: 'content', selector: '[data-tour-client="stats"]', title: 'Seu resumo', description: 'Confira visitas concluídas, valor pago e quantos usos ainda restam no plano, quando houver assinatura ativa.', practice: { instruction: 'Toque nos números e confira quais indicadores aparecem para você.', completeOn: 'click' } },
+    { module: 'client', kind: 'content', selector: '[data-tour-client="upcoming"]', title: 'Próximos horários', description: 'Veja os agendamentos confirmados e a data de cada atendimento.', practice: { instruction: 'Toque nesta área para localizar seus próximos horários.', completeOn: 'click' } },
+    { module: 'client', kind: 'content', selector: '[data-tour-client="plan"]', title: 'Sua assinatura', description: 'Confira o plano, o ciclo atual e as visitas disponíveis antes de agendar.', practice: { instruction: 'Toque no plano para reconhecer onde ficam os usos restantes.', completeOn: 'click' } },
+    { module: 'client', kind: 'content', selector: '[data-tour-client="history"]', title: 'Histórico de visitas', description: 'Revise os dias em que você foi atendido, os valores e os procedimentos registrados.', practice: { instruction: 'Toque no histórico e veja onde consultar visitas anteriores.', completeOn: 'click' } },
+    { module: 'client', kind: 'content', selector: '[data-tour-client="book"]', title: 'Faça seu próximo agendamento', description: 'Abra o agendamento, escolha procedimento, barbeiro e um horário disponível. Confira o valor antes de concluir.', practice: { instruction: 'Toque no agendamento para praticar onde iniciar uma nova reserva.', completeOn: 'click' } },
   ],
 }
 

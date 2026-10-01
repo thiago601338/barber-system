@@ -301,7 +301,7 @@ function AuthenticatedApp() {
     const nextIndex = tourRun.index + direction
     if (nextIndex >= tourRun.steps.length) {
       saveFinishedTours(tourStorageKey(identity!.user.id, identity!.shop?.id, role), tourRun.chapterIds)
-      setTourRun(null); setPage('tutorial'); setMobileOpen(false)
+      setTourRun(null); setMobileOpen(false)
       return
     }
     if (nextIndex < 0) return
@@ -310,7 +310,7 @@ function AuthenticatedApp() {
     setMobileOpen(window.innerWidth <= 980 && nextStep.kind === 'nav')
     setTourRun({ ...tourRun, index: nextIndex })
   }
-  function closeTour() { setTourRun(null); setPage('tutorial'); setMobileOpen(false) }
+  function closeTour() { setTourRun(null); setMobileOpen(false) }
 
   const content: Record<ModuleKey | 'master', ReactNode> = {
     master: <MasterPage identity={identity} role={role} notify={notify} onRefresh={loadIdentity} />,

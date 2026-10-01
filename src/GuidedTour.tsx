@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
-import { ArrowDownLeft, ArrowLeft, ArrowRight, Check, X } from 'lucide-react'
+import { ArrowDownLeft, ArrowLeft, ArrowRight, Check, RotateCcw, Volume2, VolumeX, X } from 'lucide-react'
 import type { TourStep } from './tour'
 
 interface GuidedTourProps {
@@ -41,11 +41,27 @@ function boundsFor(element: HTMLElement): Bounds {
   }
 }
 
+function audioStorageKey(): string { return 'barber-guided-tour-audio:v1' }
+
+function readAudioEnabled(): boolean {
+  try { return localStorage.getItem(audioStorageKey()) !== 'off' } catch { return true }
+}
+
+function pickPortugueseVoice(): SpeechSynthesisVoice | null {
+  if (!('speechSynthesis' in window)) return null
+  const voices = window.speechSynthesis.getVoices()
+  const roberta = voices.find(voice => voice.lang.toLowerCase().startsWith('pt-br') && voice.name.toLowerCase().includes('roberta'))
+  return roberta || voices.find(voice => voice.lang.toLowerCase().startsWith('pt-br')) || voices.find(voice => voice.lang.toLowerCase().startsWith('pt')) || null
+}
+
 export function GuidedTour({ steps, index, onBack, onNext, onClose }: GuidedTourProps) {
   const step = steps[index]
   const [bounds, setBounds] = useState<Bounds | null>(null)
   const [fallback, setFallback] = useState(false)
   const [cardHeight, setCardHeight] = useState(285)
+  const [practiceDone, setPracticeDone] = useState(false)
+  const [audioEnabled, setAudioEnabled] = useState(readAudioEnabled)
+  const [voiceName, setVoiceName] = useState('')
   const cardRef = useRef<HTMLDivElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
 
@@ -63,6 +79,63 @@ export function GuidedTour({ steps, index, onBack, onNext, onClose }: GuidedTour
     observer.observe(cardRef.current)
     return () => observer.disconnect()
   }, [])
+
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) return
+    const updateVoice = () => setVoiceName(pickPortugueseVoice()?.name || '')
+    updateVoice()
+    window.speechSynthesis.addEventListener('voiceschanged', updateVoice)
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', updateVoice)
+  }, [])
+
+  function speakCurrentStep() {
+    if (!step || !audioEnabled || !('speechSynthesis' in window)) return
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(`${step.title}. ${step.description}${step.practice ? ` Teste prático: ${step.practice.instruction}` : ''}`)
+    utterance.lang = 'pt-BR'
+    utterance.rate = 0.96
+    utterance.pitch = 1
+    const voice = pickPortugueseVoice()
+    if (voice) utterance.voice = voice
+    window.speechSynthesis.speak(utterance)
+  }
+
+  useEffect(() => {
+    setPracticeDone(!step?.practice)
+    if (!step) return
+    speakCurrentStep()
+    return () => { if ('speechSynthesis' in window) window.speechSynthesis.cancel() }
+  }, [step, audioEnabled])
+
+  useEffect(() => {
+    if (!step?.practice) return
+    let target: HTMLElement | null = targetFor(step)
+    if (!target) {
+      setPracticeDone(true)
+      return
+    }
+    let done = false
+    const complete = () => {
+      if (done) return
+      done = true
+      setPracticeDone(true)
+      if (step.kind === 'nav') window.setTimeout(onNext, 120)
+    }
+    const eventName = step.practice.completeOn === 'input' ? 'input' : step.practice.completeOn === 'focus' ? 'focusin' : 'click'
+    target.addEventListener(eventName, complete, true)
+    const retry = window.setTimeout(() => {
+      const nextTarget = targetFor(step)
+      if (nextTarget && nextTarget !== target) {
+        target?.removeEventListener(eventName, complete, true)
+        target = nextTarget
+        target.addEventListener(eventName, complete, true)
+      }
+    }, 250)
+    return () => {
+      window.clearTimeout(retry)
+      target?.removeEventListener(eventName, complete, true)
+    }
+  }, [step, onNext])
 
   useLayoutEffect(() => {
     if (!step) return
@@ -115,7 +188,7 @@ export function GuidedTour({ steps, index, onBack, onNext, onClose }: GuidedTour
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); onClose(); return }
-      if (event.key === 'ArrowRight') { event.preventDefault(); onNext(); return }
+      if (event.key === 'ArrowRight') { event.preventDefault(); if (practiceDone || fallback) onNext(); return }
       if (event.key === 'ArrowLeft') { event.preventDefault(); if (index > 0) onBack(); return }
       if (event.key !== 'Tab' || !cardRef.current) return
       const focusable = [...cardRef.current.querySelectorAll<HTMLElement>('button:not([disabled])')]
@@ -128,7 +201,7 @@ export function GuidedTour({ steps, index, onBack, onNext, onClose }: GuidedTour
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [index, onBack, onNext, onClose])
+  }, [index, onBack, onNext, onClose, practiceDone, fallback])
 
   if (!step) return null
   const viewportWidth = window.innerWidth
@@ -163,6 +236,8 @@ export function GuidedTour({ steps, index, onBack, onNext, onClose }: GuidedTour
     cardStyle.top = safeTop(bounds.top + bounds.height + 18)
   }
   const last = index === steps.length - 1
+  const canAdvance = practiceDone || fallback || !step.practice
+  const practiceLabel = practiceDone ? 'Teste concluído' : step.kind === 'nav' ? 'Clique na aba destacada' : 'Faça o teste destacado'
   const shade = bounds ? [
     { top: 0, left: 0, width: viewportWidth, height: bounds.top },
     { top: bounds.top, left: 0, width: bounds.left, height: bounds.height },
@@ -179,16 +254,17 @@ export function GuidedTour({ steps, index, onBack, onNext, onClose }: GuidedTour
 
   return <div className="guided-tour" aria-live="polite">
     {shade.map((part, partIndex) => <div className="guided-tour-shade" key={partIndex} style={part}/>) }
-    {bounds && <div className="guided-tour-focus" style={bounds} onClick={step.kind === 'nav' ? onNext : undefined} aria-hidden="true"><span className="guided-tour-focus-arrow"><ArrowDownLeft size={21} strokeWidth={2.4}/></span></div>}
+    {bounds && <div className="guided-tour-focus" style={bounds} aria-hidden="true"><span className="guided-tour-focus-arrow"><ArrowDownLeft size={21} strokeWidth={2.4}/></span></div>}
     {arrowStyle && <div className={`guided-tour-card-arrow side-${side}`} style={arrowStyle} aria-hidden="true"/>}
     <div className={`guided-tour-card side-${side}`} style={cardStyle} role="dialog" aria-modal="true" aria-labelledby="guided-tour-title" aria-describedby="guided-tour-description" tabIndex={-1} ref={cardRef}>
-      <div className="guided-tour-topline"><span>GUIA INTERATIVO</span><button className="guided-tour-close" onClick={onClose} aria-label="Sair do guia"><X size={18}/></button></div>
+      <div className="guided-tour-topline"><span>GUIA INTERATIVO</span><div className="guided-tour-top-actions"><button className={`guided-tour-audio ${audioEnabled ? 'on' : ''}`} onClick={() => { const next = !audioEnabled; setAudioEnabled(next); try { localStorage.setItem(audioStorageKey(), next ? 'on' : 'off') } catch { /* Audio preference is optional. */ }; if (!next && 'speechSynthesis' in window) window.speechSynthesis.cancel() }} aria-label={audioEnabled ? 'Desativar narração' : 'Ativar narração'} title={audioEnabled ? `Narração ativa${voiceName ? `: ${voiceName}` : ''}` : 'Ativar narração'}>{audioEnabled ? <Volume2 size={17}/> : <VolumeX size={17}/>}</button><button className="guided-tour-audio" onClick={speakCurrentStep} aria-label="Repetir narração" title="Repetir narração"><RotateCcw size={16}/></button><button className="guided-tour-close" onClick={onClose} aria-label="Sair do guia"><X size={18}/></button></div></div>
       <div className="guided-tour-counter"><span>ETAPA {String(index + 1).padStart(2, '0')} / {String(steps.length).padStart(2, '0')}</span><div className="guided-tour-progress"><i style={{ width: `${(index + 1) / steps.length * 100}%` }}/></div></div>
       <h2 id="guided-tour-title">{step.title}</h2>
       <p id="guided-tour-description">{step.description}</p>
+      {step.practice && <div className={`guided-tour-practice ${practiceDone ? 'done' : ''}`}><div><strong>{practiceLabel}</strong><p>{step.practice.instruction}</p></div>{practiceDone && <Check size={18}/>}</div>}
       {fallback && <small className="guided-tour-hint">O destaque foi movido para a área disponível desta tela.</small>}
-      <div className="guided-tour-actions"><button className="guided-tour-skip" onClick={onClose}>Sair do guia</button><div>{index > 0 && <button className="guided-tour-back" onClick={onBack}><ArrowLeft size={16}/> Voltar</button>}<button className="guided-tour-next" onClick={onNext}>{last ? <>Concluir <Check size={17}/></> : <>Próximo <ArrowRight size={17}/></>}</button></div></div>
-      <div className="guided-tour-keyboard">Use ← → para navegar · Esc para sair</div>
+      <div className="guided-tour-actions"><button className="guided-tour-skip" onClick={onClose}>Sair do guia</button><div>{index > 0 && <button className="guided-tour-back" onClick={onBack}><ArrowLeft size={16}/> Voltar</button>}<button className="guided-tour-next" onClick={onNext} disabled={!canAdvance}>{last ? <>Concluir <Check size={17}/></> : <>Próximo <ArrowRight size={17}/></>}</button></div></div>
+      <div className="guided-tour-keyboard">{canAdvance ? 'Use ← → para navegar · Esc para sair' : 'Faça o teste destacado para liberar o próximo passo'}</div>
     </div>
   </div>
 }

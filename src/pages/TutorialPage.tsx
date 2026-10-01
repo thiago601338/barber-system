@@ -23,7 +23,7 @@ export function TutorialPage({ identity, role, allowedModules, onStart }: Tutori
   const groups = [...new Set(chapters.map(chapter => chapter.group))]
   return <div className="tour-hub">
     <section className="tour-hub-hero">
-      <div><span className="tour-hub-eyebrow">PASSO A PASSO · GUIA INTERATIVO</span><h1>{roleTitle[role]}</h1><p>Um pop-up mostra exatamente onde olhar. Use as setas para avançar entre as abas; o destaque acompanha cada ação na tela. Você pode sair e recomeçar quando quiser.</p></div>
+      <div><span className="tour-hub-eyebrow">PASSO A PASSO · GUIA COM ÁUDIO</span><h1>{roleTitle[role]}</h1><p>O pop-up narra cada etapa, destaca onde mexer e só libera o avanço depois de um teste simples dentro da própria aba. Ao terminar, você fica no módulo para continuar praticando.</p></div>
       <button className="tour-hub-start" onClick={() => onStart(chapters.map(chapter => chapter.id))} disabled={!chapters.length}><Play size={17} fill="currentColor"/> Iniciar tour completo <ArrowRight size={16}/></button>
     </section>
     <div className="tour-hub-meta"><span><strong>{chapters.length}</strong> {chapters.length === 1 ? 'área disponível' : 'áreas disponíveis'} para o seu perfil</span><span>{finished.filter(id => chapters.some(chapter => chapter.id === id)).length} guias vistos neste dispositivo</span></div>
