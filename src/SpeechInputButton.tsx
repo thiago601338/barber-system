@@ -15,7 +15,8 @@ type SpeechRecognitionResult = {
   [index: number]: SpeechRecognitionAlternative
 }
 
-type SpeechRecognitionEvent = { results: SpeechRecognitionResultList }
+type SpeechRecognitionEvent = { resultIndex?: number; results: SpeechRecognitionResultList }
+type SpeechRecognitionErrorEvent = { error?: string }
 type SpeechRecognitionInstance = {
   lang: string
   interimResults: boolean
@@ -23,10 +24,18 @@ type SpeechRecognitionInstance = {
   start: () => void
   stop: () => void
   onresult: ((event: SpeechRecognitionEvent) => void) | null
-  onerror: (() => void) | null
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null
   onend: (() => void) | null
 }
 type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance
+type SpeechInputButtonProps = {
+  disabled?: boolean
+  value: string
+  onChange: (text: string) => void
+  onUnavailable?: () => void
+  onError?: (message: string) => void
+  className?: string
+}
 
 function recognitionConstructor(): SpeechRecognitionConstructor | null {
   const source = window as unknown as { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor }
@@ -37,9 +46,18 @@ export function speechInputAvailable(): boolean {
   return typeof window !== 'undefined' && Boolean(recognitionConstructor())
 }
 
-export function SpeechInputButton({ disabled, onText, onUnavailable, className }: { disabled?: boolean; onText: (text: string) => void; onUnavailable?: () => void; className?: string }) {
+function withTranscript(base: string, transcript: string): string {
+  const cleanBase = base.trim()
+  const cleanTranscript = transcript.trim()
+  if (!cleanTranscript) return cleanBase
+  return cleanBase ? `${cleanBase} ${cleanTranscript}` : cleanTranscript
+}
+
+export function SpeechInputButton({ disabled, value, onChange, onUnavailable, onError, className }: SpeechInputButtonProps) {
   const [listening, setListening] = useState(false)
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
+  const baseTextRef = useRef('')
+  const finalTranscriptRef = useRef('')
 
   function toggleSpeech() {
     if (disabled) return
@@ -55,15 +73,35 @@ export function SpeechInputButton({ disabled, onText, onUnavailable, className }
     }
     const recognition = new Recognition()
     recognitionRef.current = recognition
+    baseTextRef.current = value
+    finalTranscriptRef.current = ''
     recognition.lang = 'pt-BR'
-    recognition.interimResults = false
-    recognition.continuous = false
+    recognition.interimResults = true
+    recognition.continuous = true
     recognition.onresult = event => {
-      const text = Array.from({ length: event.results.length }, (_, index) => event.results[index]?.[0]?.transcript || '').join(' ').trim()
-      if (text) onText(text)
+      let finalChunk = ''
+      let interimChunk = ''
+      const start = Math.max(0, event.resultIndex ?? 0)
+      for (let index = start; index < event.results.length; index += 1) {
+        const result = event.results[index]
+        const piece = result?.[0]?.transcript?.trim()
+        if (!piece) continue
+        if (result.isFinal) finalChunk = `${finalChunk} ${piece}`.trim()
+        else interimChunk = `${interimChunk} ${piece}`.trim()
+      }
+      if (finalChunk) finalTranscriptRef.current = `${finalTranscriptRef.current} ${finalChunk}`.trim()
+      const transcript = `${finalTranscriptRef.current} ${interimChunk}`.trim()
+      if (transcript) onChange(withTranscript(baseTextRef.current, transcript))
     }
-    recognition.onerror = () => setListening(false)
-    recognition.onend = () => setListening(false)
+    recognition.onerror = event => {
+      setListening(false)
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') onError?.('O navegador bloqueou o microfone para esta página.')
+      else if (event.error && event.error !== 'no-speech') onError?.('Não consegui captar sua fala. Tente de novo falando um pouco mais perto do microfone.')
+    }
+    recognition.onend = () => {
+      setListening(false)
+      finalTranscriptRef.current = ''
+    }
     setListening(true)
     recognition.start()
   }

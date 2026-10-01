@@ -39,10 +39,6 @@ export function FloatingAiHelp({ identity, role, notify }: { identity: Identity;
 
   useEffect(() => { if (open) threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: 'smooth' }) }, [turns, open])
 
-  function appendSpeech(text: string) {
-    setPrompt(current => current ? `${current.trim()} ${text}` : text)
-  }
-
   function openPanel() {
     setOpen(true)
     setMinimized(false)
@@ -137,7 +133,7 @@ export function FloatingAiHelp({ identity, role, notify }: { identity: Identity;
         </div>
         <form className="floating-ai-form" onSubmit={sendPrompt}>
           <div className="floating-ai-input-row">
-            <SpeechInputButton className="floating-ai-mic" disabled={busy !== null} onText={appendSpeech} onUnavailable={() => notify('Seu navegador não liberou ditado por voz para esta página.', 'error')}/>
+            <SpeechInputButton className="floating-ai-mic" disabled={busy !== null} value={prompt} onChange={setPrompt} onUnavailable={() => notify('Seu navegador não liberou ditado por voz para esta página.', 'error')} onError={message => notify(message, 'error')}/>
             <textarea value={prompt} onChange={event => setPrompt(event.target.value)} onKeyDown={keyDown} minLength={3} maxLength={1500} rows={2} placeholder="Pergunte para a IA..." disabled={busy !== null}/>
             <button type="submit" className="floating-ai-send" aria-label="Enviar para a Ajuda de IA" disabled={busy !== null || prompt.trim().length < 3}>{busy === 'request' ? <LoaderCircle size={18} className="spin"/> : <Send size={18}/>}</button>
           </div>
