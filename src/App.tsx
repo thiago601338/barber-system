@@ -20,6 +20,7 @@ import { TutorialPage } from './pages/TutorialPage'
 import { BrandLogo } from './brand'
 import { BrandIdentityPage } from './pages/BrandIdentityPage'
 import { AiHelpPage } from './pages/AiHelpPage'
+import { FloatingAiHelp } from './FloatingAiHelp'
 import { brandStyle, readBrandTheme, ShopBrand } from './shopBrand'
 import { TeamAvatar } from './TeamAvatar'
 import { GuidedTour } from './GuidedTour'
@@ -347,6 +348,7 @@ function AuthenticatedApp() {
     </aside>
     <div className="main-area"><header className="topbar"><button className="mobile-menu icon-button" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={22}/></button><div className="topbar-crumb">{visiblePage === 'master' ? 'Barber System' : identity.shop?.name || 'Barber System'} <span>/</span> <strong>{visiblePage === 'master' ? 'Painel master' : moduleLabels[visiblePage]}</strong></div><div className="topbar-right">{identity.shops.length > 1 || identity.isMaster ? <select className="topbar-select" aria-label="Selecionar barbearia" value={visiblePage === 'master' ? '' : identity.shop?.id || ''} onChange={e => changeShop(e.target.value)}><option value="">Visão master</option>{identity.shops.map(shop => <option value={shop.id} key={shop.id}>{shop.name}</option>)}</select> : null}<div className="profile-pill"><span>{identity.membership?.display_name || identity.user.email?.split('@')[0] || 'Usuário'}</span><TeamAvatar path={identity.membership?.avatar_path} name={identity.membership?.display_name || identity.user.email || 'Usuário'} shopId={identity.membership?.barbershop_id} memberId={identity.membership?.id} className="profile-avatar"/></div></div></header><main className="content">{content[visiblePage]}</main></div>
     {toast && <div className={`toast ${toast.kind}`}>{toast.message}</div>}
+    <FloatingAiHelp identity={identity} role={role} notify={notify}/>
     {tourRun && <GuidedTour steps={tourRun.steps} index={tourRun.index} onBack={() => moveTour(-1)} onNext={() => moveTour(1)} onClose={closeTour}/>}
   </div>
 }

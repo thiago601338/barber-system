@@ -5,6 +5,7 @@ import { authedApi, authedGet } from '../lib/supabase'
 import { date, dateTime, money, type Shop } from '../types'
 import { Notice, PageHeader } from '../ui'
 import { AiPage } from './GrowthPage'
+import { SpeechInputButton } from '../SpeechInputButton'
 
 type Action = { type: string; label: string; values: Record<string, unknown> }
 type Quota = { daily_limit: number; remaining: number }
@@ -132,6 +133,7 @@ export function AiHelpPage({ identity, role, notify }: PageProps) {
   useEffect(() => { if (turns.length) bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }, [turns])
 
   function useSuggestion(value: string) { setPrompt(value); composerRef.current?.focus() }
+  function appendSpeech(value: string) { setPrompt(current => current ? `${current.trim()} ${value}` : value); composerRef.current?.focus() }
   function changeScope(next: 'platform' | 'shop') {
     if (busy || scope === next) return
     ++historyRequestId.current
@@ -208,7 +210,7 @@ export function AiHelpPage({ identity, role, notify }: PageProps) {
             })}
             <div ref={bottomRef}/>
           </div>
-          <form className="ai-help-input" onSubmit={sendPrompt}><label htmlFor="ai-help-prompt">Escreva sua pergunta ou solicitação</label><div className="ai-help-input-box"><textarea id="ai-help-prompt" ref={composerRef} value={prompt} onChange={event => setPrompt(event.target.value)} onKeyDown={composerKeyDown} rows={2} maxLength={1500} minLength={3} placeholder={role === 'master' ? 'Ex.: Como organizar o crescimento das barbearias?' : role === 'admin' ? 'Ex.: Como melhorar o retorno dos clientes novos?' : 'Ex.: Como atingir minha meta de atendimentos?'} disabled={busy !== null}/><button type="submit" className="button primary" aria-label="Enviar mensagem" disabled={busy !== null || prompt.trim().length < 3}>{busy === 'request' ? <LoaderCircle size={19} className="spin"/> : <Send size={19}/>}</button></div><div className="ai-help-input-foot"><span>Enter envia · Shift + Enter pula linha</span>{quota && <span>{quota.remaining} de {quota.daily_limit} pedidos disponíveis nas próximas 24 horas</span>}</div></form>
+          <form className="ai-help-input" onSubmit={sendPrompt}><label htmlFor="ai-help-prompt">Escreva sua pergunta ou solicitação</label><div className="ai-help-input-box"><textarea id="ai-help-prompt" ref={composerRef} value={prompt} onChange={event => setPrompt(event.target.value)} onKeyDown={composerKeyDown} rows={2} maxLength={1500} minLength={3} placeholder={role === 'master' ? 'Ex.: Como organizar o crescimento das barbearias?' : role === 'admin' ? 'Ex.: Como melhorar o retorno dos clientes novos?' : 'Ex.: Como atingir minha meta de atendimentos?'} disabled={busy !== null}/><SpeechInputButton disabled={busy !== null} onText={appendSpeech} onUnavailable={() => notify('Seu navegador não liberou ditado por voz para esta página.', 'error')}/><button type="submit" className="button primary" aria-label="Enviar mensagem" disabled={busy !== null || prompt.trim().length < 3}>{busy === 'request' ? <LoaderCircle size={19} className="spin"/> : <Send size={19}/>}</button></div><div className="ai-help-input-foot"><span>Enter envia · Shift + Enter pula linha · Microfone dita em português</span>{quota && <span>{quota.remaining} de {quota.daily_limit} pedidos disponíveis nas próximas 24 horas</span>}</div></form>
         </section>
         <aside className="ai-help-aside" aria-label="Recursos do assistente"><section className="ai-help-context-card"><span className="ai-help-context-icon"><ProfileIcon size={19}/></span><small>PERFIL ATUAL</small><h3>{profileLabel}</h3><p>{role === 'master' ? 'Pode conversar sobre a plataforma. Na visão de uma barbearia, também pode pedir cadastros para ela.' : role === 'admin' ? 'Pode conversar sobre a gestão da sua barbearia e pedir os cadastros abaixo.' : 'Pode conversar sobre sua rotina. Cadastros dependem das permissões concedidas pela barbearia.'}</p></section><section className="panel ai-help-permissions"><div className="ai-help-aside-head"><BookOpen size={18}/><h3>O que posso criar</h3></div>{available.length ? <ul>{available.map(item => <li key={item}><Check size={15}/>{item}</li>)}</ul> : <p>Você pode conversar e pedir orientações. Para criar metas ou tarefas, solicite a permissão ao administrador.</p>}</section><section className="ai-help-trust"><ShieldCheck size={18}/><div><strong>Você decide antes de salvar</strong><p>Perguntas recebem respostas. Cadastros mostram todos os campos e só são feitos após sua confirmação. Esta área não realiza cobranças nem altera permissões.</p></div></section></aside>
       </div>
