@@ -6,6 +6,21 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
+[images]
+  remote_images = ["https://oyjiiqbsbshfdgdaxbus\\.supabase\\.co/storage/v1/object/public/shop-assets/.*"]
+
+[[redirects]]
+  from = "/"
+  to = "/inicio.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/inicio"
+  to = "/inicio.html"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
