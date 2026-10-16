@@ -22,48 +22,6 @@
   force = true
 
 [[redirects]]
-  from = "/blog"
-  to = "/tests/blog/index.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/blog/categoria/agenda"
-  to = "/tests/blog/category-agenda.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/blog/categoria/financeiro"
-  to = "/tests/blog/category-financeiro.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/blog/categoria/assinaturas"
-  to = "/tests/blog/category-assinaturas.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/blog/categoria/clientes"
-  to = "/tests/blog/category-clientes.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/blog/categoria/marketing"
-  to = "/tests/blog/category-marketing.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/blog/categoria/gestao"
-  to = "/tests/blog/category-gestao.html"
-  status = 200
-  force = true
-
-[[redirects]]
   from = "/precos"
   to = "/tests/marketing/precos.html"
   status = 200
