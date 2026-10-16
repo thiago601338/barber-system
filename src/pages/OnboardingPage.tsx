@@ -174,7 +174,7 @@ function ShopStep({ status, onDone }: { status: Status; onDone: () => Promise<vo
     <label className="onb-check"><input type="checkbox" checked={form.owner_attends} onChange={e => setForm({ ...form, owner_attends: e.target.checked })}/><span><strong>Eu também atendo clientes.</strong> Assim você aparece na agenda e na página de agendamento.</span></label>
     {status.pricing.billing_enabled && <div className="onb-price-hint"><Wallet size={17}/><span>Sua mensalidade começa em <strong>{brl(monthly(status.pricing, seats))}/mês</strong>{seats ? ' (barbearia + você atendendo)' : ''}. Cada profissional ativo soma {brl(status.pricing.barber_cents)}.</span></div>}
     {error && <p className="onb-error" role="alert">{error}</p>}
-    <div className="onb-actions"><button className="onb-btn primary" type="submit" disabled={busy}>{busy && <LoaderCircle className="onb-spin" size={17}/>}Salvar e ir para o pagamento <ArrowRight size={17}/></button></div>
+    <div className="onb-actions"><button className="onb-btn primary" type="submit" disabled={busy}>{busy && <LoaderCircle className="onb-spin" size={17}/>}Continuar para a assinatura <ArrowRight size={17}/></button></div>
   </form>
 }
 
