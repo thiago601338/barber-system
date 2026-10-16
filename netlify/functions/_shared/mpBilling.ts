@@ -113,7 +113,7 @@ export interface SaasQuote {
 export async function saasQuote(client: SupabaseClient, shopId: string): Promise<SaasQuote> {
   const [{ data: settings, error: settingsError }, { data: shop, error: shopError }, seats] = await Promise.all([
     client.from('platform_settings').select('base_monthly_cents,seat_price_cents,monthly_cap_cents,billing_enabled').eq('id', 1).single(),
-    client.from('barbershops').select('active,base_monthly_cents,per_barber_monthly_cents,monthly_cap_cents').eq('id', shopId).single(),
+    client.from('barbershops').select('active,created_via,onboarding_completed_at,base_monthly_cents,per_barber_monthly_cents,monthly_cap_cents').eq('id', shopId).single(),
     client.from('memberships').select('id', { count: 'exact', head: true })
       .eq('barbershop_id', shopId).eq('role', 'barber').eq('active', true),
   ])
@@ -123,7 +123,8 @@ export async function saasQuote(client: SupabaseClient, shopId: string): Promise
   const seatCount = seats.count || 0
   try {
     return { barbershop_id: shopId, billing_enabled: settings.billing_enabled,
-      shop_active: shop.active, seat_count: seatCount, ...calculatePlatformPrice(settings, shop, seatCount) }
+      // Inscrição nova fica desativada até o primeiro pagamento: ela pode (e precisa) ser cobrada para ser liberada.
+      shop_active: shop.active || (shop.created_via === 'self_service' && !shop.onboarding_completed_at), seat_count: seatCount, ...calculatePlatformPrice(settings, shop, seatCount) }
   } catch (error) { throw new HttpError(409, error instanceof Error ? error.message : 'Preço inválido.') }
 }
 
