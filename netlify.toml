@@ -11,67 +11,7 @@
 
 [[redirects]]
   from = "/"
-  to = "/inicio.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/inicio"
-  to = "/inicio.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/blog"
-  to = "/.netlify/functions/blog-public"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/blog/*"
-  to = "/.netlify/functions/blog-public"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/precos"
-  to = "/tests/marketing/precos.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/agenda-online-para-barbearia"
-  to = "/tests/marketing/agenda-online-para-barbearia.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/sistema-barbearia-por-assinatura"
-  to = "/tests/marketing/sistema-barbearia-por-assinatura.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/controle-financeiro-barbearia"
-  to = "/tests/marketing/controle-financeiro-barbearia.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/site-para-barbearia"
-  to = "/tests/marketing/site-para-barbearia.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/sistema-para-barbeiro-autonomo"
-  to = "/tests/marketing/sistema-para-barbeiro-autonomo.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/aplicativo-cliente-barbearia"
-  to = "/tests/marketing/aplicativo-cliente-barbearia.html"
+  to = "/inicio"
   status = 200
   force = true
 

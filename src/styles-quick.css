@@ -1,0 +1,22 @@
+/* Cadastro rápido de serviço */
+.quick-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);gap:18px;align-items:start}
+.quick-input{position:relative;display:flex;align-items:center}
+.quick-input svg{position:absolute;left:12px;color:var(--shop-muted,#8a978a);pointer-events:none}
+.field .quick-input input{padding-left:36px}
+.quick-found{display:flex;align-items:center;gap:7px;margin:-4px 0 0;font-size:12px;color:#3d784c}
+.quick-found.muted{color:var(--shop-muted,#7a867d)}
+.quick-services{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.quick-services button{display:grid;gap:3px;text-align:left;padding:11px 12px;border-radius:12px;border:1px solid var(--shop-border,#dce7da);background:var(--shop-surface,#fff);color:inherit;transition:border-color .15s,box-shadow .15s}
+.quick-services button strong{font-size:12.5px}
+.quick-services button small{font-size:11px;color:var(--shop-muted,#7a867d)}
+.quick-services button.on{border-color:var(--shop-accent,#4c8a3b);box-shadow:inset 0 0 0 1px var(--shop-accent,#4c8a3b);background:color-mix(in srgb,var(--shop-accent,#4c8a3b) 9%,var(--shop-surface,#fff))}
+.quick-recent{list-style:none;margin:0;padding:0;display:grid}
+.quick-recent li{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--shop-border,#eef1ec)}
+.quick-recent li:last-child{border-bottom:0}
+.quick-recent li>div{display:grid;gap:3px;min-width:0}
+.quick-recent li>div:last-child{justify-items:end;text-align:right;flex:none}
+.quick-recent strong{font-size:13px}
+.quick-recent small{font-size:11px;color:var(--shop-muted,#7a867d);display:flex;align-items:center;gap:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.quick-recent b{font-size:14px}
+@media(max-width:980px){.quick-layout{grid-template-columns:1fr}}
+@media(max-width:560px){.quick-services{grid-template-columns:1fr 1fr}.quick-form .form-actions .button{width:100%}}

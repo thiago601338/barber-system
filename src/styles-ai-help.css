@@ -214,6 +214,9 @@
 .floating-ai-trigger{position:fixed;right:24px;bottom:24px;z-index:75;display:inline-flex;align-items:center;gap:10px;min-height:52px;padding:0 18px;border:1px solid #b9d5fb;border-radius:16px;background:#2867c9;color:#fff;font-size:13px;font-weight:850;box-shadow:0 18px 42px #123c7938;transition:transform .18s,box-shadow .18s,background .18s}
 .floating-ai-trigger:hover{transform:translateY(-2px);background:#1f58af;box-shadow:0 20px 48px #123c7945}
 .floating-ai-trigger.is-minimized{min-width:52px;padding:0 14px}
+.floating-ai-launcher{position:fixed;right:24px;bottom:24px;z-index:75}.floating-ai-launcher .floating-ai-trigger{position:static}
+.floating-ai-dismiss{position:absolute;right:-7px;top:-8px;display:grid;place-items:center;width:24px;height:24px;border:1px solid #cbd9ec;border-radius:50%;background:#fff;color:#456386;box-shadow:0 3px 9px #123c7926}.floating-ai-dismiss:focus-visible{outline:3px solid #5995ec;outline-offset:2px}
+@media(max-width:700px){.floating-ai-launcher{right:14px;bottom:14px}.floating-ai-dismiss{width:22px;height:22px;right:-5px;top:-7px}}
 .floating-ai-layer{position:fixed;right:24px;bottom:24px;z-index:76;pointer-events:none}
 .floating-ai-panel{pointer-events:auto;width:min(420px,calc(100vw - 38px));height:min(620px,calc(100dvh - 42px));display:flex;flex-direction:column;overflow:hidden;border:1px solid #c8daf3;border-radius:20px;background:#fff;box-shadow:0 24px 70px #10284440}
 .floating-ai-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 17px;border-bottom:1px solid #dce7f4;background:linear-gradient(125deg,#f8fbff,#edf4ff)}

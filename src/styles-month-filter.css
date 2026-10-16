@@ -1,0 +1,22 @@
+/* Filtros por mês (mês a mês, intervalos e atalhos) */
+.month-range-filter{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;min-width:0}
+.month-range-filter .segmented{align-self:auto}
+.month-picker{display:inline-flex;align-items:center;gap:4px;min-width:0}
+.month-picker .icon-button{width:34px;height:34px;flex:none}
+.month-picker .icon-button:disabled{opacity:.35;cursor:default}
+.month-picker select,.month-range-custom select{min-height:36px;border:1px solid var(--shop-border,#dce7da);border-radius:10px;background:var(--shop-surface,#fff);color:inherit;padding:6px 10px;font-size:12px;font-weight:700;min-width:0;max-width:100%}
+.month-range-custom{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.month-range-custom label{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#6f7b73;min-width:0}
+.month-quick{display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap}
+.month-quick>span{font-size:11px;color:#4f6354;font-weight:750;width:100%}
+@media(max-width:650px){
+  .month-range-filter{justify-content:flex-start;width:100%}
+  .month-range-filter .segmented{width:100%;display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+  .month-range-filter .segmented button{padding:8px 4px;min-width:0}
+  .month-picker{width:100%}
+  .month-picker select{flex:1}
+  .month-range-custom{width:100%;display:grid;grid-template-columns:1fr 1fr}
+  .month-range-custom label{display:grid;gap:4px}
+}
+.report-quick-ranges .month-quick>span,.partner-club-quick-ranges .month-quick>span{display:none}
+.report-quick-ranges .month-quick,.partner-club-quick-ranges .month-quick{align-items:center}

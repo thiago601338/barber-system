@@ -6,7 +6,7 @@ body{background:#f4f7fc}
 .brand-lockup.light .brand-wordmark{color:#162e54}
 .brand-lockup.light .brand-wordmark b{color:#3477d5}
 .auth-layout:not(.shop-themed){background:#f4f7fc}
-.auth-layout:not(.shop-themed) .auth-brand{background-image:linear-gradient(90deg,#0b1d3bf2 0%,#102d58d9 48%,#16477d69 100%),linear-gradient(0deg,#0a1e3dde,transparent 52%),url('./assets/barbershop-hero.png');background-color:#10264a;color:#fff}
+.auth-layout:not(.shop-themed) .auth-brand{background-image:linear-gradient(90deg,#0b1d3bf2 0%,#102d58d9 48%,#16477d69 100%),linear-gradient(0deg,#0a1e3dde,transparent 52%),url('./assets/barbershop-hero.webp');background-color:#10264a;color:#fff}
 .auth-layout:not(.shop-themed) .auth-brand h1{font-family:'DM Sans',Arial,sans-serif;font-weight:800;font-size:clamp(44px,5vw,76px);letter-spacing:-.065em;line-height:1.03}
 .auth-layout:not(.shop-themed) .auth-brand p{color:#d6e6fa}
 .auth-layout:not(.shop-themed) .auth-deco{border-color:#9fc3f477}
@@ -357,3 +357,6 @@ body{background:#f4f7fc}
 @media(max-width:1150px){.master-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.master-hero{grid-template-columns:1fr;padding:26px;gap:18px}.master-hero-highlight{min-height:0}.master-overview-grid,.master-settings-grid,.master-shop-grid,.master-integration-grid{grid-template-columns:1fr}.master-monthly-chart{overflow-x:auto;grid-template-columns:repeat(12,minmax(36px,1fr))}}
 @media(max-width:520px){.master-page .page-header .page-actions{width:100%}.master-page .page-header .button-row{display:grid;grid-template-columns:1fr 1fr;width:100%}.master-page .page-header .button-row .button{width:100%;padding:9px;font-size:10px}.master-hero{padding:22px}.master-hero h2{font-size:32px}.master-kpi-grid,.master-kpi-grid.three{grid-template-columns:1fr}.master-tabs button{padding:0 12px;font-size:11px}.master-balance{grid-template-columns:1fr}.master-attention{align-items:flex-start;flex-wrap:wrap}.master-attention .button{width:100%}.master-shop-card{padding:17px}.master-shop-metrics{grid-template-columns:1fr 1fr}.master-quote-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.master-pricing-form>.button{width:100%}}
+.onboarding-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:14px 24px 0;padding:14px 18px;border-radius:14px;background:#FFF4E8;border:1px solid #F0CFAE;color:#5C3418;font-size:14px;line-height:1.5;text-decoration:none}
+.onboarding-banner b{flex:none;padding:9px 14px;border-radius:10px;background:#AC492F;color:#fff;font-size:13px}
+@media(max-width:700px){.onboarding-banner{margin:12px 14px 0;flex-direction:column;align-items:flex-start}}

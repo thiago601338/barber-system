@@ -10,7 +10,7 @@ fs.mkdirSync(generated, { recursive: true })
 fs.writeFileSync(path.join(generated, 'package.json'), '{"type":"commonjs"}')
 const compile = childProcess.spawnSync(process.execPath, [
   path.join(project, 'node_modules', 'typescript', 'bin', 'tsc'),
-  '--ignoreConfig', '--target', 'ES2022', '--module', 'commonjs',
+  '--ignoreConfig', '--target', 'ES2022', '--module', 'commonjs', '--rewriteRelativeImportExtensions',
   '--moduleResolution', 'bundler', '--skipLibCheck', '--noCheck',
   '--rootDir', 'netlify/functions', '--outDir', generated,
   'netlify/functions/admin.ts',
@@ -98,4 +98,63 @@ test('master overview uses all invoice pages and separates contracted, received 
   assert.equal(data.monthly.at(-1).month, currentMonth)
   assert.equal(data.monthly.at(-1).paid_cents, 1200000)
   assert.equal(data.monthly.at(-1).failed_cents, 1200)
+})
+
+function pricingEndpointFixture() {
+  const writes = []
+  let providerRequests = 0
+  global.fetch = async () => { providerRequests++; throw new Error('Pricing writes must not contact a payment provider') }
+  core.userFromRequest = async () => ({ id: 'master-1' })
+  core.requirePlatformAdmin = async (_, userId) => assert.equal(userId, 'master-1')
+  core.db = () => ({ from(table) {
+    const query = { record: null }
+    const builder = {
+      update(record) { query.record = record; return builder },
+      eq() { return builder }, select() { return builder },
+      maybeSingle() {
+        writes.push({ table, record: query.record })
+        return Promise.resolve({ data: { id: '11111111-1111-1111-1111-111111111111', ...query.record }, error: null })
+      },
+      then(resolve, reject) {
+        writes.push({ table, record: query.record })
+        return Promise.resolve({ error: null }).then(resolve, reject)
+      },
+    }
+    return builder
+  } })
+  return { writes, providerRequests: () => providerRequests, post(action, input) { return handler(new Request('https://barber-system-yqu5.netlify.app/api/admin/'+action,
+    { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) })) } }
+}
+
+test('master prices reject null, empty and boolean seat prices instead of silently making them free', async () => {
+  const setup = pricingEndpointFixture()
+  for (const value of [null, '', false, '790']) {
+    const response = await setup.post('set-seat-price', { seat_price_cents: value,
+      base_monthly_cents: 2990, monthly_cap_cents: 9690, billing_enabled: true })
+    assert.equal(response.status, 400)
+  }
+  assert.equal(setup.writes.length, 0)
+  for (const value of [0, 790]) {
+    const response = await setup.post('set-seat-price', { seat_price_cents: value,
+      base_monthly_cents: 2990, monthly_cap_cents: 9690, billing_enabled: true })
+    assert.equal(response.status, 200)
+    assert.equal(setup.writes.at(-1).record.seat_price_cents, value)
+  }
+  assert.equal(setup.providerRequests(), 0, 'saving pricing must not generate a payment or checkout')
+})
+
+test('shop price inheritance persists null while explicit free and uncapped choices persist zero', async () => {
+  const setup = pricingEndpointFixture()
+  for (const value of [null, 0]) {
+    const response = await setup.post('set-shop-pricing', {
+      barbershop_id: '11111111-1111-1111-1111-111111111111',
+      base_monthly_cents: value, per_barber_monthly_cents: value, monthly_cap_cents: value,
+    })
+    assert.equal(response.status, 200)
+    const record = setup.writes.at(-1).record
+    assert.equal(record.base_monthly_cents, value)
+    assert.equal(record.per_barber_monthly_cents, value)
+    assert.equal(record.monthly_cap_cents, value)
+  }
+  assert.equal(setup.providerRequests(), 0, 'shop pricing writes only queue later reconciliation')
 })

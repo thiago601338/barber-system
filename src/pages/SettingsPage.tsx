@@ -2,6 +2,7 @@ import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Camera, Check, Copy, CreditCard, MailPlus, ShieldCheck, Trash2 } from 'lucide-react'
 import type { PageProps } from '../App'
 import { TeamAvatar, teamAvatarUrl } from '../TeamAvatar'
+import { CashbarberMigrationPanel } from '../CashbarberMigrationPanel'
 import { validateProductImageChoice, verifyImageSignature } from '../lib/productImages'
 import { authedApi, authedGet, requireSupabase } from '../lib/supabase'
 import { useRows } from '../lib/useRows'
@@ -11,11 +12,12 @@ import { AddButton, DataTable, Field, Modal, Notice, PageHeader, Panel, PrimaryB
 type PermissionKey = ModuleKey
 type InviteResponse = { ok: boolean; invited: boolean; delivery: 'email' | 'manual_link' | 'existing_account'; email_sent: boolean; invite_url?: string }
 const permissionLabels = moduleLabels
-const permissionModules = Object.keys(moduleLabels).filter(key => key !== 'settings' && key !== 'tutorial' && key !== 'dashboard' && key !== 'branding') as PermissionKey[]
+const permissionModules = Object.keys(moduleLabels).filter(key => key !== 'settings' && key !== 'tutorial' && key !== 'barbers' && key !== 'whatsapp' && key !== 'dashboard' && key !== 'branding' && key !== 'profit' && key !== 'quick') as PermissionKey[]
 const imageTypes: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
 
 export function SettingsPage({ identity, role, notify, onRefresh, onGoBranding }: PageProps & { onRefresh: () => Promise<void>; onGoBranding: () => void }) {
   const shop = identity.shop!
+  const [showInactive, setShowInactive] = useState(false)
   const members = useRows('memberships', shop.id)
   const permissions = useRows('module_permissions', shop.id)
   const [shopForm, setShopForm] = useState({ name: shop.name, phone: shop.phone || '', whatsapp: shop.whatsapp || '', pix_key: '' })
@@ -81,6 +83,23 @@ export function SettingsPage({ identity, role, notify, onRefresh, onGoBranding }
     try { await navigator.clipboard.writeText(inviteUrl); notify('Link do convite copiado.') }
     catch { setError('Não foi possível copiar automaticamente. Selecione o link abaixo e copie manualmente.') }
   }
+  async function manageMember(kind: 'deactivate' | 'delete') {
+    if (!selectedBarber) return
+    const name = asText(selectedBarber.display_name)
+    if (!window.confirm(kind === 'delete' ? `Excluir ${name}? Se já tiver atendimentos, fica no histórico (desativado).` : `Desativar ${name}? Ele sai da agenda e perde o acesso ao sistema.`)) return
+    setSaving(true); setError(null)
+    try {
+      if (kind === 'delete') {
+        const result = await authedApi<{ deleted: boolean }>('/api/admin/member-delete', { barbershop_id: shop.id, membership_id: selectedBarber.id })
+        notify(result.deleted ? 'Barbeiro excluído.' : `${name} saiu da equipe, da agenda e dos filtros. Os atendimentos antigos continuam nos relatórios.`)
+      } else {
+        await authedApi('/api/admin/member-update', { barbershop_id: shop.id, membership_id: selectedBarber.id, active: false })
+        notify('Barbeiro desativado.')
+      }
+      setSelectedBarber(null)
+      await members.refresh()
+    } catch (err) { setError(err instanceof Error ? err.message : 'Não foi possível alterar.') } finally { setSaving(false) }
+  }
   async function togglePermission(module: PermissionKey, allowed: boolean) { if (!selectedBarber) return; setSaving(true); setError(null); try { await authedApi('/api/admin/permission', { barbershop_id: shop.id, user_id: selectedBarber.user_id, module, allowed }); await permissions.refresh(); notify(`Acesso a ${permissionLabels[module]} ${allowed ? 'liberado' : 'removido'}.`) } catch (err) { setError(err instanceof Error ? err.message : 'Falha ao alterar permissão.') } finally { setSaving(false) } }
   function selectPhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] || null
@@ -135,7 +154,9 @@ export function SettingsPage({ identity, role, notify, onRefresh, onGoBranding }
     } catch (err) { setError(err instanceof Error ? err.message : 'Não foi possível remover a foto.') }
     finally { setSaving(false) }
   }
-  const barbers = members.rows.filter(row => row.role === 'barber')
+  const barbers = members.rows.filter(row => row.role === 'barber' && row.user_id && row.active)
+  const inactiveMembers = members.rows.filter(row => !row.active)
+  const teamRows = showInactive ? members.rows : members.rows.filter(row => row.active)
   const assigned = (userId: unknown, module: string) => permissions.rows.find(row => row.user_id === userId && row.module === module)?.allowed === true
   return <div className="page-stack settings-page">
     <PageHeader eyebrow="CONTROLE E ACESSO" title="Configurações" description="Informações da barbearia, equipe e permissões por aba e por profissional."/>
@@ -168,15 +189,17 @@ export function SettingsPage({ identity, role, notify, onRefresh, onGoBranding }
         </div>
       </Panel>
     </div>
-    <Panel title="Equipe" subtitle="Profissionais e administradores com acesso por e-mail" action={admin && <AddButton onClick={() => { setInviteUrl(null); setError(null); setInvite(true) }}>Convidar pessoa</AddButton>}>
-      <DataTable rows={members.rows} empty="Nenhum integrante cadastrado" columns={[
+    <Panel title="Equipe" subtitle="Profissionais e administradores com acesso por e-mail" action={admin && <AddButton onClick={() => { setInviteUrl(null); setError(null); setInvite(true) }} data-tour-action="team-invite">Convidar pessoa</AddButton>}>
+      <DataTable rows={teamRows} empty="Nenhum integrante cadastrado" columns={[
         { key: 'display_name', label: 'Integrante', render: row => <div className="person-cell"><TeamAvatar path={row.avatar_path} name={String(row.display_name || 'B')} shopId={shop.id} memberId={row.id}/><strong>{asText(row.display_name)}</strong></div> },
         { key: 'role', label: 'Perfil', render: row => row.role === 'admin' ? 'Administrador' : 'Barbeiro' },
-        { key: 'active', label: 'Status', render: row => <Status value={row.active ? 'active' : 'paused'}/> },
+        { key: 'active', label: 'Status', render: row => !row.user_id && row.import_source === 'cashbarber' ? <span className="status">Histórico importado · sem acesso</span> : <Status value={row.active ? 'active' : 'paused'}/> },
         { key: 'photo', label: 'Foto', render: row => admin ? <button type="button" className="table-action-button" onClick={() => { setPhotoMember(row); setPhotoFile(null); setPhotoPreview(null); setError(null) }}><Camera size={15}/> {row.avatar_path ? 'Trocar' : 'Adicionar'}</button> : null },
-        { key: 'id', label: 'Permissões', render: row => admin && row.role === 'barber' ? <button type="button" className="table-action-button" onClick={() => setSelectedBarber(row)}><ShieldCheck size={15}/> Configurar</button> : null },
+        { key: 'id', label: 'Permissões', render: row => admin && row.role === 'barber' && row.user_id && row.active ? <button type="button" className="table-action-button" onClick={() => setSelectedBarber(row)}><ShieldCheck size={15}/> Configurar</button> : null },
       ]}/>
+      {inactiveMembers.length > 0 && <button type="button" className="table-action-button team-inactive-toggle" onClick={() => setShowInactive(value => !value)}>{showInactive ? 'Ocultar desativados' : `Mostrar desativados (${inactiveMembers.length})`}</button>}
     </Panel>
+    {admin && <CashbarberMigrationPanel shopId={shop.id}/>}
     {admin && <Panel title="Permissões individuais" subtitle="Cada aba pode ser liberada separadamente para cada barbeiro">
       <div className="permission-overview">
         {barbers.length ? barbers.map(row => <button key={row.id} className="permission-person" onClick={() => setSelectedBarber(row)}><TeamAvatar path={row.avatar_path} name={String(row.display_name || 'B')} shopId={shop.id} memberId={row.id}/><span><strong>{asText(row.display_name)}</strong><small>{permissionModules.filter(module => assigned(row.user_id, module)).length} abas liberadas</small></span><ShieldCheck size={18}/></button>) : <p className="muted">Convide um barbeiro para definir seus acessos.</p>}
@@ -187,7 +210,7 @@ export function SettingsPage({ identity, role, notify, onRefresh, onGoBranding }
         <Notice kind="info" text="E-mail não enviado. Compartilhe o link somente com a pessoa convidada. O link é de uso único e tem prazo limitado."/>
         <Field label="Link individual de convite"><input readOnly value={inviteUrl} onFocus={event => event.currentTarget.select()}/></Field>
         <div className="form-actions"><button type="button" className="button outline" onClick={() => void copyInviteUrl()}><Copy size={16}/> Copiar link</button><button type="button" className="button primary" onClick={() => { setInvite(false); setInviteUrl(null) }}>Concluir</button></div>
-      </div> : <form className="form-grid" onSubmit={inviteMember}>
+      </div> : <form className="form-grid" onSubmit={inviteMember} data-tour-form="team-invite">
         <Field label="E-mail"><input type="email" required value={inviteForm.email} onChange={event => setInviteForm({ ...inviteForm, email: event.target.value })}/></Field>
         <Field label="Nome exibido"><input value={inviteForm.display_name} onChange={event => setInviteForm({ ...inviteForm, display_name: event.target.value })}/></Field>
         <Field label="Perfil"><select value={inviteForm.role} onChange={event => setInviteForm({ ...inviteForm, role: event.target.value })}><option value="barber">Barbeiro</option><option value="admin">Administrador</option></select></Field>
@@ -196,7 +219,7 @@ export function SettingsPage({ identity, role, notify, onRefresh, onGoBranding }
       </form>}
     </Modal>}
     {photoMember && <Modal title={`Foto de ${asText(photoMember.display_name)}`} subtitle="Aparece para a equipe e na escolha pública do barbeiro." onClose={closePhoto}>
-      <form className="form-grid" onSubmit={savePhoto}>
+      <form className="form-grid" onSubmit={savePhoto} data-tour-form="barber-photo">
         <div className="team-photo-preview">
           {photoPreview || teamAvatarUrl(photoMember.avatar_path, shop.id, photoMember.id) ? <img src={photoPreview || teamAvatarUrl(photoMember.avatar_path, shop.id, photoMember.id) || undefined} alt={`Foto de ${asText(photoMember.display_name)}`}/> : <TeamAvatar name={String(photoMember.display_name || 'B')}/>}
         </div>
@@ -212,6 +235,7 @@ export function SettingsPage({ identity, role, notify, onRefresh, onGoBranding }
     {selectedBarber && <Modal title={`Acessos de ${asText(selectedBarber.display_name)}`} subtitle="Alterações são salvas no banco e aplicadas pelo controle de acesso." onClose={() => setSelectedBarber(null)}>
       <div className="permission-list">{permissionModules.map(module => { const allowed = assigned(selectedBarber.user_id, module); return <div key={module}><span>{permissionLabels[module]}</span><button className={`permission-toggle ${allowed ? 'on' : ''}`} disabled={saving} onClick={() => void togglePermission(module, !allowed)} aria-label={`${allowed ? 'Remover' : 'Liberar'} ${permissionLabels[module]}`}><span>{allowed && <Check size={13}/>}</span></button></div> })}</div>
       <Notice text={error}/>
+      <div className="form-actions"><button type="button" className="button ghost danger-text" disabled={saving} onClick={() => void manageMember('deactivate')}>Desativar barbeiro</button><button type="button" className="button ghost danger-text" disabled={saving} onClick={() => void manageMember('delete')}><Trash2 size={16}/> Excluir barbeiro</button></div>
     </Modal>}
   </div>
 }

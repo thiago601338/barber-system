@@ -17,7 +17,9 @@ export function validProductImagePath(value: unknown, shopId: string): value is 
 
 export function productImageUrl(value: unknown, shopId: string): string | null {
   if (!validProductImagePath(value, shopId)) return null
-  return requireSupabase().storage.from(productImageBucket).getPublicUrl(value).data.publicUrl
+  const publicUrl=requireSupabase().storage.from(productImageBucket).getPublicUrl(value).data.publicUrl
+  // Only this public product bucket is sent to the image CDN. Private client photos stay private.
+  return import.meta.env.PROD ? `/.netlify/images?url=${encodeURIComponent(publicUrl)}&w=800&q=82` : publicUrl
 }
 
 export function validateProductImageChoice(file: File): void {

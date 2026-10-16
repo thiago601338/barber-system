@@ -1,4 +1,5 @@
-interface ShopRow { id: string; active: boolean; base_monthly_cents?: number; per_barber_monthly_cents?: number | null }
+import { calculatePlatformPrice, type PlatformPricingSettings } from './platformPricing'
+interface ShopRow { id: string; active: boolean; base_monthly_cents?: number | null; per_barber_monthly_cents?: number | null; monthly_cap_cents?: number | null }
 interface MembershipRow { barbershop_id: string; role: string; active: boolean }
 interface SubscriptionRow { barbershop_id: string; status: string; amount_cents: number }
 interface InvoiceRow { period_start: string; status: string; amount_cents: number }
@@ -8,7 +9,7 @@ export interface PlatformOverviewRows {
   memberships: MembershipRow[]
   subscriptions: SubscriptionRow[]
   invoices: InvoiceRow[]
-  settings: { seat_price_cents: number }
+  settings: PlatformPricingSettings
 }
 
 export async function readAllPages<T>(readPage: (from: number, to: number) => Promise<{
@@ -44,9 +45,7 @@ export function summarizePlatformOverview(rows: PlatformOverviewRows, today = ne
     }
   }
   const monthlyPotential = rows.shops.filter(row => row.active).reduce((sum, shop) => {
-    const base = Number(shop.base_monthly_cents || 0)
-    const unit = Number(shop.per_barber_monthly_cents ?? rows.settings.seat_price_cents)
-    return sum + base + (seatsByShop.get(shop.id) || 0) * unit
+    return sum + calculatePlatformPrice(rows.settings, shop, seatsByShop.get(shop.id) || 0).amount_cents
   }, 0)
   let invoicedCents = 0
   let paidCents = 0

@@ -1,12 +1,14 @@
 import { ArrowRight, Check, Compass, Play } from 'lucide-react'
 import type { Identity, ModuleKey, Role } from '../types'
 import { getTourChapters, readFinishedTours, tourStorageKey } from '../tour'
+import type { useTourProgress } from '../lib/useTourProgress'
 
 interface TutorialPageProps {
   identity: Identity
   role: Role
   allowedModules: ModuleKey[]
-  onStart: (chapterIds: string[]) => void
+  onStart: (chapterIds: string[],resume?:boolean) => void
+  progress?: ReturnType<typeof useTourProgress>
 }
 
 const roleTitle: Record<Role, string> = {
@@ -16,17 +18,19 @@ const roleTitle: Record<Role, string> = {
   client: 'Sua barbearia, sem dúvidas.',
 }
 
-export function TutorialPage({ identity, role, allowedModules, onStart }: TutorialPageProps) {
+export function TutorialPage({ identity, role, allowedModules, onStart, progress }: TutorialPageProps) {
   const chapters = getTourChapters(role, allowedModules, Boolean(identity.shop))
   const storageKey = tourStorageKey(identity.user.id, identity.shop?.id, role)
-  const finished = readFinishedTours(storageKey)
+  const finished = progress?.finished || readFinishedTours(storageKey)
   const groups = [...new Set(chapters.map(chapter => chapter.group))]
   return <div className="tour-hub">
     <section className="tour-hub-hero">
-      <div><span className="tour-hub-eyebrow">PASSO A PASSO · GUIA COM ÁUDIO</span><h1>{roleTitle[role]}</h1><p>O pop-up narra cada etapa, destaca onde mexer e só libera o avanço depois de um teste simples dentro da própria aba. Ao terminar, você fica no módulo para continuar praticando.</p></div>
+      <div><span className="tour-hub-eyebrow">PASSO A PASSO · GUIA COM ÁUDIO ELEVENLABS</span><h1>{roleTitle[role]}</h1><p>O pop-up narra cada etapa com voz ElevenLabs, destaca onde mexer e só libera o avanço depois de um teste simples dentro da própria aba. Ao terminar, você fica no módulo para continuar praticando.</p></div>
       <button className="tour-hub-start" onClick={() => onStart(chapters.map(chapter => chapter.id))} disabled={!chapters.length}><Play size={17} fill="currentColor"/> Iniciar tour completo <ArrowRight size={16}/></button>
     </section>
-    <div className="tour-hub-meta"><span><strong>{chapters.length}</strong> {chapters.length === 1 ? 'área disponível' : 'áreas disponíveis'} para o seu perfil</span><span>{finished.filter(id => chapters.some(chapter => chapter.id === id)).length} guias vistos neste dispositivo</span></div>
+    {progress?.run && <div className="tour-hub-resume"><div><strong>Continue de onde parou</strong><p>Seu progresso guarda as etapas do guia. Os campos usados no treino não são armazenados.</p></div><button className="button primary" disabled={progress.loading} onClick={()=>onStart(progress.run!.chapterIds,true)}>Retomar guia <ArrowRight size={16}/></button></div>}
+    {progress?.error&&<p role="status">{progress.error}</p>}
+    <div className="tour-hub-meta"><span><strong>{chapters.length}</strong> {chapters.length === 1 ? 'área disponível' : 'áreas disponíveis'} para o seu perfil</span><span>{finished.filter(id => chapters.some(chapter => chapter.id === id)).length} guias concluídos</span></div>
     {groups.map(group => <section className="tour-hub-group" key={group}><div className="tour-hub-group-heading"><span>{group}</span><i/></div><div className="tour-hub-grid">{chapters.filter(chapter => chapter.group === group).map(chapter => <article className={`tour-hub-card ${finished.includes(chapter.id) ? 'is-finished' : ''}`} key={chapter.id}><div className="tour-hub-card-index">{finished.includes(chapter.id) ? <Check size={22}/> : String(chapters.indexOf(chapter) + 1).padStart(2, '0')}</div><div className="tour-hub-card-copy"><small>{finished.includes(chapter.id) ? 'PODE REVER' : `${chapter.steps.length} ETAPAS`}</small><h2>{chapter.title}</h2><p>{chapter.summary}</p></div><button onClick={() => onStart([chapter.id])} aria-label={`Iniciar guia: ${chapter.title}`} title={finished.includes(chapter.id) ? 'Rever guia' : 'Iniciar guia'}><Compass size={18}/></button></article>)}</div></section>)}
   </div>
 }

@@ -59,13 +59,6 @@ async function status(client: SupabaseClient, user: User, requested: string | nu
   for (const result of [{ error: shopError }, services, members, rules, connection]) if (result.error) throw result.error
   const free = !quote.billing_enabled || quote.amount_cents <= 0
   const paid = free || subscription?.status === 'authorized'
-  // A inscrição cria apenas um rascunho técnico até a assinatura ser aprovada.
-  // O espaço só fica ativo depois da confirmação do Mercado Pago.
-  if (paid && !shop!.active) {
-    const { error: activateError } = await client.from('barbershops').update({ active: true, updated_at: new Date().toISOString() }).eq('id', shopId)
-    if (activateError) throw activateError
-    shop!.active = true
-  }
   return {
     stage: shop!.onboarding_completed_at ? 'done' : paid ? 'setup' : 'payment',
     account, pricing, shop, quote,
@@ -94,9 +87,7 @@ async function createShop(client: SupabaseClient, user: User, input: Payload) {
   const taken = await client.from('barbershops').select('id').eq('slug', slug).maybeSingle()
   if (taken.error) throw taken.error
   if (taken.data) throw new HttpError(409, 'Esse endereço já está em uso. Escolha outro.')
-  // Mantemos o cadastro como rascunho técnico para gerar o checkout. Ele não
-  // aparece no painel nem na página pública até o pagamento ser aprovado.
-  const { data: shop, error } = await client.from('barbershops').insert({ name, slug, whatsapp, phone: whatsapp, address: city, active: false, created_via: 'self_service_pending' }).select('id').single()
+  const { data: shop, error } = await client.from('barbershops').insert({ name, slug, whatsapp, phone: whatsapp, address: city, created_via: 'self_service' }).select('id').single()
   if (error) {
     if (error.code === '23505') throw new HttpError(409, 'Esse endereço já está em uso. Escolha outro.')
     throw error

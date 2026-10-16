@@ -3,14 +3,19 @@ import type { User } from '@supabase/supabase-js'
 import { ArrowLeft, ArrowUpRight, CalendarDays, Camera, Clock3, CreditCard, Gift, Scissors, ShoppingBag, TicketPercent, UserRound } from 'lucide-react'
 import { authedApi, isConfigured, requireSupabase } from '../lib/supabase'
 import { productImageUrl } from '../lib/productImages'
+import { whatsappUrl } from '../lib/whatsapp'
 import { shopClock, shopDateTime, shopToday } from '../lib/shopTime'
 import { TeamAvatar } from '../TeamAvatar'
 import { asText, money, type Row, type Shop } from '../types'
 import { Empty, Field, Loading, Notice, PrimaryButton } from '../ui'
 import { brandStyle, readBrandTheme, safeBrandImage, safeInstagramUrl, ShopBrand } from '../shopBrand'
+import { BookingRules, EligibilityChoice, problemMessage, useBookingEligibility, WaitlistJoin } from './BookingEnhancements'
 import '../styles-products.css'
+import '../styles-public-campaign.css'
 
 function safeLink(url: unknown) { try { const parsed = new URL(String(url)); return ['http:','https:'].includes(parsed.protocol) ? parsed.href : undefined } catch { return undefined } }
+type PublicCampaign = {code:string;name:string;offer_code:string|null}
+function bookingLink(slug:string, coupon?:string){const query=new URLSearchParams();const source=new URLSearchParams(window.location.search);if(source.get('campaign'))query.set('campaign',source.get('campaign')!);if(coupon||source.get('ref'))query.set('ref',coupon||source.get('ref')!);return `/b/${slug}/agendar${query.size?`?${query}`:''}`}
 type PartnerPublicOffer = { id: string; partner_name: string; partner_logo_url?: string | null; title: string; code: string; description?: string | null; terms?: string | null; discount_bps?: number | null; discount_cents?: number | null; service_id?: string | null; starts_on?: string; ends_on?: string }
 type PartnerQuote = { offer_id: string; partner_name: string; title: string; code: string; subtotal_cents: number; discount_cents: number; total_cents: number; terms?: string | null }
 function partnerBenefit(offer: PartnerPublicOffer): string { return offer.discount_bps != null ? `${(Number(offer.discount_bps) / 100).toLocaleString('pt-BR')}% de desconto` : `${money(offer.discount_cents)} de desconto` }
@@ -46,7 +51,7 @@ export function PublicPage() {
       if (shopError || !shopData) { setError(shopError?.message || 'Barbearia não encontrada.'); setBusy(false); return }
       setShop(shopData as Shop)
       const [servicesResult, plansResult, linksResult, barbersResult, productsResult, partnerOffersResult] = await Promise.all([
-        client.from('services').select('id,barbershop_id,name,description,duration_minutes,price_cents,active').eq('barbershop_id', shopData.id).eq('active', true).order('name'),
+        client.from('services').select('id,barbershop_id,name,description,duration_minutes,price_cents,active,requires_subscription').eq('barbershop_id', shopData.id).eq('active', true).order('name'),
         client.from('subscription_plans').select('*').eq('barbershop_id', shopData.id).eq('active', true).order('price_cents'),
         client.from('bio_links').select('*').eq('barbershop_id', shopData.id).eq('active', true).order('position'),
         client.rpc('public_barber_profiles', { p_barbershop_id: shopData.id }),
@@ -77,7 +82,8 @@ export function PublicPage() {
   const activeTheme = readBrandTheme(shop.brand_theme)
   const instagramUrl = safeInstagramUrl(shop.instagram_url)
   const logo = safeBrandImage(activeTheme?.logoUrl || shop.logo_url)
-  return <div className={`public-layout ${activeTheme ? 'shop-themed' : ''}`} data-shop-theme={activeTheme ? '' : undefined} style={brandStyle(activeTheme)}><header className="public-header"><a href={`/b/${slug}`} className="client-brand"><ShopBrand shop={shop} compact/></a><div>{instagramUrl && <a href={instagramUrl} target="_blank" rel="noreferrer" aria-label="Instagram"><Camera size={19}/></a>}<a className="button outline" href={`/?shop=${encodeURIComponent(shop.slug)}`}>Minha conta</a></div></header>{bookingPage ? <PublicBooking key={shop.id} shop={shop} user={user} services={services} plans={plans} barbers={barbers} error={error}/> : <div className="public-bio"><div className="public-hero"><div className="public-emblem">{logo ? <img src={logo} alt={`Logo ${shop.name}`}/> : shop.name.slice(0,1)}</div><div className="eyebrow">BEM-VINDO À BARBEARIA</div><h1>{shop.name}</h1><p>{activeTheme?.tagline || shop.bio_description || 'Escolha seu próximo horário, conheça nossos serviços e fique por dentro dos planos.'}</p></div><div className="public-links"><a href={`/b/${slug}/agendar`} className="public-link primary">Agendar procedimento <ArrowUpRight size={19}/></a>{partnerOffers.length > 0 && <a href="#parceiros" className="public-link">Clube do Parceiro <ArrowUpRight size={19}/></a>}{products.length > 0 && <a href="#produtos" className="public-link">Ver produtos <ArrowUpRight size={19}/></a>}{plans.length > 0 && <a href="#planos" className="public-link">Ver planos e fazer assinatura <ArrowUpRight size={19}/></a>}{links.map(link => { const url = safeLink(link.url); return url ? <a key={link.id} href={url} target="_blank" rel="noreferrer" className="public-link">{asText(link.label)} <ArrowUpRight size={19}/></a> : null })}{shop.whatsapp && <a href={`https://wa.me/${shop.whatsapp.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="public-link">Entrar em contato <ArrowUpRight size={19}/></a>}</div><PublicWelcome shop={shop} instagramUrl={instagramUrl}/>{partnerOffersError && <section className="public-section"><Notice text={partnerOffersError}/></section>}{!partnerOffersError && <PublicPartnerOffers shop={shop} offers={partnerOffers}/>} {services.length > 0 && <section className="public-section"><div className="public-section-title"><span>SERVIÇOS</span><h2>Cuide do seu estilo</h2></div><div className="public-service-grid">{services.slice(0, 6).map(service => <div key={service.id} className="public-service"><div className="service-icon"><Scissors size={19}/></div><h3>{asText(service.name)}</h3><p>{asText(service.description)}</p><div><span><Clock3 size={15}/>{asText(service.duration_minutes)} min</span><strong>{money(service.price_cents)}</strong></div></div>)}</div></section>}{products.length > 0 && <PublicProducts shop={shop} products={products}/>} {plans.length > 0 && <PublicPlans shop={shop} plans={plans} user={user}/>}</div>}<footer className="public-footer">{shop.name} · Powered by Barber System</footer></div>
+  const contactUrl = whatsappUrl(shop.whatsapp, '')
+  return <div className={`public-layout ${activeTheme ? 'shop-themed' : ''}`} data-shop-theme={activeTheme ? '' : undefined} style={brandStyle(activeTheme)}><header className="public-header"><a href={`/b/${slug}`} className="client-brand"><ShopBrand shop={shop} compact/></a><div>{instagramUrl && <a href={instagramUrl} target="_blank" rel="noreferrer" aria-label="Instagram"><Camera size={19}/></a>}<a className="button outline" href={`/?shop=${encodeURIComponent(shop.slug)}`}>Minha conta</a></div></header>{bookingPage ? <PublicBooking key={shop.id} shop={shop} user={user} services={services} plans={plans} barbers={barbers} error={error}/> : <div className="public-bio"><div className="public-hero"><div className="public-emblem">{logo ? <img src={logo} alt={`Logo ${shop.name}`}/> : shop.name.slice(0,1)}</div><div className="eyebrow">BEM-VINDO À BARBEARIA</div><h1>{shop.name}</h1><p>{activeTheme?.tagline || shop.bio_description || 'Escolha seu próximo horário, conheça nossos serviços e fique por dentro dos planos.'}</p></div><div className="public-links"><a href={bookingLink(slug)} className="public-link primary">Agendar procedimento <ArrowUpRight size={19}/></a>{partnerOffers.length > 0 && <a href="#parceiros" className="public-link">Clube do Parceiro <ArrowUpRight size={19}/></a>}{products.length > 0 && <a href="#produtos" className="public-link">Ver produtos <ArrowUpRight size={19}/></a>}{plans.length > 0 && <a href="#planos" className="public-link">Ver planos e fazer assinatura <ArrowUpRight size={19}/></a>}{links.map(link => { const url = safeLink(link.url); return url ? <a key={link.id} href={url} target="_blank" rel="noreferrer" className="public-link">{asText(link.label)} <ArrowUpRight size={19}/></a> : null })}{contactUrl && <a href={contactUrl} target="_blank" rel="noreferrer" className="public-link">Entrar em contato <ArrowUpRight size={19}/></a>}</div><PublicWelcome shop={shop} instagramUrl={instagramUrl}/>{!partnerOffersError && partnerOffers.length > 0 && <PublicPartnerOffers shop={shop} offers={partnerOffers}/>} {services.length > 0 && <section className="public-section"><div className="public-section-title"><span>SERVIÇOS</span><h2>Cuide do seu estilo</h2></div><div className="public-service-grid">{services.slice(0, 6).map(service => <div key={service.id} className="public-service"><div className="service-icon"><Scissors size={19}/></div><h3>{asText(service.name)}</h3><p>{asText(service.description)}</p><div><span><Clock3 size={15}/>{asText(service.duration_minutes)} min</span><strong>{money(service.price_cents)}</strong></div></div>)}</div></section>}{products.length > 0 && <PublicProducts shop={shop} products={products}/>} {plans.length > 0 && <PublicPlans shop={shop} plans={plans} user={user}/>}</div>}<footer className="public-footer">{shop.name} · Powered by Barber System</footer></div>
 }
 
 function PublicWelcome({ shop, instagramUrl }: { shop: Shop; instagramUrl: string | null }) {
@@ -88,7 +94,7 @@ function PublicWelcome({ shop, instagramUrl }: { shop: Shop; instagramUrl: strin
       <p>Escolha como quer começar sua experiência em {shop.name}.</p>
     </div>
     <div className="public-discover-grid">
-      <a href={`/b/${shop.slug}/agendar`} className="public-discover-card">
+      <a href={bookingLink(shop.slug)} className="public-discover-card">
         <span className="public-discover-card-top"><span>01 / AGENDAMENTO</span><Scissors size={24} strokeWidth={1.45}/></span>
         <span className="public-discover-card-bottom"><strong>Encontre seu horário</strong><small>Veja os procedimentos, valores e profissionais disponíveis.</small></span>
       </a>
@@ -106,7 +112,7 @@ function PublicWelcome({ shop, instagramUrl }: { shop: Shop; instagramUrl: strin
 
 function PublicPartnerOffers({ shop, offers }: { shop: Shop; offers: PartnerPublicOffer[] }) {
   const [showAll, setShowAll] = useState(false)
-  if (!offers.length) return <section className="public-section public-partner-section" id="parceiros"><div className="public-section-title"><span>CLUBE DO PARCEIRO</span><h2>Benefícios em breve</h2></div><div className="public-partner-empty"><Gift size={24}/><p>A barbearia ainda não publicou ofertas de parceiros. Volte em breve para conferir.</p></div></section>
+  if (!offers.length) return null
   return <section className="public-section public-partner-section" id="parceiros">
     <div className="public-section-title"><span>CLUBE DO PARCEIRO</span><h2>Benefícios para a sua próxima visita</h2><p>Use o link ou o código de uma oferta ao agendar. O valor final aparece antes de confirmar o horário.</p></div>
     <div className="public-partner-grid">{(showAll ? offers : offers.slice(0, 6)).map(offer => {
@@ -117,7 +123,7 @@ function PublicPartnerOffers({ shop, offers }: { shop: Shop; offers: PartnerPubl
         <div className="public-partner-value"><TicketPercent size={17}/><strong>{partnerBenefit(offer)}</strong></div>
         <div className="public-partner-code"><span>Código</span><strong>{offer.code}</strong></div>
         {offer.terms && <small className="public-partner-terms">{offer.terms}</small>}
-        <a className="button outline" href={`/b/${shop.slug}/agendar?ref=${encodeURIComponent(offer.code)}`}>Agendar com benefício <ArrowUpRight size={16}/></a>
+        <a className="button outline" href={bookingLink(shop.slug,offer.code)}>Agendar com benefício <ArrowUpRight size={16}/></a>
       </article>
     })}</div>
     {offers.length > 6 && !showAll && <button type="button" className="button outline public-partner-more" onClick={() => setShowAll(true)}>Ver todas as {offers.length} ofertas</button>}
@@ -133,7 +139,7 @@ function BookingCoupon({ code, onCodeChange, onApply, onRemove, quote, error, bu
 }
 
 function PublicProducts({ shop, products }: { shop: Shop; products: Row[] }) {
-  const whatsapp = shop.whatsapp?.replace(/\D/g, '')
+  const whatsapp = whatsappUrl(shop.whatsapp, '')
   return <section className="public-section" id="produtos">
     <div className="public-section-title"><span>PRODUTOS</span><h2>Seleção da barbearia</h2></div>
     <div className="public-service-grid">{products.map(product => {
@@ -143,7 +149,7 @@ function PublicProducts({ shop, products }: { shop: Shop; products: Row[] }) {
         <h3>{asText(product.name)}</h3>
         <p>{asText(product.description)}</p>
         <div><span>{product.in_stock ? 'Disponível' : 'Indisponível no momento'}</span><strong>{money(product.price_cents)}</strong></div>
-        {Boolean(product.in_stock) && whatsapp && <a className="button outline" target="_blank" rel="noreferrer" href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Olá! Tenho interesse no produto ${asText(product.name)} da ${shop.name}.`)}`}>Pedir pelo WhatsApp</a>}
+        {Boolean(product.in_stock) && whatsapp && <a className="button outline" target="_blank" rel="noreferrer" href={whatsappUrl(shop.whatsapp, `Olá! Tenho interesse no produto ${asText(product.name)} da ${shop.name}.`) || undefined}>Pedir pelo WhatsApp</a>}
       </div>
     })}</div>
     <p className="public-hint">Consulte a disponibilidade e combine a compra diretamente com a barbearia.</p>
@@ -177,7 +183,7 @@ function PublicPlans({ shop, plans, user }: { shop: Shop; plans: Row[]; user: Us
   return <section className="public-section" id="planos"><div className="public-section-title"><span>ASSINATURAS</span><h2>Mais vantagens para você</h2></div>{user && <div className="form-row public-plan-identity"><Field label="Seu nome completo"><input value={name} onChange={event => setName(event.target.value)} placeholder="Usado se esta for sua primeira visita"/></Field><Field label="Telefone"><input value={phone} onChange={event => setPhone(event.target.value)}/></Field></div>}<Notice text={error}/><div className="public-service-grid">{plans.map(plan => <div key={plan.id} className="public-service plan"><div className="service-icon"><CreditCard size={19}/></div><h3>{asText(plan.name)}</h3><p>{asText(plan.description)}</p><div><span>{String(plan.visits_per_cycle)} usos por ciclo</span><strong>{money(plan.price_cents)}</strong></div>{user ? <button className="button outline" disabled={busyPlan !== null} onClick={() => void subscribe(plan.id)}>{busyPlan === plan.id ? 'Abrindo pagamento...' : 'Fazer assinatura'}</button> : <a className="button outline" href={`/?shop=${encodeURIComponent(shop.slug)}&return=${encodeURIComponent(`/b/${shop.slug}#planos`)}`}>Entrar para assinar</a>}</div>)}</div><p className="public-hint">A assinatura só fica ativa após confirmação do pagamento pelo Mercado Pago. Os meios disponíveis aparecem no checkout.</p></section>
 }
 
-function PublicBooking({ shop, user, services, plans, barbers, error: initialError }: { shop: Shop; user: User | null; services: Row[]; plans: Row[]; barbers: Row[]; error: string | null }) {
+function PublicBooking({ shop, user, services, barbers, error: initialError }: { shop: Shop; user: User | null; services: Row[]; plans: Row[]; barbers: Row[]; error: string | null }) {
   const timezone = shop.timezone || 'America/Sao_Paulo'
   const [selectedServices, setSelectedServices] = useState<string[]>([])
   const [barberId, setBarberId] = useState('')
@@ -190,10 +196,12 @@ function PublicBooking({ shop, user, services, plans, barbers, error: initialErr
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(initialError)
   const [confirmed, setConfirmed] = useState<string | null>(null)
-  const [subscriptions, setSubscriptions] = useState<Row[]>([])
-  const [coverage, setCoverage] = useState<{ plan_id: string; service_id: string }[]>([])
   const [subscriptionId, setSubscriptionId] = useState('')
   const [couponCode, setCouponCode] = useState(() => (new URLSearchParams(window.location.search).get('ref') || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 24))
+  const [campaignCode,setCampaignCode]=useState(()=>new URLSearchParams(window.location.search).get('campaign')?.trim().toLowerCase()||'')
+  const [campaign,setCampaign]=useState<PublicCampaign|null>(null),[campaignLoading,setCampaignLoading]=useState(false),[campaignError,setCampaignError]=useState<string|null>(null)
+  useEffect(()=>{let cancelled=false;setCampaign(null);setCampaignError(null);setCampaignLoading(false);if(!campaignCode)return;if(!/^[a-z0-9][a-z0-9_-]{2,59}$/.test(campaignCode)){setCampaignError('O link da campanha é inválido. Remova a campanha para continuar.');return}setCampaignLoading(true);void(async()=>{try{const r=await requireSupabase().rpc('public_campaign_lookup',{p_shop:shop.id,p_code:campaignCode});if(r.error)throw r.error;if(!cancelled){if(!r.data)setCampaignError('Esta campanha não está mais disponível. Remova a campanha para continuar.');else {const value=r.data as PublicCampaign;setCampaign(value);if(value.offer_code)setCouponCode(current=>current||value.offer_code!.toUpperCase())}}}catch{if(!cancelled)setCampaignError('Não foi possível conferir a campanha. Remova a campanha para continuar ou recarregue a página.')}finally{if(!cancelled)setCampaignLoading(false)}})();return()=>{cancelled=true}},[shop.id,campaignCode])
+  function removeCampaign(){setCampaignCode('');setCampaign(null);setCampaignError(null);setCampaignLoading(false);const url=new URL(window.location.href);url.searchParams.delete('campaign');window.history.replaceState({},'',`${url.pathname}${url.search}${url.hash}`)}
   const [quote, setQuote] = useState<PartnerQuote | null>(null)
   const [quoteError, setQuoteError] = useState<string | null>(null)
   const [quoteBusy, setQuoteBusy] = useState(false)
@@ -201,27 +209,33 @@ function PublicBooking({ shop, user, services, plans, barbers, error: initialErr
   const [confirmedBenefit, setConfirmedBenefit] = useState<{ discount_cents: number; partner_name: string } | null>(null)
   const quoteRequestId = useRef(0)
   useEffect(() => {
-    if (!user) return
     let cancelled = false
-    async function loadPlans() {
-      const client = requireSupabase()
-      const own = await client.from('clients').select('id').eq('barbershop_id', shop.id).eq('user_id', user!.id).maybeSingle()
-      if (own.error) { if (!cancelled) setError(own.error.message); return }
-      if (!own.data) return
-      if (!cancelled) setClientId(own.data.id)
-      const [subResult, coverageResult] = await Promise.all([
-        client.from('subscriptions').select('*').eq('barbershop_id', shop.id).eq('client_id', own.data.id).eq('status', 'active'),
-        client.from('subscription_plan_services').select('plan_id,service_id').eq('barbershop_id', shop.id),
-      ])
-      if (cancelled) return
-      if (subResult.error || coverageResult.error) setError(subResult.error?.message || coverageResult.error?.message || null)
-      else { setSubscriptions((subResult.data ?? []) as Row[]); setCoverage((coverageResult.data ?? []) as { plan_id: string; service_id: string }[]) }
-    }
-    void loadPlans()
+    setClientId(null); setSubscriptionId('')
+    if (!user) return
+    void (async () => {
+      try {
+        const own = await requireSupabase().from('clients').select('id,full_name,phone').eq('barbershop_id', shop.id).eq('user_id', user.id).maybeSingle()
+        if (own.error) throw own.error
+        if (!cancelled && own.data) { setClientId(own.data.id); setFullName(String(own.data.full_name || '')); setPhone(String(own.data.phone || '')) }
+      } catch (problem) { if (!cancelled) setError(problem && typeof problem === 'object' && 'message' in problem ? String(problem.message) : 'Não foi possível consultar seus dados.') }
+    })()
     return () => { cancelled = true }
   }, [shop.id, user])
-  const usableSubscriptions = subscriptions.filter(sub => selectedServices.length > 0 && selectedServices.every(serviceId => coverage.some(item => item.plan_id === sub.plan_id && item.service_id === serviceId)))
-  const bookingSubscriptionId = usableSubscriptions.some(sub => sub.id === subscriptionId) ? subscriptionId : null
+  const eligibility = useBookingEligibility(shop.id, clientId, selectedServices, slot)
+  const bookingSubscriptionId = eligibility.value?.subscriptions.some(sub => sub.id === subscriptionId) ? subscriptionId : null
+  const requiresSubscription = services.some(s => selectedServices.includes(s.id) && s.requires_subscription) || Boolean(eligibility.value?.requires_subscription)
+  async function ensureClient(): Promise<string> {
+    if (!user) throw new Error('Entre na sua conta para continuar.')
+    if (clientId) return clientId
+    const client = requireSupabase()
+    const existing = await client.from('clients').select('id').eq('barbershop_id', shop.id).eq('user_id', user.id).maybeSingle()
+    if (existing.error) throw existing.error
+    if (existing.data) { setClientId(existing.data.id); return existing.data.id }
+    if (!fullName.trim()) throw new Error('Informe seu nome para continuar.')
+    const inserted = await client.from('clients').insert({ barbershop_id: shop.id, user_id: user.id, full_name: fullName.trim(), phone: phone.trim() || null, email: user.email || null }).select('id').single()
+    if (inserted.error) throw inserted.error
+    setClientId(inserted.data.id); return inserted.data.id
+  }
   useEffect(() => {
     ++quoteRequestId.current
     setQuote(null)
@@ -260,39 +274,36 @@ function PublicBooking({ shop, user, services, plans, barbers, error: initialErr
     window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
   }
   useEffect(() => {
-    if (!selectedServices.length || !barberId || !day) { setSlots([]); setSlot(''); return }
+    setSlots([]); setSlot(''); setLoadingSlots(false)
+    if (!selectedServices.length || !barberId || !day) return
     let cancelled = false
-    async function load() { setLoadingSlots(true); setSlot(''); const { data, error } = await requireSupabase().rpc('available_slots', { p_barbershop_id: shop.id, p_barber_membership_id: barberId, p_service_ids: selectedServices, p_day: day }); if (!cancelled) { if (error) { setError(error.message); setSlots([]) } else setSlots((data ?? []) as { starts_at: string; ends_at: string }[]); setLoadingSlots(false) } }
+    async function load() {
+      setLoadingSlots(true); setError(null)
+      try {
+        const { data, error: queryError } = await requireSupabase().rpc('available_slots', { p_barbershop_id: shop.id, p_barber_membership_id: barberId, p_service_ids: selectedServices, p_day: day })
+        if (queryError) throw queryError
+        if (!cancelled) setSlots((data ?? []) as { starts_at: string; ends_at: string }[])
+      } catch (problem) {
+        if (!cancelled) setError(problem instanceof Error ? problem.message : String((problem as { message?: string })?.message || 'Não foi possível consultar os horários.'))
+      } finally { if (!cancelled) setLoadingSlots(false) }
+    }
     void load(); return () => { cancelled = true }
   }, [shop.id, barberId, selectedServices.join(','), day])
   async function book(event: FormEvent) {
     event.preventDefault(); if (!user || !slot) return
+    if(campaignLoading||campaignError){setError(campaignError||'Aguarde a conferência da campanha.');return}
+    if (eligibility.loading || eligibility.error || requiresSubscription && !bookingSubscriptionId) { setError(eligibility.error || 'Esse serviço exige uma assinatura elegível. Selecione o plano após escolher o horário.'); return }
     if (couponCode.trim() && bookingSubscriptionId) { setError('Cupom e assinatura não podem ser usados juntos. Remova o código ou escolha “Sem assinatura”.'); return }
     if (couponCode.trim() && !quote) { setError('Aplique o código para conferir o desconto antes de confirmar.'); return }
     setBusy(true); setError(null)
     try {
       const client = requireSupabase()
-      const existing = await client.from('clients').select('id').eq('barbershop_id', shop.id).eq('user_id', user.id).maybeSingle()
-      if (existing.error) throw existing.error
-      let clientId = existing.data?.id
-      if (!clientId) {
-        if (!fullName.trim()) throw new Error('Informe seu nome para agendar.')
-        const inserted = await client.from('clients').insert({ barbershop_id: shop.id, user_id: user.id, full_name: fullName.trim(), phone: phone.trim() || null, email: user.email || null }).select('id').single()
-        if (inserted.error) throw inserted.error
-        clientId = inserted.data.id
-        setClientId(clientId)
-      }
-      if (quote) {
-        const result = await client.rpc('book_partner_appointment', { p_barbershop_id: shop.id, p_client_id: clientId, p_barber_membership_id: barberId, p_service_ids: selectedServices, p_starts_at: slot, p_code: quote.code, p_expected_subtotal_cents: quote.subtotal_cents, p_expected_discount_cents: quote.discount_cents, p_expected_total_cents: quote.total_cents })
-        if (result.error) throw result.error
-        const saved = result.data as { appointment_id: string; discount_cents: number; partner_name: string }
-        setConfirmed(String(saved.appointment_id))
-        setConfirmedBenefit({ discount_cents: Number(saved.discount_cents), partner_name: String(saved.partner_name) })
-      } else {
-        const result = await client.rpc('book_appointment', { p_barbershop_id: shop.id, p_client_id: clientId, p_barber_membership_id: barberId, p_service_ids: selectedServices, p_starts_at: slot, p_subscription_id: bookingSubscriptionId })
-        if (result.error) throw result.error
-        setConfirmed(String(result.data))
-      }
+      const clientId = await ensureClient()
+      const result=await client.rpc('book_attributed_appointment',{p_barbershop_id:shop.id,p_client_id:clientId,p_barber_membership_id:barberId,p_service_ids:selectedServices,p_starts_at:slot,p_subscription_id:bookingSubscriptionId,p_campaign_code:campaignCode||null,p_coupon_code:quote?.code||null,p_expected_subtotal_cents:quote?.subtotal_cents??null,p_expected_discount_cents:quote?.discount_cents??null,p_expected_total_cents:quote?.total_cents??null})
+      if(result.error)throw result.error
+      const saved=result.data as {appointment_id:string;discount_cents?:number;partner_name?:string}
+      setConfirmed(String(saved.appointment_id))
+      if(quote)setConfirmedBenefit({discount_cents:Number(saved.discount_cents),partner_name:String(saved.partner_name)})
     } catch (err) {
       if (err && typeof err === 'object' && 'code' in err && err.code === 'P2001') {
         ++quoteRequestId.current
@@ -301,13 +312,13 @@ function PublicBooking({ shop, user, services, plans, barbers, error: initialErr
         setError('O valor mudou. Confira o novo benefício antes de confirmar.')
         return
       }
-      setError(err instanceof Error ? err.message : 'Não foi possível confirmar o agendamento.')
+      setError(problemMessage(err,'Não foi possível confirmar o agendamento.'))
     }
     finally { setBusy(false) }
   }
   if (!services.length || !barbers.length) {
     const instagramUrl = safeInstagramUrl(shop.instagram_url)
-    const whatsapp = shop.whatsapp?.replace(/\D/g, '')
+    const whatsapp = whatsappUrl(shop.whatsapp, '')
     return <main className="public-booking public-booking-empty">
       <a href={`/b/${shop.slug}`} className="back-button"><ArrowLeft size={17}/> Voltar para {shop.name}</a>
       <div className="public-booking-empty-card">
@@ -316,7 +327,7 @@ function PublicBooking({ shop, user, services, plans, barbers, error: initialErr
         <h1>A agenda online está chegando.</h1>
         <p>Os horários de {shop.name} ainda não estão disponíveis por aqui. Acompanhe os canais da barbearia para combinar sua próxima visita.</p>
         <div className="public-booking-empty-actions">
-          {whatsapp && <a className="button primary" href={`https://wa.me/${whatsapp}`} target="_blank" rel="noreferrer">Conversar no WhatsApp <ArrowUpRight size={17}/></a>}
+          {whatsapp && <a className="button primary" href={whatsapp} target="_blank" rel="noreferrer">Conversar no WhatsApp <ArrowUpRight size={17}/></a>}
           {instagramUrl && <a className="button outline" href={instagramUrl} target="_blank" rel="noreferrer">Visitar Instagram <ArrowUpRight size={17}/></a>}
         </div>
       </div>
@@ -325,5 +336,5 @@ function PublicBooking({ shop, user, services, plans, barbers, error: initialErr
   if (confirmed) return <main className="public-booking confirmation"><div className="confirm-icon"><CalendarDays size={34}/></div><h1>Agendamento registrado</h1><p>Seu horário em {shop.name} foi criado para {shopDateTime(slot, timezone)}.</p>{confirmedBenefit && <div className="public-confirm-benefit"><Gift size={18}/><span>Benefício de {confirmedBenefit.partner_name}: {money(confirmedBenefit.discount_cents)} de desconto na reserva.</span></div>}<small>Referência: {confirmed}</small><a className="button primary" href={`/?shop=${encodeURIComponent(shop.slug)}`}>Acompanhar na minha conta</a></main>
   const listedTotal = services.filter(s => selectedServices.includes(s.id)).reduce((sum,s) => sum + Number(s.price_cents || 0),0)
   const payableTotal = quote ? quote.total_cents : bookingSubscriptionId ? 0 : listedTotal
-  return <main className="public-booking"><a href={`/b/${shop.slug}`} className="back-button"><ArrowLeft size={17}/> Voltar para a página da barbearia</a><div className="public-section-title"><span>AGENDAMENTO ONLINE</span><h1>Escolha seu próximo horário</h1><p>Selecione os procedimentos, o profissional e um horário disponível.</p></div><form onSubmit={book} className="public-booking-form"><section><h2>1. Procedimentos</h2><div className="choice-grid">{services.length ? services.map(service => <label key={service.id} className={`choice-card ${selectedServices.includes(service.id) ? 'selected' : ''}`}><input type="checkbox" checked={selectedServices.includes(service.id)} onChange={e => setSelectedServices(e.target.checked ? [...selectedServices,service.id] : selectedServices.filter(id => id !== service.id))}/><span><strong>{asText(service.name)}</strong><small>{String(service.duration_minutes)} min · {money(service.price_cents)}</small></span></label>) : <Empty title="Sem serviços disponíveis" text="Entre em contato com a barbearia para agendar."/>}</div></section><section><h2>2. Profissional e data</h2><div className="form-row"><div className="barber-choice-field"><span>Profissional</span><div className="barber-choice-grid" role="radiogroup" aria-label="Escolha o profissional">{barbers.map(barber => <label key={barber.id} className={`barber-choice ${barberId === barber.id ? 'selected' : ''}`}><input type="radio" name="barber" required value={barber.id} checked={barberId === barber.id} onChange={() => setBarberId(barber.id)}/><TeamAvatar path={barber.avatar_path} name={String(barber.display_name || 'B')} shopId={shop.id} memberId={barber.id}/><strong>{asText(barber.display_name)}</strong><span className="barber-choice-check" aria-hidden="true"/></label>)}</div></div><Field label="Dia"><input type="date" min={shopToday(timezone)} required value={day} onChange={e => setDay(e.target.value)}/></Field></div></section><section><h2>3. Horário disponível</h2><div className="slot-grid">{loadingSlots ? <Loading text="Consultando horários..."/> : slots.length ? slots.map(item => <button type="button" key={item.starts_at} className={`slot ${slot === item.starts_at ? 'selected' : ''}`} onClick={() => setSlot(item.starts_at)}>{shopClock(item.starts_at, timezone)}</button>) : <p className="muted">{barberId && selectedServices.length ? 'Não há horários livres nesta data.' : 'Escolha serviço, profissional e data.'}</p>}</div></section>{user ? <section><h2>4. Seus dados</h2><p className="muted">A reserva será vinculada ao e-mail {user.email}.</p><div className="form-row"><Field label="Nome completo"><input required value={fullName} onChange={e => setFullName(e.target.value)}/></Field><Field label="Telefone"><input value={phone} onChange={e => setPhone(e.target.value)}/></Field></div></section> : <section><h2>4. Entre para confirmar</h2><p>É necessário entrar ou criar uma conta de cliente para acompanhar seus agendamentos.</p><a className="button outline" href={`/?shop=${encodeURIComponent(shop.slug)}&return=${encodeURIComponent(`/b/${shop.slug}/agendar${couponCode ? `?ref=${encodeURIComponent(couponCode)}` : ""}`)}`}>Entrar ou criar conta</a></section>}{usableSubscriptions.length > 0 && <section><h2>Usar assinatura</h2><Field label="Plano ativo"><select value={subscriptionId} onChange={event => setSubscriptionId(event.target.value)}><option value="">Sem assinatura</option>{usableSubscriptions.map(sub => <option key={sub.id} value={sub.id}>{asText(plans.find(plan => plan.id === sub.plan_id)?.name)}</option>)}</select></Field><p className="muted">O uso será reservado para este atendimento, conforme a cobertura e o saldo do plano.</p></section>}{user && <BookingCoupon code={couponCode} onCodeChange={value => { ++quoteRequestId.current; setCouponCode(value); setQuote(null); setQuoteError(null) }} onApply={() => void applyCoupon()} onRemove={removeCoupon} quote={quote} error={quoteError} busy={quoteBusy} disabled={Boolean(bookingSubscriptionId)}/>}<div className="booking-total"><span>{bookingSubscriptionId ? "Coberto pela assinatura" : "Total previsto"}</span><strong>{money(payableTotal)}</strong></div><Notice text={error}/>{user && <PrimaryButton type="submit" disabled={busy || quoteBusy || !slot || !selectedServices.length || Boolean(couponCode.trim() && (!quote || bookingSubscriptionId))}>{busy ? 'Confirmando...' : 'Confirmar agendamento'}</PrimaryButton>}</form></main>
+  return <main className="public-booking"><a href={`/b/${shop.slug}`} className="back-button"><ArrowLeft size={17}/> Voltar para a página da barbearia</a><div className="public-section-title"><span>AGENDAMENTO ONLINE</span><h1>Escolha seu próximo horário</h1><p>Selecione os procedimentos, o profissional e um horário disponível.</p></div><form onSubmit={book} className="public-booking-form">{campaignCode&&<section className="public-campaign-card" aria-live="polite"><div><span>VOCÊ CHEGOU POR UMA CAMPANHA</span>{campaignLoading?<p>Conferindo a campanha...</p>:campaign?<><h2>{campaign.name}</h2><p>{campaign.offer_code?'Confira o código do benefício abaixo antes de confirmar.':'Sua reserva poderá ser associada a esta campanha.'}</p></>:<Notice text={campaignError}/>}</div><button type="button" className="button ghost" onClick={removeCampaign}>Remover campanha</button></section>}<section><h2>1. Procedimentos</h2><div className="choice-grid">{services.length ? services.map(service => <label key={service.id} className={`choice-card ${selectedServices.includes(service.id) ? 'selected' : ''}`}><input type="checkbox" checked={selectedServices.includes(service.id)} onChange={e => setSelectedServices(e.target.checked ? [...selectedServices,service.id] : selectedServices.filter(id => id !== service.id))}/><span><strong>{asText(service.name)}</strong><small>{String(service.duration_minutes)} min · {service.requires_subscription ? 'Exclusivo de assinatura' : money(service.price_cents)}</small></span></label>) : <Empty title="Sem serviços disponíveis" text="Entre em contato com a barbearia para agendar."/>}</div></section><section><h2>2. Profissional e data</h2><div className="form-row"><div className="barber-choice-field"><span>Profissional</span><div className="barber-choice-grid" role="radiogroup" aria-label="Escolha o profissional">{barbers.map(barber => <label key={barber.id} className={`barber-choice ${barberId === barber.id ? 'selected' : ''}`}><input type="radio" name="barber" required value={barber.id} checked={barberId === barber.id} onChange={() => setBarberId(barber.id)}/><TeamAvatar path={barber.avatar_path} name={String(barber.display_name || 'B')} shopId={shop.id} memberId={barber.id}/><strong>{asText(barber.display_name)}</strong><span className="barber-choice-check" aria-hidden="true"/></label>)}</div></div><Field label="Dia"><input type="date" min={shopToday(timezone)} required value={day} onChange={e => setDay(e.target.value)}/></Field></div></section><section><h2>3. Horário disponível</h2><div className="slot-grid">{loadingSlots ? <Loading text="Consultando horários..."/> : slots.length ? slots.map(item => <button type="button" key={item.starts_at} className={`slot ${slot === item.starts_at ? 'selected' : ''}`} onClick={() => setSlot(item.starts_at)}>{shopClock(item.starts_at, timezone)}</button>) : <p className="muted">{barberId && selectedServices.length ? 'Não há horários livres nesta data.' : 'Escolha serviço, profissional e data.'}</p>}</div></section>{user ? <section><h2>4. Seus dados</h2><p className="muted">A reserva será vinculada ao e-mail {user.email}.</p><div className="form-row"><Field label="Nome completo"><input required value={fullName} onChange={e => setFullName(e.target.value)}/></Field><Field label="Telefone"><input value={phone} onChange={e => setPhone(e.target.value)}/></Field></div></section> : <section><h2>4. Entre para confirmar</h2><p>É necessário entrar ou criar uma conta de cliente para acompanhar seus agendamentos.</p><a className="button outline" href={`/?shop=${encodeURIComponent(shop.slug)}&return=${encodeURIComponent(`/b/${shop.slug}/agendar${(()=>{const q=new URLSearchParams();if(couponCode)q.set('ref',couponCode);if(campaignCode)q.set('campaign',campaignCode);return q.size?`?${q}`:''})()}`)}`}>Entrar ou criar conta</a></section>}{user && <EligibilityChoice eligibility={eligibility} selected={subscriptionId} onChange={setSubscriptionId} required={requiresSubscription}/>}{user && <BookingCoupon code={couponCode} onCodeChange={value => { ++quoteRequestId.current; setCouponCode(value); setQuote(null); setQuoteError(null) }} onApply={() => void applyCoupon()} onRemove={removeCoupon} quote={quote} error={quoteError} busy={quoteBusy} disabled={Boolean(bookingSubscriptionId)}/>}{user && selectedServices.length>0 && <WaitlistJoin shopId={shop.id} timezone={timezone} clientId={clientId} ensureClient={ensureClient} serviceIds={selectedServices} barberId={barberId} day={day}/>}<BookingRules shopId={shop.id} subscription={Boolean(bookingSubscriptionId)}/><div className="booking-total"><span>{bookingSubscriptionId ? "Coberto pela assinatura" : "Total previsto"}</span><strong>{money(payableTotal)}</strong></div><Notice text={error}/>{user && <PrimaryButton type="submit" disabled={busy || quoteBusy || campaignLoading || !!campaignError || eligibility.loading || !!eligibility.error || requiresSubscription && !bookingSubscriptionId || !slot || !selectedServices.length || Boolean(couponCode.trim() && (!quote || bookingSubscriptionId))}>{busy ? 'Confirmando...' : 'Confirmar agendamento'}</PrimaryButton>}</form></main>
 }

@@ -1,30 +1,46 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { BarChart3, BookOpenCheck, CalendarDays, ChevronDown, CircleHelp, ClipboardList, CreditCard, Crown, LayoutDashboard, Link2, LogOut, Menu, Package, Palette, Scissors, Settings2, ShoppingBasket, Sparkles, Target, TrendingUp, Users, Wallet, X } from 'lucide-react'
+import { BarChart3, BookOpenCheck, MessageCircle, CalendarDays, ChevronDown, CircleHelp, ClipboardList, CreditCard, Crown, FilePenLine, LayoutDashboard, Link2, LogOut, Menu, Package, Palette, Scissors, Settings2, ShoppingBasket, Sparkles, Target, TrendingUp, UserRound, Users, Wallet, X, Zap } from 'lucide-react'
 import { authedApi, authedGet, isConfigured, requireSupabase, supabase } from './lib/supabase'
 import { moduleLabels, type Identity, type Membership, type ModuleKey, type Role, type Shop } from './types'
 import { Loading, Notice } from './ui'
-import { DashboardPage } from './pages/DashboardPage'
-import { ReportsPage } from './pages/ReportsPage'
-import { ClientsPage } from './pages/ClientsPage'
-import { AppointmentsPage, ServicesPage } from './pages/SchedulingPage'
-import { ProductsPage, BarPage, FinancePage, GoalsPage } from './pages/OperationsPage'
-import { SubscriptionsPage } from './pages/SubscriptionsPage'
-import { MarketingPage, BioPage } from './pages/GrowthPage'
-import { PartnerClubPage } from './pages/PartnerClubPage'
-import { SettingsPage } from './pages/SettingsPage'
-import { MasterPage } from './pages/MasterPage'
-import { ClientPage } from './pages/ClientPage'
-import { PublicPage } from './pages/PublicPage'
-import { TutorialPage } from './pages/TutorialPage'
+import { errorMessage } from './lib/errorMessage'
+import { PageBoundary } from './PageBoundary'
 import { BrandLogo } from './brand'
-import { BrandIdentityPage } from './pages/BrandIdentityPage'
-import { AiHelpPage } from './pages/AiHelpPage'
 import { FloatingAiHelp } from './FloatingAiHelp'
 import { brandStyle, readBrandTheme, ShopBrand } from './shopBrand'
 import { TeamAvatar } from './TeamAvatar'
 import { GuidedTour } from './GuidedTour'
-import { getTourChapters, saveFinishedTours, tourStorageKey, type TourStep } from './tour'
+import { getTourChapters, type TourStep, type TourModule } from './tour'
+import { useTourProgress } from './lib/useTourProgress'
+import { authCallbackMode, authRedirectUrl } from './lib/authFlow'
+import type { MasterView } from './pages/MasterPage'
+
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
+const ProfitPage = lazy(() => import('./pages/ProfitPage').then(m => ({ default: m.ProfitPage })))
+const ReportsPage = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })))
+const ClientsPage = lazy(() => import('./pages/ClientsPage').then(m => ({ default: m.ClientsPage })))
+const QuickServicePage = lazy(() => import('./pages/QuickServicePage').then(m => ({ default: m.QuickServicePage })))
+const AppointmentsPage = lazy(() => import('./pages/SchedulingPage').then(m => ({ default: m.AppointmentsPage })))
+const ServicesPage = lazy(() => import('./pages/SchedulingPage').then(m => ({ default: m.ServicesPage })))
+const ProductsPage = lazy(() => import('./pages/OperationsPage').then(m => ({ default: m.ProductsPage })))
+const BarPage = lazy(() => import('./pages/OperationsPage').then(m => ({ default: m.BarPage })))
+const FinancePage = lazy(() => import('./pages/OperationsPage').then(m => ({ default: m.FinancePage })))
+const GoalsPage = lazy(() => import('./pages/OperationsPage').then(m => ({ default: m.GoalsPage })))
+const SubscriptionsPage = lazy(() => import('./pages/SubscriptionsPage').then(m => ({ default: m.SubscriptionsPage })))
+const MarketingPage = lazy(() => import('./pages/GrowthPage').then(m => ({ default: m.MarketingPage })))
+const BioPage = lazy(() => import('./pages/GrowthPage').then(m => ({ default: m.BioPage })))
+const PartnerClubPage = lazy(() => import('./pages/PartnerClubPage').then(m => ({ default: m.PartnerClubPage })))
+const BarbersPage = lazy(() => import('./pages/BarbersPage').then(m => ({ default: m.BarbersPage })))
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const MasterPage = lazy(() => import('./pages/MasterPage').then(m => ({ default: m.MasterPage })))
+const ClientPage = lazy(() => import('./pages/ClientPage').then(m => ({ default: m.ClientPage })))
+const PublicPage = lazy(() => import('./pages/PublicPage').then(m => ({ default: m.PublicPage })))
+const TutorialPage = lazy(() => import('./pages/TutorialPage').then(m => ({ default: m.TutorialPage })))
+const BrandIdentityPage = lazy(() => import('./pages/BrandIdentityPage').then(m => ({ default: m.BrandIdentityPage })))
+const WhatsappPage = lazy(() => import('./pages/WhatsappPage').then(m => ({ default: m.WhatsappPage })))
+const AiHelpPage = lazy(() => import('./pages/AiHelpPage').then(m => ({ default: m.AiHelpPage })))
+const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then(m => ({ default: m.OnboardingPage })))
 
 export interface PageProps { identity: Identity; role: Role; notify: (message: string, kind?: 'success' | 'error') => void }
 
@@ -32,16 +48,20 @@ const navItems: { key: ModuleKey; icon: typeof LayoutDashboard; group: string }[
   { key: 'dashboard', icon: LayoutDashboard, group: 'GESTÃO' },
   { key: 'reports', icon: BarChart3, group: 'GESTÃO' },
   { key: 'appointments', icon: CalendarDays, group: 'GESTÃO' },
+  { key: 'quick', icon: Zap, group: 'GESTÃO' },
   { key: 'clients', icon: Users, group: 'GESTÃO' },
+  { key: 'barbers', icon: UserRound, group: 'GESTÃO' },
   { key: 'services', icon: Scissors, group: 'GESTÃO' },
   { key: 'subscriptions', icon: CreditCard, group: 'OPERAÇÃO' },
   { key: 'products', icon: Package, group: 'OPERAÇÃO' },
   { key: 'bar', icon: ShoppingBasket, group: 'OPERAÇÃO' },
   { key: 'finance', icon: Wallet, group: 'RESULTADOS' },
+  { key: 'profit', icon: TrendingUp, group: 'RESULTADOS' },
   { key: 'goals', icon: Target, group: 'RESULTADOS' },
   { key: 'partners', icon: Link2, group: 'CRESCIMENTO' },
   { key: 'marketing', icon: TrendingUp, group: 'CRESCIMENTO' },
   { key: 'ai', icon: Sparkles, group: 'CRESCIMENTO' },
+  { key: 'whatsapp', icon: MessageCircle, group: 'CRESCIMENTO' },
   { key: 'bio', icon: ClipboardList, group: 'CRESCIMENTO' },
   { key: 'branding', icon: Palette, group: 'SISTEMA' },
   { key: 'settings', icon: Settings2, group: 'SISTEMA' },
@@ -49,6 +69,10 @@ const navItems: { key: ModuleKey; icon: typeof LayoutDashboard; group: string }[
 ]
 
 function configuredPublicPath() { return /^\/b\/[^/]+(?:\/agendar)?\/?$/.test(window.location.pathname) }
+function requestedMasterView(): MasterView | null {
+  const view = new URLSearchParams(window.location.search).get('master')
+  return view === 'overview' || view === 'blog' || view === 'leads' ? view : null
+}
 function requestedShopSlug(): string | null {
   const params = new URLSearchParams(window.location.search)
   const explicit = params.get('shop')
@@ -58,9 +82,10 @@ function requestedShopSlug(): string | null {
 }
 
 export default function App() {
-  if (configuredPublicPath()) return <PublicPage />
+  if (configuredPublicPath()) return <Suspense fallback={<Loading text="Abrindo a barbearia..."/>}><PublicPage /></Suspense>
   if (!isConfigured) return <SetupPage />
-  return <AuthenticatedApp />
+  if (/^\/comecar\/?$/.test(window.location.pathname)) return <Suspense fallback={<Loading text="Abrindo sua inscrição..."/>}><OnboardingPage /></Suspense>
+  return <Suspense fallback={<Loading text="Abrindo sua área..."/>}><AuthenticatedApp /></Suspense>
 }
 
 function SetupPage() {
@@ -100,11 +125,11 @@ function AuthPage() {
         const returnTo = new URLSearchParams(window.location.search).get('return')
         if (returnTo?.startsWith('/b/')) window.location.assign(returnTo)
       } else if (mode === 'register') {
-        const result = await client.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/${window.location.search}`, data: { full_name: name } } })
+        const result = await client.auth.signUp({ email, password, options: { emailRedirectTo: authRedirectUrl(window.location.origin, window.location.search), data: { full_name: name } } })
         if (result.error) throw result.error
         setMessage('Conta criada. Confira seu e-mail para confirmar o acesso, se solicitado.')
       } else {
-        const result = await client.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/${window.location.search}` })
+        const result = await client.auth.resetPasswordForEmail(email, { redirectTo: authRedirectUrl(window.location.origin, window.location.search) })
         if (result.error) throw result.error
         setMessage('Se o e-mail estiver cadastrado, você receberá as instruções de recuperação.')
       }
@@ -161,7 +186,7 @@ function RecoveryPage({ mode, onComplete, onSignOut }: { mode: 'invite' | 'recov
     try {
       const { error: updateError } = await requireSupabase().auth.updateUser({ password })
       if (updateError) throw updateError
-      window.history.replaceState({}, '', contextSlug ? `/?shop=${encodeURIComponent(contextSlug)}` : '/')
+      window.history.replaceState({}, '', contextSlug ? `/app?shop=${encodeURIComponent(contextSlug)}` : '/app')
       onComplete()
     } catch (problem) { setError(problem instanceof Error ? problem.message : 'Não foi possível atualizar sua senha.') }
     finally { setBusy(false) }
@@ -173,21 +198,22 @@ function RecoveryPage({ mode, onComplete, onSignOut }: { mode: 'invite' | 'recov
 
 function AuthenticatedApp() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
-  const [passwordFlow, setPasswordFlow] = useState<'invite' | 'recovery' | null>(() => {
-    if (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery')) return 'recovery'
-    if (window.location.hash.includes('type=invite') || window.location.search.includes('type=invite') || window.location.pathname === '/entrar') return 'invite'
-    return null
-  })
+  const [passwordFlow, setPasswordFlow] = useState<'invite' | 'recovery' | null>(() => authCallbackMode(window.location.hash, window.location.search))
   const [identity, setIdentity] = useState<Identity | null>(null)
+  const identityRequestRef = useRef(0)
   const [identityError, setIdentityError] = useState<string | null>(null)
   const [selectedShopId, setSelectedShopId] = useState<string | null>(() => localStorage.getItem('barber-selected-shop'))
   const [masterShopChosen, setMasterShopChosen] = useState(false)
-  const [page, setPage] = useState<ModuleKey | 'master'>(() => new URLSearchParams(window.location.search).get('page') === 'settings' ? 'settings' : 'dashboard')
+  const [identityNonce, setIdentityNonce] = useState(0)
+  const [page, setPage] = useState<ModuleKey | 'master'>(() => requestedMasterView() ? 'master' : new URLSearchParams(window.location.search).get('page') === 'settings' ? 'settings' : 'dashboard')
+  const [masterView, setMasterView] = useState<MasterView>(() => requestedMasterView() || 'overview')
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [tourRun, setTourRun] = useState<{ steps: TourStep[]; chapterIds: string[]; index: number } | null>(null)
+  const [tourRun, setTourRun] = useState<{ steps: TourStep[]; chapterIds: string[]; skippedModules: TourModule[]; completedSteps:string[]; index: number } | null>(null)
+  const tourProgress=useTourProgress(identity?.user.id,identity?.shop?.id,identity?.isMaster?'master':identity?.membership?.role||'client')
+  useEffect(()=>{setTourRun(null);setMobileOpen(false)},[identity?.user.id,identity?.shop?.id,identity?.isMaster,identity?.membership?.role])
   const [masterEligible, setMasterEligible] = useState(false)
   const [toast, setToast] = useState<{ message: string; kind: 'success' | 'error' } | null>(null)
-  const notify = useCallback((message: string, kind: 'success' | 'error' = 'success') => { setToast({ message, kind }); window.setTimeout(() => setToast(null), 5000) }, [])
+  const notify = useCallback((message: string, kind: 'success' | 'error' = 'success') => { setToast({ message: kind === 'error' ? errorMessage(message) : message, kind }); window.setTimeout(() => setToast(null), 5000) }, [])
 
   useEffect(() => {
     if (!supabase) return
@@ -197,6 +223,7 @@ function AuthenticatedApp() {
   }, [])
 
   const loadIdentity = useCallback(async () => {
+    const requestId = ++identityRequestRef.current
     if (!session?.user) { setIdentity(null); return }
     setIdentityError(null)
     try {
@@ -213,10 +240,10 @@ function AuthenticatedApp() {
       const memberships = (membersResult.data ?? []) as Membership[]
       const clientRows = (clientsResult.data ?? []) as { id: string; barbershop_id: string }[]
       const contextSlug = requestedShopSlug()
-      let shopQuery = client.from('barbershops').select('id,name,slug,timezone,phone,whatsapp,instagram_url,address,bio_title,bio_description,logo_url,brand_theme,active,created_at,updated_at').eq('active', true)
+      let shopQuery = client.from('barbershops').select('id,name,slug,timezone,phone,whatsapp,instagram_url,address,bio_title,bio_description,logo_url,brand_theme,active,created_at,updated_at,created_via,onboarding_completed_at').eq('active', true)
       if (!isMaster) {
         const ids = [...new Set([...memberships.map(m => m.barbershop_id), ...clientRows.map(c => c.barbershop_id)])]
-        if (ids.length === 0 && !contextSlug) { setIdentity({ user: session.user, isMaster: false, memberships, shops: [], membership: null, shop: null, clientId: null, permissions: {} }); return }
+        if (ids.length === 0 && !contextSlug) { if (identityRequestRef.current === requestId) setIdentity({ user: session.user, isMaster: false, memberships, shops: [], membership: null, shop: null, clientId: null, permissions: {} }); return }
         shopQuery = ids.length ? shopQuery.in('id', ids) : shopQuery.eq('slug', contextSlug!)
       }
       const shopsResult = await shopQuery.order('name')
@@ -224,7 +251,7 @@ function AuthenticatedApp() {
       const shops = (shopsResult.data ?? []) as Shop[]
       if (contextSlug && !shops.some(s => s.slug === contextSlug)) {
         const contextResult = await client.from('barbershops')
-          .select('id,name,slug,timezone,phone,whatsapp,instagram_url,address,bio_title,bio_description,logo_url,brand_theme,active,created_at,updated_at')
+          .select('id,name,slug,timezone,phone,whatsapp,instagram_url,address,bio_title,bio_description,logo_url,brand_theme,active,created_at,updated_at,created_via,onboarding_completed_at')
           .eq('slug', contextSlug).eq('active', true).maybeSingle()
         if (contextResult.error) throw contextResult.error
         if (contextResult.data) shops.push(contextResult.data as Shop)
@@ -240,9 +267,10 @@ function AuthenticatedApp() {
       if (permissionResult?.error) throw permissionResult.error
       const permissions: Record<string, boolean> = {}
       for (const item of permissionResult?.data ?? []) permissions[String(item.module)] = Boolean(item.allowed)
+      if (identityRequestRef.current !== requestId) return
       setIdentity({ user: session.user, isMaster, memberships, shops, membership, shop, clientId: clientRow?.id ?? null, permissions })
-    } catch (err) { setIdentityError(err instanceof Error ? err.message : 'Falha ao carregar acesso.'); setIdentity(null) }
-  }, [session?.user, selectedShopId, masterShopChosen])
+    } catch (err) { if (identityRequestRef.current === requestId) { setIdentityError(err instanceof Error ? err.message : 'Falha ao carregar acesso.'); setIdentity(null) } }
+  }, [session?.user, selectedShopId, masterShopChosen, identityNonce])
 
   useEffect(() => { void loadIdentity() }, [loadIdentity])
   useEffect(() => { if (identity?.isMaster && !identity.shop) setPage('master') }, [identity?.isMaster, identity?.shop])
@@ -257,20 +285,37 @@ function AuthenticatedApp() {
 
   function changeShop(value: string) {
     const id = value || null
+    if (id !== (identity?.shop?.id || null)) { setTourRun(null); setMobileOpen(false); setIdentity(null); setIdentityNonce(value => value + 1) }
     setMasterShopChosen(Boolean(id))
     const url = new URL(window.location.href)
     url.searchParams.delete('shop')
     url.searchParams.delete('return')
+    url.searchParams.delete('master')
     window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
     setSelectedShopId(id)
     if (id) localStorage.setItem('barber-selected-shop', id)
     else localStorage.removeItem('barber-selected-shop')
     setPage(id ? 'dashboard' : 'master')
+    setMasterView('overview')
+  }
+  function changeMasterView(view: MasterView) {
+    if (!identity?.isMaster) return
+    setMasterView(view)
+    const url = new URL(window.location.href)
+    if (view === 'overview') url.searchParams.delete('master')
+    else url.searchParams.set('master', view)
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  }
+  function openMaster(view: MasterView) {
+    if (!identity?.isMaster) return
+    changeShop('')
+    changeMasterView(view)
+    setMobileOpen(false)
   }
   function canSee(key: ModuleKey): boolean {
     if (!identity) return false
     if (identity.isMaster || identity.membership?.role === 'admin') return true
-    if (identity.membership?.role === 'barber') return key !== 'branding' && (key === 'dashboard' || key === 'tutorial' || identity.permissions[key] === true)
+    if (identity.membership?.role === 'barber') return key !== 'profit' && key !== 'branding' && key !== 'whatsapp' && (key === 'dashboard' || key === 'tutorial' || key === 'barbers' || (key === 'quick' ? identity.permissions.appointments === true : identity.permissions[key] === true))
     return false
   }
 
@@ -283,24 +328,33 @@ function AuthenticatedApp() {
   if (!session) return <AuthPage />
   if (passwordFlow) return <RecoveryPage mode={passwordFlow} onComplete={() => setPasswordFlow(null)} onSignOut={() => { const slug = requestedShopSlug(); window.history.replaceState({}, '', slug ? `/?shop=${encodeURIComponent(slug)}` : '/'); setPasswordFlow(null); void requireSupabase().auth.signOut() }}/>
   if (identityError) return <div className="state-screen"><div className="state-card"><CircleHelp size={32}/><h2>Não foi possível carregar seu acesso</h2><Notice text={identityError}/><p>Confira se o banco de dados foi configurado e se seu usuário foi vinculado a uma barbearia.</p><button className="button primary" onClick={() => void loadIdentity()}>Tentar novamente</button><button className="button ghost" onClick={() => void requireSupabase().auth.signOut()}>Sair</button></div></div>
-  if (!identity) return <div className="fullscreen-loading"><Loading text="Carregando sua barbearia..."/></div>
+  if (!identity || identity.user.id !== session.user.id) return <div className="fullscreen-loading"><Loading text="Carregando sua barbearia..."/></div>
   const role: Role = identity.isMaster ? 'master' : identity.membership?.role || 'client'
-  if (!identity.shop && !identity.isMaster) return <div className="state-screen"><div className="state-card"><CircleHelp size={32}/><h2>Acesso ainda não vinculado</h2><p>Seu cadastro foi encontrado, mas ainda não há uma barbearia associada. Para entrar como profissional, peça ao administrador para liberar seu e-mail. Para agendar como cliente, acesse o link público da barbearia.</p>{masterEligible && <button className="button primary" onClick={() => void activateMaster()}>Ativar acesso master</button>}<button className="button ghost" onClick={() => void requireSupabase().auth.signOut()}>Sair da conta</button></div>{toast && <div className={`toast ${toast.kind}`}>{toast.message}</div>}</div>
+  if (!identity.shop && !identity.isMaster) return <div className="state-screen"><div className="state-card"><CircleHelp size={32}/><h2>Acesso ainda não vinculado</h2><p>Seu cadastro foi encontrado, mas ainda não há uma barbearia associada. Para entrar como profissional, peça ao administrador para liberar seu e-mail. Para agendar como cliente, acesse o link público da barbearia.</p><a className="button primary" href="/comecar">Cadastrar minha barbearia</a>{masterEligible && <button className="button primary" onClick={() => void activateMaster()}>Ativar acesso master</button>}<button className="button ghost" onClick={() => void requireSupabase().auth.signOut()}>Sair da conta</button></div>{toast && <div className={`toast ${toast.kind}`}>{toast.message}</div>}</div>
   if (role === 'client' && identity.shop) return <><ClientPage key={identity.shop.id} identity={identity} role={role} notify={notify} onSignOut={() => void requireSupabase().auth.signOut()} />{toast && <div className={`toast ${toast.kind}`}>{toast.message}</div>}</>
 
   const allowedModules = navItems.filter(item => canSee(item.key)).map(item => item.key)
-  function startTour(chapterIds: string[]) {
+  function startTour(chapterIds: string[], resume = false) {
     const chapters = getTourChapters(role, allowedModules, Boolean(identity!.shop)).filter(chapter => chapterIds.includes(chapter.id))
     const steps = chapters.flatMap(chapter => chapter.steps)
     if (!steps.length) return
-    setTourRun({ steps, chapterIds: chapters.map(chapter => chapter.id), index: 0 })
-    setMobileOpen(window.innerWidth <= 980 && steps[0].kind === 'nav')
+    const saved=resume?tourProgress.run:null
+    const index=saved?Math.max(0,steps.findIndex(step=>step.id===saved.stepKey)):0
+    const run={ steps, chapterIds:chapters.map(chapter=>chapter.id),skippedModules:saved?.skippedModules||[],completedSteps:saved?.completedSteps||[],index }
+    setTourRun(run)
+    tourProgress.save({chapterIds:run.chapterIds,stepKey:steps[index].id!,skippedModules:run.skippedModules,completedSteps:run.completedSteps,updatedAt:new Date().toISOString()})
+    if(steps[index].kind==='content'&&steps[index].module!=='client')setPage(steps[index].module)
+    setMobileOpen(window.innerWidth <= 980 && steps[index].kind === 'nav')
   }
-  function moveTour(direction: -1 | 1) {
+  function moveTour(direction: -1 | 1, completed = true) {
     if (!tourRun) return
+    const skippedModules = completed ? tourRun.skippedModules : [...new Set([...tourRun.skippedModules, tourRun.steps[tourRun.index].module])]
     const nextIndex = tourRun.index + direction
+    const completedSteps=direction===1&&completed?[...new Set([...tourRun.completedSteps,tourRun.steps[tourRun.index].id!])]:tourRun.completedSteps
     if (nextIndex >= tourRun.steps.length) {
-      saveFinishedTours(tourStorageKey(identity!.user.id, identity!.shop?.id, role), tourRun.chapterIds)
+      const chapters=getTourChapters(role,allowedModules,Boolean(identity!.shop))
+      const finished=tourRun.chapterIds.filter(id=>chapters.find(c=>c.id===id)?.steps.every(step=>completedSteps.includes(step.id!)))
+      tourProgress.save(null,[...new Set([...tourProgress.finished,...finished])])
       setTourRun(null); setMobileOpen(false)
       return
     }
@@ -308,31 +362,37 @@ function AuthenticatedApp() {
     const nextStep = tourRun.steps[nextIndex]
     if (nextStep.kind === 'content' && nextStep.module !== 'client') setPage(nextStep.module)
     setMobileOpen(window.innerWidth <= 980 && nextStep.kind === 'nav')
-    setTourRun({ ...tourRun, index: nextIndex })
+    setTourRun({ ...tourRun, skippedModules, completedSteps, index: nextIndex })
+    tourProgress.save({chapterIds:tourRun.chapterIds,stepKey:nextStep.id!,skippedModules,completedSteps,updatedAt:new Date().toISOString()})
   }
   function closeTour() { setTourRun(null); setMobileOpen(false) }
 
   const content: Record<ModuleKey | 'master', ReactNode> = {
-    master: <MasterPage identity={identity} role={role} notify={notify} onRefresh={loadIdentity} />,
-    dashboard: <DashboardPage identity={identity} role={role} notify={notify} onNavigate={setPage} />,
+    master: identity.isMaster ? <MasterPage identity={identity} role={role} notify={notify} onRefresh={loadIdentity} view={masterView} onViewChange={changeMasterView} /> : null,
+    dashboard: <DashboardPage key={identity.shop?.id} identity={identity} role={role} notify={notify} onNavigate={setPage} />,
     reports: <ReportsPage identity={identity} role={role} notify={notify} />,
     appointments: <AppointmentsPage identity={identity} role={role} notify={notify} />,
+    quick: <QuickServicePage key={identity.shop?.id} identity={identity} role={role} notify={notify} />,
     clients: <ClientsPage identity={identity} role={role} notify={notify} />,
     services: <ServicesPage identity={identity} role={role} notify={notify} />,
     subscriptions: <SubscriptionsPage identity={identity} role={role} notify={notify} />,
     products: <ProductsPage identity={identity} role={role} notify={notify} />,
     bar: <BarPage identity={identity} role={role} notify={notify} />,
     finance: <FinancePage identity={identity} role={role} notify={notify} />,
+    profit: <ProfitPage key={identity.shop?.id} identity={identity} role={role} notify={notify} />,
     goals: <GoalsPage identity={identity} role={role} notify={notify} />,
     partners: <PartnerClubPage key={identity.shop?.id} identity={identity} role={role} notify={notify} />,
     marketing: <MarketingPage identity={identity} role={role} notify={notify} />,
     ai: <AiHelpPage key={identity.shop?.id || 'platform'} identity={identity} role={role} notify={notify} />,
     bio: <BioPage identity={identity} role={role} notify={notify} />,
     branding: <BrandIdentityPage key={identity.shop?.id} identity={identity} role={role} notify={notify} onRefresh={loadIdentity} />,
+    whatsapp: <WhatsappPage key={identity.shop?.id} identity={identity} role={role} notify={notify} />,
+    barbers: <BarbersPage key={identity.shop?.id} identity={identity} role={role} notify={notify} onNavigate={setPage} />,
     settings: <SettingsPage identity={identity} role={role} notify={notify} onRefresh={loadIdentity} onGoBranding={() => setPage('branding')} />,
-    tutorial: <TutorialPage identity={identity} role={role} allowedModules={allowedModules} onStart={startTour}/>,
+    tutorial: <TutorialPage identity={identity} role={role} allowedModules={allowedModules} onStart={startTour} progress={tourProgress}/>,
   }
-  const visiblePage = page === 'master' ? 'master' : canSee(page) ? page : 'dashboard'
+  const visiblePage = page === 'master' ? identity.isMaster ? 'master' : 'dashboard' : canSee(page) ? page : 'dashboard'
+  const masterTitle = masterView === 'blog' ? 'Blog e publicações' : masterView === 'leads' ? 'Solicitações de acesso' : 'Painel master'
   const allowedNav = navItems.filter(item => canSee(item.key))
   const activeTheme = visiblePage === 'master' ? null : readBrandTheme(identity.shop?.brand_theme)
   return <div className={`app-layout ${activeTheme ? 'shop-themed' : ''}`} data-shop-theme={activeTheme ? '' : undefined} style={brandStyle(activeTheme)}>
@@ -341,14 +401,14 @@ function AuthenticatedApp() {
       <div className="sidebar-brand">{visiblePage !== 'master' && identity.shop ? <ShopBrand shop={identity.shop} compact dark/> : <BrandLogo tone="dark" compact/>}<button className="mobile-close icon-button" onClick={() => setMobileOpen(false)} aria-label="Fechar menu"><X size={20}/></button></div>
       <div className="shop-switcher"><div className="shop-avatar">{visiblePage === 'master' ? 'M' : identity.shop?.name?.slice(0, 1) || 'M'}</div><div><strong>{visiblePage === 'master' ? 'Visão master' : identity.shop?.name || 'Painel master'}</strong><small>{visiblePage === 'master' ? 'Todas as barbearias' : identity.shop ? role === 'master' ? 'Acesso master' : role === 'admin' ? 'Administrador' : 'Profissional' : 'Todas as barbearias'}</small></div><ChevronDown size={15}/></div>
       <nav className="nav-list">
-        {identity.isMaster && <><div className="nav-group">PLATAFORMA</div><button data-tour-nav="master" className={`nav-item ${visiblePage === 'master' ? 'active' : ''}`} onClick={() => { changeShop(''); setMobileOpen(false) }}><Crown size={19}/><span>Painel master</span></button>{!identity.shop && <><button data-tour-nav="ai" className={`nav-item ${visiblePage === 'ai' ? 'active' : ''}`} onClick={() => { setPage('ai'); setMobileOpen(false) }}><Sparkles size={18}/><span>Ajuda de IA</span></button><button data-tour-nav="tutorial" className={`nav-item ${visiblePage === 'tutorial' ? 'active' : ''}`} onClick={() => { setPage('tutorial'); setMobileOpen(false) }}><BookOpenCheck size={18}/><span>Passo a passo</span></button></>}</>}
+        {identity.isMaster && <><div className="nav-group">PLATAFORMA</div><button data-tour-nav="master" className={`nav-item ${visiblePage === 'master' && masterView !== 'blog' ? 'active' : ''}`} aria-current={visiblePage === 'master' && masterView !== 'blog' ? 'page' : undefined} onClick={() => openMaster('overview')}><Crown size={19}/><span>Painel master</span></button><button data-tour-nav="master-blog" className={`nav-item ${visiblePage === 'master' && masterView === 'blog' ? 'active' : ''}`} aria-current={visiblePage === 'master' && masterView === 'blog' ? 'page' : undefined} onClick={() => openMaster('blog')}><FilePenLine size={18}/><span>Blog e publicações</span></button>{!identity.shop && <><button data-tour-nav="ai" className={`nav-item ${visiblePage === 'ai' ? 'active' : ''}`} onClick={() => { setPage('ai'); setMobileOpen(false) }}><Sparkles size={18}/><span>Ajuda de IA</span></button><button data-tour-nav="tutorial" className={`nav-item ${visiblePage === 'tutorial' ? 'active' : ''}`} onClick={() => { setPage('tutorial'); setMobileOpen(false) }}><BookOpenCheck size={18}/><span>Passo a passo</span></button></>}</>}
         {identity.shop && visiblePage !== 'master' && allowedNav.map((item, index) => { const Icon = item.icon; const previous = allowedNav[index - 1]; return <div key={item.key}>{(!previous || previous.group !== item.group) && <div className="nav-group">{item.group}</div>}<button data-tour-nav={item.key} className={`nav-item ${visiblePage === item.key ? 'active' : ''}`} onClick={() => { setPage(item.key); setMobileOpen(false) }}><Icon size={18}/><span>{moduleLabels[item.key]}</span></button></div> })}
       </nav>
       <div className="sidebar-bottom"><div className="help-card"><div className="help-icon"><Sparkles size={18}/></div><strong>Decida com clareza</strong><p>Relatórios e ferramentas para evoluir sua operação.</p></div><button className="sidebar-logout" onClick={() => void requireSupabase().auth.signOut()}><LogOut size={17}/> Sair da conta</button></div>
     </aside>
-    <div className="main-area"><header className="topbar"><button className="mobile-menu icon-button" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={22}/></button><div className="topbar-crumb">{visiblePage === 'master' ? 'Barber System' : identity.shop?.name || 'Barber System'} <span>/</span> <strong>{visiblePage === 'master' ? 'Painel master' : moduleLabels[visiblePage]}</strong></div><div className="topbar-right">{identity.shops.length > 1 || identity.isMaster ? <select className="topbar-select" aria-label="Selecionar barbearia" value={visiblePage === 'master' ? '' : identity.shop?.id || ''} onChange={e => changeShop(e.target.value)}><option value="">Visão master</option>{identity.shops.map(shop => <option value={shop.id} key={shop.id}>{shop.name}</option>)}</select> : null}<div className="profile-pill"><span>{identity.membership?.display_name || identity.user.email?.split('@')[0] || 'Usuário'}</span><TeamAvatar path={identity.membership?.avatar_path} name={identity.membership?.display_name || identity.user.email || 'Usuário'} shopId={identity.membership?.barbershop_id} memberId={identity.membership?.id} className="profile-avatar"/></div></div></header><main className="content">{content[visiblePage]}</main></div>
+    <div className="main-area"><header className="topbar"><button className="mobile-menu icon-button" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={22}/></button><div className="topbar-crumb">{visiblePage === 'master' ? 'Barber System' : identity.shop?.name || 'Barber System'} <span>/</span> <strong>{visiblePage === 'master' ? masterTitle : moduleLabels[visiblePage]}</strong></div><div className="topbar-right">{identity.shops.length > 1 || identity.isMaster ? <select className="topbar-select" aria-label="Selecionar barbearia" value={visiblePage === 'master' ? '' : identity.shop?.id || ''} onChange={e => changeShop(e.target.value)}><option value="">Visão master</option>{identity.shops.map(shop => <option value={shop.id} key={shop.id}>{shop.name}</option>)}</select> : null}<div className="profile-pill"><span>{identity.membership?.display_name || identity.user.email?.split('@')[0] || 'Usuário'}</span><TeamAvatar path={identity.membership?.avatar_path} name={identity.membership?.display_name || identity.user.email || 'Usuário'} shopId={identity.membership?.barbershop_id} memberId={identity.membership?.id} className="profile-avatar"/></div></div></header>{role === 'admin' && identity.shop && visiblePage !== 'master' && !identity.shop.onboarding_completed_at && <a className="onboarding-banner" href="/comecar"><span><strong>Falta pouco para sua barbearia ficar pronta.</strong> Continue o passo a passo de configuração.</span><b>Continuar</b></a>}<main className="content" key={`${identity.user.id}:${identity.shop?.id || 'platform'}:${role}`}><PageBoundary key={visiblePage}><Suspense fallback={<Loading text="Abrindo esta área..."/>}>{content[visiblePage]}</Suspense></PageBoundary></main></div>
     {toast && <div className={`toast ${toast.kind}`}>{toast.message}</div>}
-    <FloatingAiHelp identity={identity} role={role} notify={notify}/>
-    {tourRun && <GuidedTour steps={tourRun.steps} index={tourRun.index} onBack={() => moveTour(-1)} onNext={() => moveTour(1)} onClose={closeTour}/>}
+    {canSee('ai') && <FloatingAiHelp key={`${identity.user.id}:${identity.shop?.id || 'platform'}:${role}:${Object.entries(identity.permissions).filter(([, allowed]) => allowed).map(([module]) => module).sort().join(',')}`} identity={identity} role={role} notify={notify}/>}
+    {tourRun && <GuidedTour steps={tourRun.steps} index={tourRun.index} onBack={() => moveTour(-1)} onNext={(completed = true) => moveTour(1, completed)} onClose={closeTour}/>}
   </div>
 }

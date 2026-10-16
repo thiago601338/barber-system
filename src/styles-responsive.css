@@ -1,5 +1,6 @@
 /* Shared layout refinements for narrow dashboards and touch screens. */
 .topbar-crumb{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.modal-backdrop{z-index:100}
 .topbar-right{min-width:0;flex:none}
 .page-header>div:first-child{min-width:0}
 .toolbar .search-wrap{min-width:0;flex:1 1 300px;max-width:420px}
@@ -60,4 +61,38 @@
   .content .page-actions>.button-row{grid-template-columns:1fr}
   .topbar-select{max-width:92px}
   .tour-hub-card{align-items:flex-start}
+}
+
+/* Celular: evita o "zoom automático" do iPhone e qualquer rolagem lateral da página. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{max-width:100%;overflow-x:clip}
+.app-layout,.main-area,.content,.public-layout,.client-layout{max-width:100vw}
+.master-tabs{scrollbar-width:none;-ms-overflow-style:none}
+.master-tabs::-webkit-scrollbar{display:none}
+
+@media(max-width:900px){
+  /* iOS amplia a tela ao tocar em campos com fonte menor que 16px. */
+  input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea,
+  .field input,.field select,.field textarea,.search-wrap input,.calendar-toolbar input,.topbar-select,.wa-compose textarea,.floating-ai-input-row textarea{font-size:16px!important}
+  .content{padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
+  body .master-page .page-header .page-actions,body .master-page .page-header .button-row{width:100%}
+  body .master-page .page-header .button-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  body .master-page .page-header .button-row .button{width:100%;min-width:0}
+  body .master-hero{grid-template-columns:1fr;padding:24px 20px;gap:18px;min-height:0}
+  body .master-hero-highlight{min-height:0;padding:18px}
+  body .master-hero-highlight strong{font-size:44px}
+  .master-tabs{margin:0 -2px}
+  body .master-tabs button{padding:0 13px;gap:7px}
+}
+
+@media(max-width:700px){
+  /* Botão flutuante da IA vira só o ícone, para não cobrir o conteúdo. */
+  body .floating-ai-trigger,body .floating-ai-trigger.is-minimized{width:48px;min-width:48px;height:48px;min-height:48px;padding:0;border-radius:50%;justify-content:center}
+  body .floating-ai-trigger span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  body .floating-ai-launcher{bottom:max(14px,env(safe-area-inset-bottom) + 8px)}
+  .content{padding-bottom:84px}
+  body .master-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
+  body .master-tabs button{min-width:0;padding:0 8px;white-space:normal;line-height:1.15}
+  body .topbar-select{max-width:min(172px,46vw);padding:8px 6px 8px 10px;text-overflow:ellipsis}
+  body .toast{left:14px;right:14px;bottom:max(14px,env(safe-area-inset-bottom) + 8px);max-width:none}
 }

@@ -43,3 +43,132 @@
   .client-layout .client-header .shop-brand-words strong{overflow:hidden;text-overflow:ellipsis}
   .barber-choice-grid{grid-template-columns:1fr}
 }
+/* Aba Barbeiros */
+.barbers-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+.barbers-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.barbers-tabs{display:inline-flex;gap:4px;padding:4px;border-radius:12px;background:#eef1ec;border:1px solid #e1e6df}
+.barbers-tabs button{border:0;background:transparent;padding:9px 16px;border-radius:9px;font-weight:650;font-size:13px;color:#5d6b62;display:inline-flex;gap:8px;align-items:center}
+.barbers-tabs button span{font-size:11px;padding:1px 8px;border-radius:999px;background:#fff;color:#53615a}
+.barbers-tabs button.on{background:#fff;color:#17211c;box-shadow:0 2px 8px #17211c14}
+.barbers-search{display:flex;align-items:center;gap:8px;min-width:260px;padding:0 12px;border:1px solid #dde3dc;border-radius:11px;background:#fff;color:#7a867d}
+.barbers-search input{border:0;outline:0;min-height:42px;flex:1;background:transparent}
+.barbers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.barber-card{display:grid;gap:14px;text-align:left;padding:18px;border-radius:18px;border:1px solid #e3e8e2;background:#fff;color:inherit;font:inherit;box-shadow:0 10px 28px #17211c0a;transition:transform .15s,box-shadow .15s,border-color .15s}
+.barber-card:hover{transform:translateY(-2px);box-shadow:0 16px 36px #17211c14;border-color:#cfd8cf}
+.barber-card.inactive{background:#fafbf9}
+.barber-card.inactive .barber-card-photo{filter:grayscale(.6);opacity:.85}
+.barber-card .barber-card-photo{width:72px;height:72px;border-radius:20px;font-size:28px;font-weight:800}
+.barber-card-body{display:grid;gap:6px;min-width:0}
+.barber-card-body strong{font-size:16px;line-height:1.3;letter-spacing:-.02em}
+.barber-email{color:#748078;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.barber-chip{justify-self:start;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px}
+.barber-chip.good{background:#e5f4e8;color:#1e6b3b}.barber-chip.warn{background:#fff3d9;color:#87590a}.barber-chip.muted{background:#eef0ee;color:#68736c}
+.barber-days{display:flex;gap:4px;margin-top:2px}
+.barber-days i{font-style:normal;display:grid;place-items:center;width:24px;height:24px;border-radius:7px;font-size:10.5px;font-weight:700;background:#f1f3f0;color:#a3aca5}
+.barber-days i.on{background:#17211c;color:#fff}
+.barber-days.large i{width:auto;min-width:40px;height:30px;padding:0 8px;font-size:12px}
+.barber-metrics{display:grid;grid-template-columns:repeat(3,1fr);margin:0;border-top:1px solid #edf0ec;padding-top:12px}
+.barber-metrics div{display:grid;gap:2px}
+.barber-metrics dt{font-size:10.5px;color:#7a867d;text-transform:uppercase;letter-spacing:.06em}
+.barber-metrics dd{margin:0;font-size:18px;font-weight:800;letter-spacing:-.03em}
+.barber-profile{display:grid;grid-template-columns:220px minmax(0,1fr);gap:26px;align-items:start}
+.barber-profile-photo{display:grid;gap:12px}
+.barber-profile-photo .barber-profile-avatar{width:220px;height:220px;border-radius:26px;font-size:72px;font-weight:800}
+.barber-photo-button{cursor:pointer;justify-content:center}
+.barber-profile-info{display:grid;gap:16px;min-width:0}
+.barber-profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0}
+.barber-profile-stats div{padding:12px 14px;border-radius:14px;background:#f5f7f4;border:1px solid #e6ebe5}
+.barber-profile-stats dt{font-size:11px;color:#6f7b73}
+.barber-profile-stats dd{margin:4px 0 0;font-size:22px;font-weight:800;letter-spacing:-.03em}
+.barber-profile-days{display:grid;gap:8px}
+.barber-profile-days>span{font-size:12px;font-weight:700;color:#4f5c54}
+.barber-profile-days small{color:#7a867d}
+.barber-profile-meta{color:#6f7b73;font-size:13px;margin:0}
+.barber-inline{display:flex;gap:8px;align-items:center}
+.barber-inline input{flex:1;min-width:0}
+.barber-inline .button{white-space:nowrap}
+.barber-invite-link{display:grid;gap:10px}
+@media(max-width:900px){.barbers-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.barber-profile{grid-template-columns:1fr}.barber-profile-photo{grid-template-columns:110px 1fr;align-items:center}.barber-profile-photo .barber-profile-avatar{width:110px;height:110px;font-size:40px;border-radius:20px}.barber-profile-stats{grid-template-columns:1fr 1fr 1fr}.barber-profile-stats dd{font-size:18px}.barbers-search{min-width:0;width:100%}.barber-inline{flex-wrap:wrap}.barber-inline .button{width:100%}}
+
+/* Barbeiros · rendimentos */
+.barber-revenue{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:10px 12px;border-radius:12px;background:#f1f8ea;border:1px solid #dfeccf}
+.barber-revenue span{font-size:11px;color:#5f7a52;font-weight:700}
+.barber-revenue strong{font-size:16px;color:#1f3a25;letter-spacing:-.03em;white-space:nowrap}
+.modal.wide:has(.barber-profile-hero){width:min(100%,1060px)}
+.barber-profile-hero{display:flex;align-items:center;gap:18px;margin-bottom:16px}
+.barber-profile-hero .barber-hero-avatar{width:76px;height:76px;border-radius:20px;font-size:28px;font-weight:800;flex:none}
+.barber-profile-hero dl{flex:1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0}
+.barber-profile-hero dl div{padding:11px 14px;border-radius:14px;background:#f5f7f4;border:1px solid #e6ebe5;min-width:0}
+.barber-profile-hero dl div:first-child{background:#f1f8ea;border-color:#dfeccf}
+.barber-profile-hero dt{font-size:11px;color:#6f7b73}
+.barber-profile-hero dd{margin:4px 0 0;font-size:20px;font-weight:800;letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.barber-profile-tabs{margin-bottom:18px;align-self:flex-start;width:max-content}
+.barber-fin{display:grid;gap:16px}
+.barber-fin-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.barber-fin-head h3{margin:0 0 3px;font-size:17px}
+.barber-fin-head p{margin:0;font-size:12px;color:#7d8a80}
+.barber-fin-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:10px}
+.barber-fin-kpi{border:1px solid #e6ebe5;border-radius:14px;padding:12px 14px;display:grid;gap:4px;min-width:0;background:#fff}
+.barber-fin-kpi.strong{background:#f1f8ea;border-color:#dfeccf}
+.barber-fin-kpi>span{display:flex;align-items:center;gap:7px;font-size:11px;color:#5f6d63;font-weight:700}
+.barber-fin-kpi>span svg{color:#6d8b5c}
+.barber-fin-kpi>span i{width:10px;height:10px;border-radius:3px;flex:none}
+.barber-fin-kpi b{font-size:19px;letter-spacing:-.03em;color:#1f2d24;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.barber-fin-kpi small{color:#86928a;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.barber-fin-setup{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border-radius:12px;background:#fff8ea;border:1px solid #f0e2c3;color:#7a5f27;font-size:12px;line-height:1.45}
+.barber-fin-setup .button{flex:none}
+.barber-fin-panel{border:1px solid #e6ebe5;border-radius:16px;padding:16px;background:#fff;min-width:0;display:grid;gap:12px;align-content:start}
+.barber-fin-panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.barber-fin-panel-head strong{display:block;font-size:14px;color:#1f2d24}
+.barber-fin-panel-head small{display:block;color:#86928a;margin-top:3px}
+.barber-fin-legend{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:#4f5c54}
+.barber-fin-legend li{display:flex;align-items:center;gap:7px}
+.barber-fin-legend i{width:10px;height:10px;border-radius:3px}
+.barber-fin-chart{position:relative;width:100%;min-width:0}
+.barber-fin-chart svg{display:block;overflow:visible}
+.barber-fin-chart .grid{stroke:#eef1ec;stroke-width:1}
+.barber-fin-chart .axis{stroke:#cfd8cc;stroke-width:1}
+.barber-fin-chart .tick{font-size:10.5px;fill:#88958b}
+.barber-fin-chart .tick.month{fill:#5f6d63;text-transform:capitalize}
+.barber-fin-chart g.dim path,.barber-fin-chart g.dim rect:not([fill=transparent]){opacity:.35}
+.barber-fin-chart rect[fill=transparent]{cursor:pointer;outline:none}
+.barber-fin-tip{position:absolute;top:6px;transform:translateX(-50%);min-width:210px;background:#17211c;color:#e9f0ea;border-radius:12px;padding:10px 12px;font-size:12px;box-shadow:0 12px 30px #0f1d1440;pointer-events:none;z-index:3;display:grid;gap:5px}
+.barber-fin-tip strong{font-size:12px;color:#fff;margin-bottom:2px}
+.barber-fin-tip .row{display:flex;justify-content:space-between;gap:14px}
+.barber-fin-tip .row span{display:flex;align-items:center;gap:7px;color:#b9c7bc}
+.barber-fin-tip .row i{width:9px;height:9px;border-radius:2px;box-shadow:0 0 0 1px #ffffff40}
+.barber-fin-tip .row b{color:#fff;font-weight:700;white-space:nowrap}
+.barber-fin-tip .row.total{border-bottom:1px solid #ffffff22;padding-bottom:5px}
+.barber-fin-tip .row.muted span,.barber-fin-tip .row.muted b{color:#9aab9e}
+.barber-fin-split{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:12px}
+.barber-fin-services{list-style:none;margin:0;padding:0;display:grid;gap:11px}
+.barber-fin-services li{display:grid;gap:5px}
+.barber-fin-services li div{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#36443a}
+.barber-fin-services li div span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.barber-fin-services li i{display:block;height:8px;background:#f0f3ef;border-radius:4px;overflow:hidden}
+.barber-fin-services li em{display:block;height:100%;background:#2a78d6;border-radius:0 4px 4px 0}
+.barber-fin-empty{font-size:12px;color:#8a968d;margin:0}
+.barber-fin-table td,.barber-fin-table th{text-align:right;white-space:nowrap}
+.barber-fin-table td:first-child,.barber-fin-table th:first-child{text-align:left}
+.barber-fin-table tfoot td{border-top:1px solid #e3e9e0;font-weight:800;color:#26352b}
+.barber-fin-note{font-size:11px;color:#8d998f;margin:0}
+@media(max-width:900px){.barber-fin-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.barber-expense-form{grid-template-columns:repeat(2,minmax(0,1fr))}.barber-fin-split{grid-template-columns:1fr}.barber-profile-hero dl{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.barber-profile-hero{align-items:flex-start}.barber-profile-hero .barber-hero-avatar{width:56px;height:56px;font-size:20px;border-radius:16px}.barber-fin-setup{flex-direction:column;align-items:stretch}.barber-fin-kpi b{font-size:17px}.barber-fin-tip{min-width:180px}}
+.calendar-barber .calendar-barber-photo{width:36px;height:36px;border-radius:50%;flex:none;overflow:hidden}.calendar-barber .calendar-barber-photo img{width:100%;height:100%;object-fit:cover}
+
+.barber-expense-form{display:grid;grid-template-columns:minmax(130px,.8fr) minmax(200px,1.8fr) 90px minmax(120px,.8fr) minmax(140px,.9fr) auto auto;gap:10px;align-items:end;padding:14px;border-radius:14px;background:#faf8f2;border:1px solid #ece6d6}
+.barber-expense-total{display:grid;gap:4px;min-height:41px;align-content:end}
+.barber-expense-total span{font-size:11px;color:#4f6354;font-weight:750}
+.barber-expense-total b{font-size:17px;letter-spacing:-.02em;white-space:nowrap}
+.barber-expense-actions .button{min-height:41px;white-space:nowrap}
+.barber-expense-kinds{display:flex;gap:8px;flex-wrap:wrap}
+.barber-expense-kinds button{display:grid;gap:2px;text-align:left;padding:9px 12px;border-radius:12px;border:1px solid #e6ebe5;background:#fff;min-width:120px;color:inherit}
+.barber-expense-kinds button span{font-size:11px;color:#5f6d63;font-weight:700}
+.barber-expense-kinds button b{font-size:15px}
+.barber-expense-kinds button small{font-size:10.5px;color:#86928a}
+.barber-expense-kinds button.on{border-color:#eda100;background:#fff8e8;box-shadow:inset 0 0 0 1px #eda100}
+.barber-expense-table td.item{white-space:normal;text-align:left;max-width:320px}
+.barber-expense-table th:nth-child(2){text-align:left}
+.barber-expense-table .icon-button{width:30px;height:30px;color:#b4554d}
+@media(max-width:560px){.barber-expense-form{grid-template-columns:1fr 1fr}.barber-expense-form>.field:nth-child(2){grid-column:1/-1}.barber-expense-actions{grid-column:1/-1}.barber-expense-actions .button{width:100%}.barber-expense-kinds button{flex:1 1 40%;min-width:0}}

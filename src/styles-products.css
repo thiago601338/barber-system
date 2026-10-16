@@ -94,3 +94,8 @@
   .product-photo-preview { width: 88px; height: 88px; }
   .product-photo-controls > small { font-size: 10px; }
 }
+.product-ai-pending{display:inline-flex;align-items:center;gap:5px;color:#5b4fc4;font-weight:700}
+.product-ai-pending svg{flex:none;animation:product-ai-pulse 1.4s ease-in-out infinite}
+.product-ai-hint{display:flex!important;align-items:center;gap:5px;color:#5b4fc4!important;margin-top:4px}
+.product-ai-hint svg{flex:none}
+@keyframes product-ai-pulse{0%,100%{opacity:.45}50%{opacity:1}}

@@ -42,7 +42,7 @@ export async function loadAiHelpContext(client: SupabaseClient, scope: HelpScope
     const [shopsResponse, barbersResponse, settingsResponse, subscriptionsResponse, invoicesResponse] = await Promise.all([
       client.from('barbershops').select('id', { count: 'exact', head: true }).eq('active', true),
       client.from('memberships').select('id', { count: 'exact', head: true }).eq('role', 'barber').eq('active', true),
-      client.from('platform_settings').select('seat_price_cents,billing_enabled').eq('id', 1).single(),
+      client.from('platform_settings').select('base_monthly_cents,seat_price_cents,monthly_cap_cents,billing_enabled').eq('id', 1).single(),
       client.from('platform_subscriptions').select('status,amount_cents').order('updated_at', { ascending: false }).limit(200),
       client.from('platform_invoices').select('status,amount_cents').gte('created_at', since).order('created_at', { ascending: false }).limit(500),
     ])
@@ -56,6 +56,8 @@ export async function loadAiHelpContext(client: SupabaseClient, scope: HelpScope
       scope: 'platform', reference_date: today,
       active_shops: shopsResponse.count || 0, active_barber_memberships: barbersResponse.count || 0,
       default_price_per_barber_cents: settings.seat_price_cents,
+      default_shop_base_cents: settings.base_monthly_cents,
+      default_monthly_cap_cents: settings.monthly_cap_cents,
       central_billing_enabled: settings.billing_enabled,
       central_subscriptions_sample: { limit: 200, truncated: subscriptions.length === 200, by_status: countBy(subscriptions),
         active_contract_cents_in_sample: subscriptions.filter(row => row.status === 'active').reduce((sum, row) => sum + Number(row.amount_cents || 0), 0) },

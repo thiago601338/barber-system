@@ -1,82 +1,67 @@
 import { useState } from 'react'
-import { BookOpenCheck, CalendarDays, Camera, CreditCard, History, LogOut, Sparkles } from 'lucide-react'
+import { BookOpenCheck, CalendarDays, Camera, CreditCard, Gift, History, Home, LogOut, Sparkles, UserRound } from 'lucide-react'
 import type { PageProps } from '../App'
+import { authedApi, authedGet } from '../lib/supabase'
 import { shopDateKey, shopDateTime } from '../lib/shopTime'
 import { useRows } from '../lib/useRows'
-import { asText, money } from '../types'
-import { DataTable, PageHeader, Panel, Stat, Status } from '../ui'
+import { useTourProgress } from '../lib/useTourProgress'
+import { whatsappUrl } from '../lib/whatsapp'
+import { money, type Row } from '../types'
+import { DataTable, Loading, Modal, Notice, PageHeader, Panel, PrimaryButton, Stat, Status } from '../ui'
+import { AppointmentActions } from './AppointmentActions'
+import { ClientConsentPanel } from './ClientRecordsPanel'
+import { ClientInstallPanel } from './ClientInstallPanel'
+import { ClientLoyaltyPanel } from './ClientLoyaltyPanel'
+import { ClientProfilePanel } from './ClientProfilePanel'
+import { WaitlistPanel } from './WaitlistPanel'
 import { TutorialPage } from './TutorialPage'
 import { GuidedTour } from '../GuidedTour'
-import { getTourChapters, saveFinishedTours, tourStorageKey, type TourStep } from '../tour'
+import { getTourChapters, type TourStep } from '../tour'
 import { brandStyle, readBrandTheme, safeInstagramUrl, ShopBrand } from '../shopBrand'
+import { problemMessage } from './BookingEnhancements'
+import '../styles-client-portal.css'
 
+type ClientView='overview'|'agenda'|'subscriptions'|'loyalty'|'profile'
+const views=[{id:'overview' as const,label:'Minha conta',icon:Home},{id:'agenda' as const,label:'Agenda',icon:CalendarDays},{id:'subscriptions' as const,label:'Assinatura',icon:CreditCard},{id:'loyalty' as const,label:'Benefícios',icon:Gift},{id:'profile' as const,label:'Meus dados',icon:UserRound}]
+function contractTerms(row:Row|undefined){const value=row?.contract_snapshot;return value&&typeof value==='object'&&!Array.isArray(value)&&row?.contract_review_required!==true?value as {plan_name?:string;visits_per_cycle?:number;price_cents?:number;frequency_months?:number;services?:{id:string;name:string}[]}:null}
 export function ClientPage({ identity, onSignOut }: PageProps & { onSignOut: () => void }) {
-  const shop = identity.shop!
-  const timezone = shop.timezone || 'America/Sao_Paulo'
-  const [tutorialOpen, setTutorialOpen] = useState(false)
-  const [tourRun, setTourRun] = useState<{ steps: TourStep[]; chapterIds: string[]; index: number } | null>(null)
-  const appointments = useRows('appointments', shop.id)
-  const subscriptions = useRows('subscriptions', shop.id)
-  const plans = useRows('subscription_plans', shop.id)
-  const usages = useRows('subscription_usages', shop.id)
-  const payments = useRows('payments', shop.id)
-  const procedures = useRows('procedure_records', shop.id)
-  const myAppointments = appointments.rows.filter(a => a.client_id === identity.clientId)
-  const mySubscriptions = subscriptions.rows.filter(s => s.client_id === identity.clientId)
-  const myPayments = payments.rows.filter(p => p.client_id === identity.clientId && p.status === 'paid')
-  const active = mySubscriptions.find(s => s.status === 'active')
-  const plan = plans.rows.find(p => p.id === active?.plan_id)
-  const used = usages.rows.filter(u => {
-    if (u.subscription_id !== active?.id || !['reserved','used'].includes(String(u.status))) return false
-    const appointment = myAppointments.find(a => a.id === u.appointment_id)
-    if (!appointment) return false
-    const when = String(appointment.starts_at)
-    return (!active?.current_period_start || when >= String(active.current_period_start))
-      && (!active?.current_period_end || when < String(active.current_period_end))
-  }).length
-  const remaining = active && plan ? Math.max(0, Number(plan.visits_per_cycle || 0) - used) : null
-  const activeTheme = readBrandTheme(shop.brand_theme)
-  const instagramUrl = safeInstagramUrl(shop.instagram_url)
-
-  function startTour(chapterIds: string[]) {
-    const chapters = getTourChapters('client', ['dashboard', 'appointments', 'subscriptions', 'tutorial'], true).filter(chapter => chapterIds.includes(chapter.id))
-    const steps = chapters.flatMap(chapter => chapter.steps)
-    if (!steps.length) return
-    setTutorialOpen(false)
-    setTourRun({ steps, chapterIds: chapters.map(chapter => chapter.id), index: 0 })
-  }
-  function moveTour(direction: -1 | 1) {
-    if (!tourRun) return
-    const nextIndex = tourRun.index + direction
-    if (nextIndex >= tourRun.steps.length) {
-      saveFinishedTours(tourStorageKey(identity.user.id, shop.id, 'client'), tourRun.chapterIds)
-      setTourRun(null); setTutorialOpen(true)
-    } else if (nextIndex >= 0) setTourRun({ ...tourRun, index: nextIndex })
-  }
-
-  return <div className={`client-layout ${activeTheme ? 'shop-themed' : ''}`} data-shop-theme={activeTheme ? '' : undefined} style={brandStyle(activeTheme)}>
-    <header className="client-header">
-      <a href={`/?shop=${encodeURIComponent(shop.slug)}`} className="client-brand"><ShopBrand shop={shop} compact/></a>
-      <div>
-        {instagramUrl && <a className="button ghost client-instagram" href={instagramUrl} target="_blank" rel="noreferrer" aria-label={`Instagram de ${shop.name}`}><Camera size={16}/> Instagram</a>}
-        <button className="button ghost" onClick={() => setTutorialOpen(value => !value)}><BookOpenCheck size={16}/>{tutorialOpen ? 'Minha conta' : 'Passo a passo'}</button>
-        <button className="button ghost" onClick={onSignOut}><LogOut size={16}/> Sair</button>
-      </div>
-    </header>
-    {tutorialOpen ? <main className="client-content"><TutorialPage identity={identity} role="client" allowedModules={['dashboard','appointments','subscriptions','tutorial']} onStart={startTour}/></main> : <main className="client-content">
-      <div data-tour-client="summary"><PageHeader eyebrow="ÁREA DO CLIENTE" title={`Olá, ${identity.user.user_metadata?.full_name?.split(' ')[0] || 'bem-vindo'}!`} description={`Acompanhe seus horários e benefícios em ${shop.name}.`} action={<a data-tour-client="book" className="button primary" href={`/b/${shop.slug}/agendar`}><CalendarDays size={17}/> Agendar procedimento</a>}/></div>
-      <div className="stats-grid three" data-tour-client="stats">
-        <Stat label="Visitas registradas" value={myAppointments.filter(a => a.status === 'completed').length} foot="Agendamentos concluídos" icon={<History size={19}/>}/>
-        <Stat label="Valor pago" value={money(myPayments.reduce((sum,p) => sum + Number(p.amount_cents || 0),0))} foot="Pagamentos confirmados" icon={<CreditCard size={19}/>}/>
-        <Stat label="Usos restantes" value={remaining === null ? 'Sem plano ativo' : remaining} foot={plan ? asText(plan.name) : 'Conheça os planos da barbearia'} icon={<Sparkles size={19}/>}/>
-      </div>
-      <div className="dashboard-grid">
-        <div data-tour-client="upcoming"><Panel title="Próximos agendamentos" subtitle="Seus horários confirmados"><DataTable rows={myAppointments.filter(a => new Date(String(a.starts_at)).getTime() >= Date.now() && a.status !== 'cancelled').sort((a,b) => String(a.starts_at).localeCompare(String(b.starts_at)))} empty="Nenhum agendamento futuro" columns={[{ key: 'starts_at', label: 'Data e hora', render: row => shopDateTime(row.starts_at, timezone) }, { key: 'total_price_cents', label: 'Valor', render: row => money(row.total_price_cents) }, { key: 'status', label: 'Status', render: row => <Status value={row.status}/> }]} /></Panel></div>
-        <div data-tour-client="plan"><Panel title="Minha assinatura" subtitle="Uso do ciclo atual">{active && plan ? <div className="client-plan"><div className="plan-icon"><CreditCard size={24}/></div><h3>{asText(plan.name)}</h3><strong>{remaining} de {asText(plan.visits_per_cycle)} usos disponíveis</strong><p>Próximo ciclo: {active.current_period_end ? shopDateKey(new Date(String(active.current_period_end)), timezone) : 'a confirmar'}</p><Status value={active.status}/></div> : <div className="client-plan empty-plan"><p>Você ainda não tem assinatura ativa. Consulte os planos oferecidos pela barbearia.</p></div>}</Panel></div>
-      </div>
-      <div data-tour-client="history"><Panel title="Histórico de visitas" subtitle="Agendamentos e procedimentos já realizados"><DataTable rows={myAppointments.sort((a,b) => String(b.starts_at).localeCompare(String(a.starts_at)))} empty="Nenhuma visita registrada" columns={[{ key: 'starts_at', label: 'Data', render: row => shopDateTime(row.starts_at, timezone) }, { key: 'total_price_cents', label: 'Valor', render: row => money(row.total_price_cents) }, { key: 'status', label: 'Status', render: row => <Status value={row.status}/> }]} /></Panel></div>
-      {procedures.rows.some(row => row.client_id === identity.clientId) && <Panel title="Procedimentos realizados"><DataTable rows={procedures.rows.filter(row => row.client_id === identity.clientId)} empty="Nenhum procedimento" columns={[{ key: 'performed_at', label: 'Data', render: row => shopDateTime(row.performed_at, timezone) }, { key: 'description', label: 'Procedimento' }]} /></Panel>}
-    </main>}
-    {tourRun && <GuidedTour steps={tourRun.steps} index={tourRun.index} onBack={() => moveTour(-1)} onNext={() => moveTour(1)} onClose={() => { setTourRun(null); setTutorialOpen(true) }}/>}
+  const shop=identity.shop!, timezone=shop.timezone||'America/Sao_Paulo'
+  const [view,setView]=useState<ClientView>(()=>{const value=new URLSearchParams(window.location.search).get('view');return views.some(v=>v.id===value)?value as ClientView:'overview'})
+  const [selectedAppointment,setSelectedAppointment]=useState<Row|null>(null),[selectedSubscription,setSelectedSubscription]=useState<Row|null>(null),[cancelReview,setCancelReview]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState<string|null>(null),[checkout,setCheckout]=useState<string|null>(null)
+  const [tutorialOpen,setTutorialOpen]=useState(false)
+  const [tourRun,setTourRun]=useState<{steps:TourStep[];chapterIds:string[];completedSteps:string[];index:number}|null>(null)
+  const progress=useTourProgress(identity.user.id,shop.id,'client')
+  const appointments=useRows('appointments',shop.id,true,'starts_at',{client_id:identity.clientId!}),subscriptions=useRows('subscriptions',shop.id,true,'created_at',{client_id:identity.clientId!}),usages=useRows('subscription_usages',shop.id),payments=useRows('payments',shop.id,true,'created_at',{client_id:identity.clientId!}),procedures=useRows('procedure_records',shop.id,true,'performed_at',{client_id:identity.clientId!})
+  const myAppointments=appointments.rows.filter(a=>a.client_id===identity.clientId),mySubscriptions=subscriptions.rows.filter(s=>s.client_id===identity.clientId),myPayments=payments.rows.filter(p=>p.client_id===identity.clientId&&p.status==='paid')
+  const active=mySubscriptions.find(s=>s.status==='active'),pendingSubscription=mySubscriptions.some(s=>['pending','authorized'].includes(String(s.status))),terms=contractTerms(active)
+  const used=usages.rows.filter(u=>{if(u.subscription_id!==active?.id||!['reserved','used'].includes(String(u.status)))return false;const a=myAppointments.find(a=>a.id===u.appointment_id);if(!a)return false;return (!active?.current_period_start||String(a.starts_at)>=String(active.current_period_start))&&(!active?.current_period_end||String(a.starts_at)<String(active.current_period_end))}).length
+  const expiredCycle=Boolean(active?.current_period_end&&new Date(String(active.current_period_end)).getTime()<=Date.now())
+  const remaining=active?expiredCycle?0:terms&&Number.isInteger(terms.visits_per_cycle)?Math.max(0,Number(terms.visits_per_cycle)-used):null:null
+  const subscriptionLoading=subscriptions.loading||usages.loading||appointments.loading,subscriptionError=subscriptions.error||usages.error||appointments.error,accountError=subscriptionError||payments.error||procedures.error
+  const activeTheme=readBrandTheme(shop.brand_theme),instagram=safeInstagramUrl(shop.instagram_url),contact=whatsappUrl(shop.whatsapp,`Olá! Preciso de ajuda com minha conta em ${shop.name}.`)
+  const upcoming=myAppointments.filter(a=>new Date(String(a.starts_at)).getTime()>=Date.now()&&['pending','confirmed','in_progress'].includes(String(a.status))).sort((a,b)=>String(a.starts_at).localeCompare(String(b.starts_at)))
+  const completed=myAppointments.filter(a=>a.status==='completed')
+  function focusStep(step:TourStep){setView(step.selector.includes('"history"')?'agenda':'overview')}
+  function startTour(chapterIds:string[],resume=false){const chapters=getTourChapters('client',['dashboard','appointments','subscriptions','tutorial'],true).filter(c=>chapterIds.includes(c.id));const steps=chapters.flatMap(c=>c.steps);if(!steps.length)return;const saved=resume?progress.run:null,index=saved?Math.max(0,steps.findIndex(s=>s.id===saved.stepKey)):0;const run={steps,chapterIds:chapters.map(c=>c.id),completedSteps:saved?.completedSteps||[],index};setTutorialOpen(false);focusStep(steps[index]);setTourRun(run);progress.save({chapterIds:run.chapterIds,stepKey:steps[index].id!,skippedModules:[],completedSteps:run.completedSteps,updatedAt:new Date().toISOString()})}
+  function moveTour(direction:-1|1,completedStep=false){if(!tourRun)return;const next=tourRun.index+direction,completedSteps=direction===1&&completedStep?[...new Set([...tourRun.completedSteps,tourRun.steps[tourRun.index].id!])]:tourRun.completedSteps;if(next>=tourRun.steps.length){const chapters=getTourChapters('client',['dashboard','appointments','subscriptions','tutorial'],true),finished=tourRun.chapterIds.filter(id=>chapters.find(c=>c.id===id)?.steps.every(s=>completedSteps.includes(s.id!)));progress.save(null,[...new Set([...progress.finished,...finished])]);setTourRun(null);setTutorialOpen(false);return}if(next<0)return;focusStep(tourRun.steps[next]);setTourRun({...tourRun,index:next,completedSteps});progress.save({chapterIds:tourRun.chapterIds,stepKey:tourRun.steps[next].id!,skippedModules:[],completedSteps,updatedAt:new Date().toISOString()})}
+  async function manageSubscription(cancel=false){if(!selectedSubscription)return;setBusy(true);setError(null);try{const r=cancel?await authedApi<{status:string;checkout_url?:string}>('/api/mercadopago/subscription-cancel',{subscription_id:selectedSubscription.id}):await authedGet<{status:string;checkout_url?:string}>(`/api/mercadopago/subscription-status?subscription_id=${encodeURIComponent(selectedSubscription.id)}`);await subscriptions.refresh();setSelectedSubscription({...selectedSubscription,status:r.status});setCancelReview(false);if(r.checkout_url){const parsed=new URL(r.checkout_url);if(parsed.protocol==='https:'&&(parsed.hostname==='mercadopago.com.br'||parsed.hostname.endsWith('.mercadopago.com.br')||parsed.hostname==='mercadopago.com'||parsed.hostname.endsWith('.mercadopago.com')))setCheckout(parsed.href)}}catch(p){setError(problemMessage(p,'Não foi possível consultar a cobrança.'))}finally{setBusy(false)}}
+  const appointmentColumns=[{key:'starts_at',label:'Data e hora',render:(row:Row)=>shopDateTime(row.starts_at,timezone)},{key:'total_price_cents',label:'Valor',render:(row:Row)=>row.import_price_known===false?'Não importado':money(row.total_price_cents)},{key:'status',label:'Situação',render:(row:Row)=><Status value={row.status}/>}]
+  const planCard=<div data-tour-client="plan"><Panel title="Minha assinatura" subtitle="Condições e saldo do contrato">{subscriptionLoading?<Loading text="Consultando sua assinatura..."/>:subscriptionError?<Notice text="Sua assinatura não pôde ser consultada. Recarregue a página para conferir o saldo."/>:active?<div className="client-plan"><div className="plan-icon"><CreditCard size={24}/></div><h3>{terms?.plan_name||'Contrato em revisão'}</h3>{remaining===null?<p>As condições originais precisam ser revisadas pela barbearia antes de informar seu saldo.</p>:<strong>{remaining} de {terms?.visits_per_cycle ?? '—'} usos disponíveis</strong>}<p>Próximo ciclo: {active.current_period_end?shopDateKey(new Date(String(active.current_period_end)),timezone):'a confirmar'}</p><Status value={active.status}/>{expiredCycle&&<p>O ciclo anterior terminou. Os usos serão liberados após a confirmação do novo pagamento.</p>}<button className="button outline" onClick={()=>{setSelectedSubscription(active);setCheckout(null);setError(null)}}>Ver contrato e cobrança</button></div>:<div className="client-plan empty-plan"><p>{pendingSubscription?'Sua assinatura aguarda confirmação do pagamento. Os usos serão liberados quando o pagamento for confirmado.':'Você ainda não tem assinatura ativa. Conheça os planos oferecidos pela barbearia.'}</p><a className="button outline" href={`/b/${shop.slug}#planos`}>Conhecer planos</a></div>}</Panel></div>
+  return <div className={`client-layout client-portal ${activeTheme?'shop-themed':''}`} data-shop-theme={activeTheme?'':undefined} style={brandStyle(activeTheme)}>
+    <header className="client-header"><a href={`/b/${shop.slug}`} className="client-brand"><ShopBrand shop={shop} compact/></a><div>{instagram&&<a className="button ghost client-instagram" href={instagram} target="_blank" rel="noreferrer" aria-label={`Instagram de ${shop.name}`}><Camera size={16}/>Instagram</a>}<button className="button ghost" onClick={()=>setTutorialOpen(v=>!v)}><BookOpenCheck size={16}/><span>{tutorialOpen?'Minha conta':'Passo a passo'}</span></button><button className="button ghost" onClick={onSignOut}><LogOut size={16}/><span>Sair</span></button></div></header>
+    <nav className="client-portal-nav" aria-label="Áreas da minha conta">{views.map(item=><button type="button" key={item.id} className={view===item.id&&!tutorialOpen?'active':''} aria-current={view===item.id&&!tutorialOpen?'page':undefined} onClick={()=>{setView(item.id);setTutorialOpen(false)}}><item.icon size={19}/><span>{item.label}</span></button>)}</nav>
+    <main className="client-content"><ClientInstallPanel shop={shop} showCard={view==='overview'&&!tutorialOpen}/>{tutorialOpen?<TutorialPage identity={identity} role="client" allowedModules={['dashboard','appointments','subscriptions','tutorial']} onStart={startTour} progress={progress}/>:<>
+      <div data-tour-client="summary"><PageHeader eyebrow="SUA CONTA" title={view==='overview'?`Olá, ${identity.user.user_metadata?.full_name?.split(' ')[0]||'bem-vindo'}!`:views.find(v=>v.id===view)!.label} description={`Seu atendimento e seus benefícios em ${shop.name}.`} action={<a data-tour-client="book" className="button primary" href={`/b/${shop.slug}/agendar`}><CalendarDays size={17}/>Agendar procedimento</a>}/></div>
+      <Notice text={accountError?`Não foi possível carregar todos os dados da sua conta. ${accountError}`:null}/>
+      {view==='overview'&&<><div className="stats-grid three" data-tour-client="stats"><Stat label="Visitas registradas" value={appointments.loading||appointments.error?'—':completed.length} foot="Atendimentos concluídos" icon={<History size={19}/>}/><Stat label="Valor pago" value={payments.loading||payments.error?'—':money(myPayments.reduce((sum,p)=>sum+Number(p.amount_cents||0),0))} foot="Pagamentos confirmados" icon={<CreditCard size={19}/>}/><Stat label="Usos restantes" value={subscriptionLoading||subscriptionError?'—':remaining===null?active?'Contrato em revisão':pendingSubscription?'Aguardando pagamento':'Sem plano ativo':remaining} foot={terms?.plan_name||'Benefícios do contrato vigente'} icon={<Sparkles size={19}/>}/></div><div className="dashboard-grid"><div data-tour-client="upcoming"><Panel title="Seus próximos horários" subtitle="Toque em um atendimento para confirmar, reagendar ou cancelar."><DataTable rows={upcoming.slice(0,4)} empty="Nenhum agendamento futuro" columns={appointmentColumns} onRowClick={setSelectedAppointment}/><button className="button ghost" onClick={()=>setView('agenda')}>Ver toda a minha agenda</button></Panel></div>{planCard}</div>{contact&&<a className="client-support-link" href={contact} target="_blank" rel="noreferrer">Precisa de ajuda? Fale com a barbearia</a>}</>}
+      {view==='agenda'&&<><Panel title="Meus próximos atendimentos" subtitle="Você pode confirmar presença e alterar horários conforme os prazos da barbearia."><DataTable rows={upcoming} empty="Nenhum agendamento futuro" columns={appointmentColumns} onRowClick={setSelectedAppointment}/></Panel><WaitlistPanel shopId={shop.id} timezone={timezone} slug={shop.slug} clientId={identity.clientId!} onBooked={appointments.refresh}/><div data-tour-client="history"><Panel title="Histórico de visitas" subtitle="Dias em que você foi, valores e situação de cada reserva."><DataTable rows={[...myAppointments].sort((a,b)=>String(b.starts_at).localeCompare(String(a.starts_at)))} empty="Nenhuma visita registrada" columns={appointmentColumns} onRowClick={setSelectedAppointment}/></Panel></div>{procedures.rows.length>0&&<Panel title="Procedimentos realizados"><DataTable rows={procedures.rows} empty="Nenhum procedimento" columns={[{key:'performed_at',label:'Data',render:r=>shopDateTime(r.performed_at,timezone)},{key:'description',label:'Procedimento'}]}/></Panel>}</>}
+      {view==='subscriptions'&&<>{planCard}<Panel title="Meus contratos" subtitle="Pagamento e benefícios são conferidos com o provedor."><DataTable rows={mySubscriptions} empty="Nenhuma assinatura registrada" onRowClick={r=>{setSelectedSubscription(r);setCheckout(null);setError(null)}} columns={[{key:'plan_id',label:'Plano',render:r=>contractTerms(r)?.plan_name||'Condições em revisão'},{key:'status',label:'Situação',render:r=><Status value={r.status}/>},{key:'current_period_end',label:'Fim do ciclo',render:r=>r.current_period_end?shopDateTime(r.current_period_end,timezone):'A confirmar'}]}/></Panel><Panel title="Histórico de pagamentos"><DataTable rows={payments.rows} empty="Nenhum pagamento registrado" columns={[{key:'created_at',label:'Data',render:r=>shopDateTime(r.created_at,timezone)},{key:'amount_cents',label:'Valor',render:r=>money(r.amount_cents)},{key:'method',label:'Forma',render:r=>({pix:'Pix',card:'Cartão',cash:'Dinheiro',other:'Outra'}[String(r.method)]||'A confirmar')},{key:'status',label:'Situação',render:r=><Status value={r.status}/>} ]}/></Panel></>}
+      {view==='loyalty'&&<ClientLoyaltyPanel shopId={shop.id} clientId={identity.clientId!} timezone={timezone} slug={shop.slug}/>}
+      {view==='profile'&&<><ClientProfilePanel shopId={shop.id} clientId={identity.clientId!} email={identity.user.email}/><ClientConsentPanel shopId={shop.id} clientId={identity.clientId!} timezone={timezone} self/>{contact&&<a className="button outline" href={contact} target="_blank" rel="noreferrer">Solicitar ajuda com meus dados à barbearia</a>}</>}
+    </>}</main>
+    {selectedAppointment&&<Modal title="Meu agendamento" onClose={()=>setSelectedAppointment(null)}><p>{shopDateTime(selectedAppointment.starts_at,timezone)}</p><Status value={selectedAppointment.status}/><AppointmentActions shopId={shop.id} appointment={selectedAppointment} timezone={timezone} onChanged={async()=>{setSelectedAppointment(null);await appointments.refresh()}}/></Modal>}
+    {selectedSubscription&&<Modal title="Meu contrato e cobrança" onClose={()=>{setSelectedSubscription(null);setCancelReview(false)}}><div className="form-grid">{(()=>{const t=contractTerms(selectedSubscription);return t?<><h3>{t.plan_name}</h3><div className="detail-list"><div><span>Valor contratado por ciclo</span><strong>{money(t.price_cents)}</strong></div><div><span>Frequência</span><strong>A cada {t.frequency_months} mês(es)</strong></div><div><span>Usos por ciclo</span><strong>{t.visits_per_cycle}</strong></div></div><p>Procedimentos cobertos: {t.services?.map(s=>s.name).join(', ')||'a revisar'}.</p></>:<Notice kind="info" text="As condições originais deste contrato precisam ser revisadas pela barbearia."/>})()}<Status value={selectedSubscription.status}/><Notice text={error}/>{checkout&&<a className="button outline" href={checkout} target="_blank" rel="noreferrer">Abrir checkout seguro do Mercado Pago</a>}{selectedSubscription.provider_subscription_id?<>{cancelReview?<><p className="client-cancel-warning">Ao confirmar, a assinatura será encerrada no Mercado Pago e deixará de valer para novas reservas. Os atendimentos já agendados permanecem na agenda. Confira com a barbearia as condições dos usos e pagamentos existentes antes de encerrar.</p><div className="form-actions"><button className="button ghost" onClick={()=>setCancelReview(false)}>Voltar</button><PrimaryButton disabled={busy} onClick={()=>void manageSubscription(true)}>{busy?'Cancelando...':'Confirmar encerramento da assinatura'}</PrimaryButton></div></>:<div className="form-actions"><button className="button outline" disabled={busy} onClick={()=>void manageSubscription(false)}>{busy?'Consultando...':'Consultar cobrança no provedor'}</button>{selectedSubscription.status!=='cancelled'&&<button className="button ghost danger-text" disabled={busy} onClick={()=>setCancelReview(true)}>Revisar cancelamento</button>}</div>}</>:<p className="muted">Esse contrato não tem cobrança vinculada ao Mercado Pago. Para ajustar a assinatura, fale com a barbearia.</p>}</div></Modal>}
+    {tourRun&&<GuidedTour steps={tourRun.steps} index={tourRun.index} onBack={()=>moveTour(-1)} onNext={completed=>moveTour(1,completed===true)} onClose={()=>{setTourRun(null);setTutorialOpen(false)}}/>}
   </div>
 }
+

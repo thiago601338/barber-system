@@ -34,6 +34,7 @@ function verifiedUserId(user: InviteUser, email: string, stage: 'lookup' | 'send
 
 function verifiedInviteLink(raw: string | undefined, authOrigin: string, redirectTo: string): string {
   try {
+    if (!raw) throw new Error('missing invite link')
     const link = new URL(raw)
     if (link.protocol !== 'https:' || link.origin !== authOrigin || !link.pathname.endsWith('/auth/v1/verify')
       || link.searchParams.get('type') !== 'invite' || !link.searchParams.get('token')
@@ -53,7 +54,7 @@ export async function prepareAndSaveMemberInvite(args: {
   redirectTo: string
   lookupExistingUser: (userId: string) => Promise<AuthResult<{ user: InviteUser }>>
   sendInvite: () => Promise<AuthResult<{ user: InviteUser }>>
-  generateInvite: () => Promise<AuthResult<{ user: InviteUser; properties?: { action_link?: string } }>>
+  generateInvite: () => Promise<AuthResult<{ user: InviteUser; properties?: { action_link?: string } | null }>>
   saveMembership: (userId: string) => Promise<{ error: { message?: string } | null }>
 }): Promise<MemberInviteResult> {
   let targetUserId = args.existingUserId
@@ -61,7 +62,7 @@ export async function prepareAndSaveMemberInvite(args: {
   let inviteUrl: string | undefined
 
   async function generateManualLink(expectedUserId?: string) {
-    let generated: AuthResult<{ user: InviteUser; properties?: { action_link?: string } }>
+    let generated: AuthResult<{ user: InviteUser; properties?: { action_link?: string } | null }>
     try { generated = await args.generateInvite() }
     catch (error) { generated = { data: null, error: error as AuthFailure } }
     if (generated.error || !generated.data) {
@@ -102,6 +103,7 @@ export async function prepareAndSaveMemberInvite(args: {
     }
   }
 
+  if (!targetUserId) throw new InviteFlowError('membership', 'Nenhuma conta foi confirmada para este convite.')
   const saved = await args.saveMembership(targetUserId)
   if (saved.error) throw new InviteFlowError('membership', saved.error.message || 'Não foi possível vincular o integrante.')
   return {

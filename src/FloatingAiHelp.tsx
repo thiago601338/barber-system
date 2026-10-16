@@ -3,6 +3,8 @@ import { Check, CheckCircle2, LoaderCircle, MessageCircle, Minimize2, Send, Shie
 import { authedApi } from './lib/supabase'
 import { SpeechInputButton } from './SpeechInputButton'
 import type { Identity, Role } from './types'
+import { AiOperationalActions } from './AiOperationalActions'
+import { aiDisplayFields } from './lib/aiActionDisplay'
 
 type Quota = { daily_limit: number; remaining: number }
 type Action = { type: string; label: string; values: Record<string, unknown> }
@@ -17,17 +19,9 @@ function roleText(role: Role, identity: Identity): string {
   return 'Área do barbeiro'
 }
 
-function readableActionValue(value: unknown): string {
-  if (value === null || value === undefined || value === '') return 'Não informado'
-  if (typeof value === 'boolean') return value ? 'Sim' : 'Não'
-  if (typeof value === 'number') return String(value)
-  if (Array.isArray(value)) return value.map(item => String(item)).join(', ')
-  if (typeof value === 'object') return JSON.stringify(value)
-  return String(value)
-}
-
 export function FloatingAiHelp({ identity, role, notify }: { identity: Identity; role: Role; notify: (message: string, kind?: 'success' | 'error') => void }) {
   const [open, setOpen] = useState(false)
+  const [hidden, setHidden] = useState(false)
   const [minimized, setMinimized] = useState(false)
   const [prompt, setPrompt] = useState('')
   const [turns, setTurns] = useState<Turn[]>([])
@@ -97,12 +91,12 @@ export function FloatingAiHelp({ identity, role, notify }: { identity: Identity;
     }
   }
 
-  if (role === 'client') return null
+  if (role === 'client' || hidden) return null
 
   return <>
-    {!open && <button type="button" className={`floating-ai-trigger ${minimized ? 'is-minimized' : ''}`} onClick={openPanel} aria-label="Abrir Ajuda de IA">
+    {!open && <div className="floating-ai-launcher"><button type="button" className={`floating-ai-trigger ${minimized ? 'is-minimized' : ''}`} onClick={openPanel} aria-label="Abrir Ajuda de IA">
       <Sparkles size={20}/><span>{minimized ? 'IA' : 'Ajuda de IA'}</span>
-    </button>}
+    </button><button type="button" className="floating-ai-dismiss" aria-label="Ocultar botão de Ajuda de IA" title="Ocultar ajuda flutuante" onClick={() => { setHidden(true); notify('Ajuda flutuante ocultada. A aba Ajuda de IA continua disponível no menu.') }}><X size={13}/></button></div>}
     {open && <div className="floating-ai-layer" role="dialog" aria-modal="false" aria-label="Ajuda de IA flutuante">
       <section className="floating-ai-panel">
         <header className="floating-ai-head">
@@ -112,7 +106,7 @@ export function FloatingAiHelp({ identity, role, notify }: { identity: Identity;
             <button type="button" onClick={closePanel} aria-label="Fechar Ajuda de IA" title="Fechar"><X size={18}/></button>
           </div>
         </header>
-        <div className="floating-ai-thread" ref={threadRef}>
+        {identity.shop && <div style={{padding:12}}><AiOperationalActions key={identity.shop.id} shopId={identity.shop.id} notify={notify}/></div>}<div className="floating-ai-thread" ref={threadRef}>
           {!turns.length && <div className="floating-ai-empty"><MessageCircle size={25}/><strong>Peça ajuda sem sair da página</strong><p>Use texto ou voz. A IA respeita o seu perfil e pede confirmação antes de salvar qualquer cadastro.</p></div>}
           {turns.map(turn => <div className="floating-ai-turn" key={turn.id}>
             <div className="floating-ai-bubble user"><span>Você</span><p>{turn.prompt}</p></div>
@@ -124,7 +118,7 @@ export function FloatingAiHelp({ identity, role, notify }: { identity: Identity;
               {turn.plan && <div className="floating-ai-plan">
                 <p>{turn.plan.summary}</p>
                 <div className="floating-ai-plan-title"><ShieldCheck size={16}/><strong>{turn.plan.action.label}</strong></div>
-                <dl>{Object.entries(turn.plan.action.values || {}).slice(0, 5).map(([key, value]) => <div key={key}><dt>{key.replace(/_/g, ' ')}</dt><dd>{readableActionValue(value)}</dd></div>)}</dl>
+                <dl>{aiDisplayFields(turn.plan.action.values,identity.shop?.timezone??undefined).map(([label,value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
                 {turn.execution ? <div className="floating-ai-done"><CheckCircle2 size={16}/> Salvo</div> : <button type="button" className="button primary" onClick={() => void executePlan(turn.id)} disabled={busy !== null}>{busy === 'execute' && executingTurnId === turn.id ? <><LoaderCircle size={16} className="spin"/> Salvando</> : <><Check size={16}/> Confirmar</>}</button>}
                 {turn.error && <p className="floating-ai-error">{turn.error}</p>}
               </div>}

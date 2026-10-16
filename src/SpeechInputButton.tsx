@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Mic, MicOff } from 'lucide-react'
 
 type SpeechRecognitionResultList = {
@@ -57,7 +57,27 @@ export function SpeechInputButton({ disabled, value, onChange, onUnavailable, on
   const [listening, setListening] = useState(false)
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
   const baseTextRef = useRef('')
-  const finalTranscriptRef = useRef('')
+  useEffect(() => () => {
+    const recognition = recognitionRef.current
+    if (!recognition) return
+    recognition.onresult = null
+    recognition.onerror = null
+    recognition.onend = null
+    recognition.stop()
+  }, [])
+
+  useEffect(() => {
+    if (!disabled) return
+    const recognition = recognitionRef.current
+    if (recognition) {
+      recognition.onresult = null
+      recognition.onerror = null
+      recognition.onend = null
+      recognition.stop()
+      recognitionRef.current = null
+    }
+    setListening(false)
+  }, [disabled])
 
   function toggleSpeech() {
     if (disabled) return
@@ -74,36 +94,43 @@ export function SpeechInputButton({ disabled, value, onChange, onUnavailable, on
     const recognition = new Recognition()
     recognitionRef.current = recognition
     baseTextRef.current = value
-    finalTranscriptRef.current = ''
     recognition.lang = 'pt-BR'
     recognition.interimResults = true
     recognition.continuous = true
     recognition.onresult = event => {
+      if (recognitionRef.current !== recognition) return
       let finalChunk = ''
       let interimChunk = ''
-      const start = Math.max(0, event.resultIndex ?? 0)
-      for (let index = start; index < event.results.length; index += 1) {
+      // The browser returns the complete result list; rebuilding it prevents
+      // a revised final result from being appended for a second time.
+      for (let index = 0; index < event.results.length; index += 1) {
         const result = event.results[index]
         const piece = result?.[0]?.transcript?.trim()
         if (!piece) continue
         if (result.isFinal) finalChunk = `${finalChunk} ${piece}`.trim()
         else interimChunk = `${interimChunk} ${piece}`.trim()
       }
-      if (finalChunk) finalTranscriptRef.current = `${finalTranscriptRef.current} ${finalChunk}`.trim()
-      const transcript = `${finalTranscriptRef.current} ${interimChunk}`.trim()
+      const transcript = `${finalChunk} ${interimChunk}`.trim()
       if (transcript) onChange(withTranscript(baseTextRef.current, transcript))
     }
     recognition.onerror = event => {
+      if (recognitionRef.current !== recognition) return
       setListening(false)
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') onError?.('O navegador bloqueou o microfone para esta página.')
       else if (event.error && event.error !== 'no-speech') onError?.('Não consegui captar sua fala. Tente de novo falando um pouco mais perto do microfone.')
     }
     recognition.onend = () => {
+      if (recognitionRef.current !== recognition) return
       setListening(false)
-      finalTranscriptRef.current = ''
+      recognitionRef.current = null
     }
     setListening(true)
-    recognition.start()
+    try { recognition.start() }
+    catch {
+      setListening(false)
+      recognitionRef.current = null
+      onError?.('Não foi possível iniciar o ditado. Confira a permissão do microfone e tente novamente.')
+    }
   }
 
   return <button

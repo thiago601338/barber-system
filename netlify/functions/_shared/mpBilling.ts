@@ -2,6 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { email, HttpError, setting, uuid } from './core'
 import { mpId, mpPublicUrl, mpRequest, type MpPreapproval, shopToken, verifyCollector } from './mpApi'
 import { requireStartActor, requireSubscriptionActor, savePreapprovalStatus, subscriptionById } from './mpStore'
+import { subscriptionTerms } from './subscriptionTerms'
+import { calculatePlatformPrice } from './platformPricing'
 
 function amount(cents: number): number {
   if (!Number.isSafeInteger(cents) || cents <= 0) throw new HttpError(400, 'Valor da assinatura inválido.')
@@ -32,6 +34,7 @@ export async function startCustomerSubscription(request: Request, client: Supaba
   if (personError) throw personError
   if (planError) throw planError
   if (!plan.active) throw new HttpError(409, 'Plano de assinatura inativo.')
+  if (!Number.isSafeInteger(plan.price_cents) || plan.price_cents <= 0) throw new HttpError(409, 'Defina um valor positivo para a recorrência no cartão ou Pix.')
   const payerEmail = email(person.email)
   const { token, accountId } = await shopToken(client, shopId)
   const { data: existing, error: existingError } = await client.from('subscriptions')
@@ -48,13 +51,14 @@ export async function startCustomerSubscription(request: Request, client: Supaba
   }
   const { data: created, error: createError } = await client.from('subscriptions').insert({
     barbershop_id: shopId, client_id: clientId, plan_id: planId, provider: 'mercadopago', status: 'pending',
-  }).select('id').single()
+  }).select('id,contract_snapshot,contract_review_required').single()
   if (createError) throw createError
+  const terms = subscriptionTerms(created)
   const remote = await mpRequest<MpPreapproval>('/preapproval', token, 'POST', {
-    reason: plan.name,
+    reason: terms.plan_name,
     external_reference: created.id,
     payer_email: payerEmail,
-    auto_recurring: { frequency: plan.frequency_months, frequency_type: 'months', transaction_amount: amount(plan.price_cents), currency_id: 'BRL' },
+    auto_recurring: { frequency: terms.frequency_months, frequency_type: 'months', transaction_amount: amount(terms.price_cents), currency_id: 'BRL' },
     back_url: mpPublicUrl('MP_CUSTOMER_BACK_URL'),
     status: 'pending',
   }, created.id)
@@ -100,13 +104,16 @@ export interface SaasQuote {
   seat_count: number
   base_monthly_cents: number
   unit_price_cents: number
+  monthly_cap_cents: number
+  subtotal_cents: number
+  discount_cents: number
   amount_cents: number
 }
 
 export async function saasQuote(client: SupabaseClient, shopId: string): Promise<SaasQuote> {
   const [{ data: settings, error: settingsError }, { data: shop, error: shopError }, seats] = await Promise.all([
-    client.from('platform_settings').select('seat_price_cents,billing_enabled').eq('id', 1).single(),
-    client.from('barbershops').select('active,base_monthly_cents,per_barber_monthly_cents').eq('id', shopId).single(),
+    client.from('platform_settings').select('base_monthly_cents,seat_price_cents,monthly_cap_cents,billing_enabled').eq('id', 1).single(),
+    client.from('barbershops').select('active,base_monthly_cents,per_barber_monthly_cents,monthly_cap_cents').eq('id', shopId).single(),
     client.from('memberships').select('id', { count: 'exact', head: true })
       .eq('barbershop_id', shopId).eq('role', 'barber').eq('active', true),
   ])
@@ -114,14 +121,10 @@ export async function saasQuote(client: SupabaseClient, shopId: string): Promise
   if (shopError) throw shopError
   if (seats.error) throw seats.error
   const seatCount = seats.count || 0
-  const base = Number(shop.base_monthly_cents)
-  const unit = Number(shop.per_barber_monthly_cents ?? settings.seat_price_cents)
-  const total = base + seatCount * unit
-  if (![base, unit, total].every(Number.isSafeInteger) || base < 0 || unit < 0 || total > 2_147_483_647) {
-    throw new HttpError(409, 'Valor de cobrança excede o limite.')
-  }
-  return { barbershop_id: shopId, billing_enabled: settings.billing_enabled, shop_active: shop.active, seat_count: seatCount,
-    base_monthly_cents: base, unit_price_cents: unit, amount_cents: total }
+  try {
+    return { barbershop_id: shopId, billing_enabled: settings.billing_enabled,
+      shop_active: shop.active, seat_count: seatCount, ...calculatePlatformPrice(settings, shop, seatCount) }
+  } catch (error) { throw new HttpError(409, error instanceof Error ? error.message : 'Preço inválido.') }
 }
 
 function requireSaasEnabled(quote: SaasQuote): void {
@@ -140,16 +143,23 @@ export async function startSaasSubscription(client: SupabaseClient, shopId: stri
   const payerEmail = email(payer)
   const { token, accountId } = centralCredentials()
   const { data: existing, error: existingError } = await client.from('platform_subscriptions')
-    .select('provider_subscription_id,status,seat_count,base_fee_cents,unit_price_cents,amount_cents,payer_email')
+    .select('provider_subscription_id,status,seat_count,base_fee_cents,unit_price_cents,discount_cents,amount_cents,payer_email')
     .eq('barbershop_id', shopId).maybeSingle()
   if (existingError) throw existingError
   if (existing?.provider_subscription_id && existing.status !== 'cancelled') {
-    const remote = await mpRequest<MpPreapproval>(`/preapproval/${mpId(existing.provider_subscription_id)}`, token)
+    const providerId = mpId(existing.provider_subscription_id)
+    const remote = await mpRequest<MpPreapproval>(`/preapproval/${providerId}`, token)
     verifyCollector(remote, accountId)
-    if (remote.external_reference !== `saas-${shopId}`) throw new HttpError(409, 'Cobrança SaaS vinculada a outra referência.')
+    if (remote.id !== providerId || remote.external_reference !== `saas-${shopId}`) throw new HttpError(409, 'Referência da cobrança SaaS divergente.')
+    const remoteAmount = Math.round(Number(remote.auto_recurring?.transaction_amount) * 100)
+    if (!Number.isSafeInteger(remoteAmount) || remoteAmount <= 0 ||
+        remote.auto_recurring?.currency_id !== 'BRL' || remoteAmount !== existing.amount_cents) {
+      throw new HttpError(409, 'Valor ou moeda da cobrança SaaS divergente. Concilie antes de gerar o checkout.')
+    }
     if (existing.amount_cents !== quote.amount_cents || existing.seat_count !== quote.seat_count ||
         existing.base_fee_cents !== quote.base_monthly_cents ||
-        existing.unit_price_cents !== quote.unit_price_cents) {
+        existing.unit_price_cents !== quote.unit_price_cents ||
+        Number(existing.discount_cents ?? 0) !== quote.discount_cents) {
       throw new HttpError(409, 'Quantidade/preço mudou. Aguarde a conciliação automática ou atualize a assinatura existente.')
     }
     return { ...quote, status: existing.status, checkout_url: checkoutLink(remote) }
@@ -161,6 +171,7 @@ export async function startSaasSubscription(client: SupabaseClient, shopId: stri
     barbershop_id: shopId, payer_email: payerEmail, provider_subscription_id: null,
     status: 'pending', seat_count: quote.seat_count, base_fee_cents: quote.base_monthly_cents,
     unit_price_cents: quote.unit_price_cents,
+    discount_cents: quote.discount_cents,
     amount_cents: quote.amount_cents, auto_paused: false, last_reconciled_at: null,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'barbershop_id' })
@@ -184,7 +195,7 @@ export async function startSaasSubscription(client: SupabaseClient, shopId: stri
 export async function syncSaasAmount(client: SupabaseClient, shopId: string) {
   const quote = await saasQuote(client, shopId)
   const { data: existing, error } = await client.from('platform_subscriptions')
-    .select('provider_subscription_id,status,seat_count,base_fee_cents,unit_price_cents,amount_cents,auto_paused').eq('barbershop_id', shopId).single()
+    .select('provider_subscription_id,status,seat_count,base_fee_cents,unit_price_cents,discount_cents,amount_cents,auto_paused').eq('barbershop_id', shopId).single()
   if (error) throw error
   if (!existing.provider_subscription_id) throw new HttpError(409, 'Não existe assinatura SaaS vinculada para conciliar.')
   const { token, accountId } = centralCredentials()
@@ -244,12 +255,13 @@ export async function syncSaasAmount(client: SupabaseClient, shopId: string) {
   const persistQuote = amountChanged || (billable && ['pending', 'authorized'].includes(after.status))
   const localAmount = persistQuote
     ? { seat_count: quote.seat_count, base_fee_cents: quote.base_monthly_cents,
-      unit_price_cents: quote.unit_price_cents, amount_cents: quote.amount_cents } : {}
+      unit_price_cents: quote.unit_price_cents, discount_cents: quote.discount_cents, amount_cents: quote.amount_cents } : {}
   const status = after.status === 'canceled' ? 'cancelled' : after.status
   const localMatches = existing.status === status && Boolean(existing.auto_paused) === autoPaused &&
     (!persistQuote || (Number(existing.seat_count) === quote.seat_count &&
       Number(existing.base_fee_cents) === quote.base_monthly_cents &&
-      Number(existing.unit_price_cents) === quote.unit_price_cents && Number(existing.amount_cents) === quote.amount_cents))
+      Number(existing.unit_price_cents) === quote.unit_price_cents && Number(existing.amount_cents) === quote.amount_cents &&
+      Number(existing.discount_cents ?? 0) === quote.discount_cents))
   if (localMatches) return { ...quote, status, action }
   const { error: saveError } = await client.from('platform_subscriptions').update({
     ...localAmount, status, auto_paused: autoPaused, updated_at: new Date().toISOString(),
@@ -267,15 +279,17 @@ export async function cancelSaasSubscription(client: SupabaseClient, shopId: str
   const id = mpId(data.provider_subscription_id)
   const before = await mpRequest<MpPreapproval>(`/preapproval/${id}`, token)
   verifyCollector(before, accountId)
-  if (before.external_reference !== `saas-${shopId}`) throw new HttpError(409, 'Referência da cobrança SaaS divergente.')
+  if (before.id !== id || before.external_reference !== `saas-${shopId}`) throw new HttpError(409, 'Referência da cobrança SaaS divergente.')
   if (before.status !== 'canceled') await mpRequest<MpPreapproval>(`/preapproval/${id}`, token, 'PUT', { status: 'canceled' })
   const after = await mpRequest<MpPreapproval>(`/preapproval/${id}`, token)
   verifyCollector(after, accountId)
+  if (after.id !== id || after.external_reference !== `saas-${shopId}`) throw new HttpError(409, 'Resposta da cobrança SaaS divergente.')
   if (after.status !== 'canceled') throw new HttpError(502, 'Cancelamento ainda não confirmado pelo Mercado Pago.')
   const { error: saveError } = await client.from('platform_subscriptions').update({
     status: 'cancelled', auto_paused: false, updated_at: new Date().toISOString(),
   })
     .eq('barbershop_id', shopId)
+    .eq('provider_subscription_id', id)
   if (saveError) throw saveError
   return { barbershop_id: shopId, status: 'cancelled' }
 }

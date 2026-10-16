@@ -3,9 +3,10 @@ import { HttpError } from './core.ts'
 export const actionTypes = [
   'create_shop', 'create_service', 'create_product', 'create_shop_goal',
   'create_personal_goal', 'create_marketing_task',
+  'book_appointment', 'create_schedule_block', 'update_service', 'update_product', 'create_client', 'update_client',
 ] as const
 export type ActionType = typeof actionTypes[number]
-export type HelpAction = { type: ActionType; label: string; values: Record<string, string | number | null> }
+export type HelpAction = { type: ActionType; label: string; values: Record<string, string | number | boolean | string[] | null> }
 
 const labels: Record<ActionType, string> = {
   create_shop: 'Criar barbearia',
@@ -14,6 +15,12 @@ const labels: Record<ActionType, string> = {
   create_shop_goal: 'Cadastrar meta da barbearia',
   create_personal_goal: 'Cadastrar meta pessoal',
   create_marketing_task: 'Criar tarefa de marketing',
+  book_appointment: 'Agendar atendimento',
+  create_schedule_block: 'Bloquear horário',
+  update_service: 'Atualizar cadastro do serviço',
+  update_product: 'Atualizar cadastro do produto',
+  create_client: 'Cadastrar cliente',
+  update_client: 'Atualizar cadastro do cliente',
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -44,6 +51,14 @@ function dateOnly(value: unknown, label: string, optional = false): string | nul
   if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) throw new HttpError(422, `${label} inválida.`)
   return value
 }
+function recordId(value: unknown, label: string): string {
+  if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) throw new HttpError(422, `Selecione ${label} na lista autorizada.`)
+  return value.toLowerCase()
+}
+function instant(value: unknown, label: string): string {
+  if (typeof value !== 'string' || !/T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) || Number.isNaN(Date.parse(value))) throw new HttpError(422, `Informe ${label} com data, hora e fuso.`)
+  return new Date(value).toISOString()
+}
 
 /** Model output is never an instruction: it becomes one fixed, validated database action. */
 export function validateHelpAction(candidate: unknown, allowed: readonly ActionType[]): { action: HelpAction; summary: string } {
@@ -59,7 +74,47 @@ export function validateHelpAction(candidate: unknown, allowed: readonly ActionT
   const input = record(output.values)
   let values: HelpAction['values']
   let summary: string
-  if (type === 'create_shop') {
+  if (type === 'book_appointment') {
+    const client_id = recordId(input.client_id, 'o cliente')
+    const barber_membership_id = recordId(input.barber_membership_id, 'o profissional')
+    if (!Array.isArray(input.service_ids) || input.service_ids.length<1 || input.service_ids.length>30) throw new HttpError(422, 'Selecione os serviços do atendimento.')
+    const service_ids = input.service_ids.map(value => recordId(value, 'um serviço'))
+    if (new Set(service_ids).size !== service_ids.length) throw new HttpError(422, 'Não repita o mesmo serviço.')
+    const starts_at = instant(input.starts_at, 'o horário do atendimento')
+    const subscription_id = input.subscription_id == null || input.subscription_id === '' ? null : recordId(input.subscription_id, 'a assinatura')
+    values = { client_id, barber_membership_id, service_ids, starts_at, subscription_id }
+    summary = 'Agendar o cliente e os serviços selecionados no horário disponível. A vaga será conferida novamente ao confirmar.'
+  } else if (type === 'create_schedule_block') {
+    const barber_membership_id = recordId(input.barber_membership_id, 'o profissional')
+    const starts_at = instant(input.starts_at, 'o início do bloqueio'); const ends_at = instant(input.ends_at, 'o fim do bloqueio')
+    const reason = requiredString(input.reason, 'o motivo do bloqueio', 2, 500)
+    const duration = Date.parse(ends_at)-Date.parse(starts_at)
+    if (duration<=0 || duration>7*86_400_000) throw new HttpError(422, 'O bloqueio deve terminar depois do início e ter até 7 dias.')
+    values = { barber_membership_id, starts_at, ends_at, reason }; summary = `Bloquear o horário selecionado: ${reason}. Nenhum atendimento existente será cancelado.`
+  } else if (type === 'update_service' || type === 'update_product') {
+    if (['price_cents','cost_cents','stock_quantity','tax_pct','fee_pct','commission_pct','requires_subscription','image_url','image_path'].some(key => key in input)) throw new HttpError(422, 'Esta ação altera apenas dados do cadastro. Preço, custo, estoque, imagens, taxas e regras de assinatura precisam da área própria.')
+    const id = recordId(input.id, type === 'update_service' ? 'o serviço' : 'o produto')
+    const expected_updated_at = instant(input.expected_updated_at, 'a versão do cadastro')
+    values = { id, expected_updated_at }
+    if ('name' in input) values.name = requiredString(input.name, 'o nome', 2, 160)
+    if ('description' in input) values.description = optionalString(input.description, 1000)
+    if ('active' in input) { if (typeof input.active !== 'boolean') throw new HttpError(422, 'Informe se o cadastro ficará ativo.'); values.active = input.active }
+    if (type === 'update_service' && 'duration_minutes' in input) values.duration_minutes = whole(input.duration_minutes, 'a duração', 5, 480)
+    if (type === 'update_product') {
+      if ('sku' in input) values.sku = optionalString(input.sku, 80)
+      if ('category' in input) { if (!['retail','bar','kitchen','supply'].includes(String(input.category))) throw new HttpError(422, 'Categoria inválida.'); values.category = String(input.category) }
+    }
+    if(Object.keys(values).length===2) throw new HttpError(422, 'Informe pelo menos um campo para atualizar.')
+    summary = `Atualizar somente os campos apresentados no ${type === 'update_service' ? 'serviço' : 'produto'} selecionado. Preços, custos e estoque são preservados.`
+  } else if (type === 'create_client' || type === 'update_client') {
+    values = type === 'update_client' ? { id:recordId(input.id,'o cliente'),expected_updated_at:instant(input.expected_updated_at,'a versão do cadastro') } : {}
+    if(type==='create_client' || 'full_name' in input) values.full_name=requiredString(input.full_name,'o nome do cliente',2,160)
+    if('phone' in input) { const phone=optionalString(input.phone,30); if(phone && !/^[+\d ()-]{8,30}$/.test(phone)) throw new HttpError(422,'Telefone inválido.'); values.phone=phone }
+    if('email' in input) { const email=optionalString(input.email,254); if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpError(422,'E-mail inválido.'); values.email=email }
+    if('notes' in input) values.notes=optionalString(input.notes,2000)
+    if(type==='update_client' && Object.keys(values).length===2) throw new HttpError(422,'Informe pelo menos um campo para atualizar.')
+    summary = `${type==='create_client'?'Cadastrar':'Atualizar'} o cliente apresentado. O acesso ao cadastro seguirá as permissões e o vínculo do profissional.`
+  } else if (type === 'create_shop') {
     const name = requiredString(input.name, 'o nome da barbearia', 2, 160)
     const slug = requiredString(input.slug, 'o endereço público', 2, 80).toLowerCase()
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new HttpError(422, 'O endereço público deve usar letras minúsculas, números e hífens.')

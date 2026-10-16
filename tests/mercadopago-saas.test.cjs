@@ -10,7 +10,7 @@ fs.mkdirSync(generated, { recursive: true })
 fs.writeFileSync(path.join(generated, 'package.json'), '{"type":"commonjs"}')
 const compile = childProcess.spawnSync(process.execPath, [
   path.join(project, 'node_modules', 'typescript', 'bin', 'tsc'),
-  '--ignoreConfig', '--target', 'ES2022', '--module', 'commonjs',
+  '--ignoreConfig', '--target', 'ES2022', '--module', 'commonjs', '--rewriteRelativeImportExtensions',
   '--moduleResolution', 'bundler', '--skipLibCheck',
   '--types', 'vite/client,@netlify/functions',
   '--rootDir', 'netlify/functions/_shared', '--outDir', generated,
@@ -19,7 +19,7 @@ const compile = childProcess.spawnSync(process.execPath, [
   'netlify/functions/_shared/mpWebhook.ts',
 ], { cwd: project, encoding: 'utf8' })
 if (compile.status !== 0) throw new Error(compile.stderr || compile.stdout || 'TypeScript compilation failed')
-const { startSaasSubscription, syncSaasAmount } = require(path.join(generated, 'mpBilling.js'))
+const { startSaasSubscription, syncSaasAmount, saasQuote, cancelSaasSubscription } = require(path.join(generated, 'mpBilling.js'))
 const { runSaasReconcileBatch } = require(path.join(generated, 'mpSaasSchedule.js'))
 const { savePlatformPayment, syncPlatformPreapproval } = require(path.join(generated, 'mpWebhook.js'))
 
@@ -29,13 +29,13 @@ global.Netlify = { env: { get(name) {
 } } }
 
 function fixture({ enabled = true, active = true, seats = 2, price = 1000,
-  base = 0, override = null,
+  base = 0, override = null, cap = 0, shopCap = null, defaultBase = 0,
   remoteStatus = 'authorized', remoteAmount = 20, autoPaused = false } = {}) {
   const local = { barbershop_id: 'shop-1', provider_subscription_id: 'pre-1', status: remoteStatus,
     seat_count: 2, base_fee_cents: 0, unit_price_cents: 1000, amount_cents: 2000, auto_paused: autoPaused }
   const remote = { id: 'pre-1', collector_id: 123, external_reference: 'saas-shop-1',
     status: remoteStatus, auto_recurring: { transaction_amount: remoteAmount, currency_id: 'BRL' } }
-  const calls = { puts: [], updates: [] }
+  const calls = { gets: [], puts: [], updates: [] }
   const client = {
     from(table) {
       const query = { table, operation: 'select', update: null }
@@ -43,12 +43,13 @@ function fixture({ enabled = true, active = true, seats = 2, price = 1000,
         select() { return builder }, eq() { return builder },
         update(value) { query.operation = 'update'; query.update = value; return builder },
         single() { return Promise.resolve(execute()) },
+        maybeSingle() { return Promise.resolve(execute()) },
         then(resolve, reject) { return Promise.resolve(execute()).then(resolve, reject) },
       }
       function execute() {
-        if (table === 'platform_settings') return { data: { seat_price_cents: price, billing_enabled: enabled }, error: null }
+        if (table === 'platform_settings') return { data: { base_monthly_cents: defaultBase, seat_price_cents: price, monthly_cap_cents: cap, billing_enabled: enabled }, error: null }
         if (table === 'barbershops') return { data: { active,
-          base_monthly_cents: base, per_barber_monthly_cents: override }, error: null }
+          base_monthly_cents: base, per_barber_monthly_cents: override, monthly_cap_cents: shopCap }, error: null }
         if (table === 'memberships') return { count: seats, error: null }
         if (table === 'platform_subscriptions' && query.operation === 'select') return { data: { ...local }, error: null }
         if (table === 'platform_subscriptions' && query.operation === 'update') {
@@ -64,6 +65,7 @@ function fixture({ enabled = true, active = true, seats = 2, price = 1000,
   global.fetch = async (url, options) => {
     assert.equal(url, 'https://api.mercadopago.com/preapproval/pre-1')
     assert.equal(options.headers.authorization, 'Bearer test-token')
+    if (options.method === 'GET') calls.gets.push(url)
     if (options.method === 'PUT') {
       const payload = JSON.parse(options.body)
       calls.puts.push(payload)
@@ -74,6 +76,25 @@ function fixture({ enabled = true, active = true, seats = 2, price = 1000,
   }
   return { client, local, remote, calls }
 }
+
+test('a shop inherits the master base, barber price and monthly cap without contacting Mercado Pago', async () => {
+  const setup = fixture({ seats: 10, price: 790, base: null, defaultBase: 2990, cap: 9690 })
+  const quote = await saasQuote(setup.client, 'shop-1')
+  assert.equal(quote.subtotal_cents, 10890)
+  assert.equal(quote.amount_cents, 9690)
+  assert.equal(quote.discount_cents, 1200)
+  assert.equal(setup.calls.puts.length, 0)
+})
+
+test('adding a barber above the cap preserves the monthly provider amount and saves the discounted breakdown', async () => {
+  const setup = fixture({ seats: 20, price: 790, base: 2990, cap: 9690, remoteAmount: 96.90 })
+  const result = await syncSaasAmount(setup.client, 'shop-1')
+  assert.equal(result.action, 'unchanged')
+  assert.equal(setup.calls.puts.length, 0)
+  assert.equal(setup.local.amount_cents, 9690)
+  assert.equal(setup.local.discount_cents, 9100)
+  assert.equal(setup.local.seat_count, 20)
+})
 
 test('same remote amount is a no-op, yet the current seat snapshot is saved', async () => {
   const setup = fixture({ seats: 4, price: 500 })
@@ -256,7 +277,7 @@ test('a late SaaS payment uses the verified historical rate instead of the curre
           seat_count: 3, base_fee_cents: 0, unit_price_cents: 1000, amount_cents: 3000,
         }, error: null })
         if (table === 'platform_subscription_rates') return Promise.resolve({ data: {
-          seat_count: 2, base_fee_cents: 500, unit_price_cents: 1000, amount_cents: 2500,
+          seat_count: 3, base_fee_cents: 500, unit_price_cents: 1000, discount_cents: 1000, amount_cents: 2500,
         }, error: null })
         if (table === 'platform_invoices') return Promise.resolve({ data: null, error: null })
         throw new Error(`Unexpected ${table}`)
@@ -277,9 +298,10 @@ test('a late SaaS payment uses the verified historical rate instead of the curre
   await savePlatformPayment(client, 'pre-1', invoice, payment)
   assert.equal(inserted.length, 1)
   assert.equal(inserted[0].amount_cents, 2500)
-  assert.equal(inserted[0].seat_count, 2)
+  assert.equal(inserted[0].seat_count, 3)
   assert.equal(inserted[0].base_fee_cents, 500)
   assert.equal(inserted[0].unit_price_cents, 1000)
+  assert.equal(inserted[0].discount_cents, 1000)
   await assert.rejects(savePlatformPayment(client, 'pre-1',
     { ...invoice, transaction_amount: '19.00' }, payment), /difere da fatura oficial/)
 })
@@ -376,4 +398,166 @@ test('a late status webhook from a replaced subscription never overwrites the ne
     external_reference: 'saas-shop-1', status: 'canceled' }), { status: 200 })
   await syncPlatformPreapproval(client, 'old-pre')
   assert.equal(updates, 0)
+})
+
+function centralInvoiceFixture(initialStatus, concurrentStatus = null) {
+  const existing = { id: 'invoice-db', provider_payment_id: '52', status: initialStatus }
+  const calls = { writes: 0 }
+  const rate = { barbershop_id: 'shop-1', provider_subscription_id: 'pre-1',
+    seat_count: 2, base_fee_cents: 0, unit_price_cents: 1000, amount_cents: 2000 }
+  const client = { from(table) {
+    const query = { operation: 'select', record: null, filters: [], excludedTerminal: false }
+    const builder = {
+      select() { return builder }, eq(name, value) { query.filters.push([name, value]); return builder },
+      lte() { return builder }, order() { return builder }, limit() { return builder },
+      not(name) { if (name === 'status') query.excludedTerminal = true; return builder },
+      update(record) { query.operation = 'update'; query.record = record; return builder },
+      maybeSingle() {
+        if (table !== 'platform_invoices') return Promise.resolve({ data: { ...rate }, error: null })
+        const snapshot = { ...existing }
+        if (concurrentStatus) existing.status = concurrentStatus
+        return Promise.resolve({ data: snapshot, error: null })
+      },
+      then(resolve, reject) {
+        assert.equal(table, 'platform_invoices')
+        assert.equal(query.operation, 'update')
+        const matches = query.filters.every(([name, value]) => existing[name] === value)
+          && !(query.excludedTerminal && ['refunded', 'charged_back', 'cancelled', 'canceled'].includes(existing.status))
+        if (matches) { calls.writes++; Object.assign(existing, query.record) }
+        return Promise.resolve({ error: null }).then(resolve, reject)
+      },
+    }
+    return builder
+  } }
+  const invoice = { id: '81', preapproval_id: 'pre-1', external_reference: 'saas-shop-1',
+    payment: { id: '52' }, currency_id: 'BRL', transaction_amount: 20, date_created: '2026-09-01T10:00:00.000Z' }
+  const payment = { id: '52', status: 'approved', currency_id: 'BRL', transaction_amount: 20 }
+  return { client, existing, calls, invoice, payment }
+}
+
+test('aprovação SaaS atrasada não restaura o mesmo pagamento estornado', async () => {
+  for (const status of ['refunded', 'charged_back', 'cancelled']) {
+    const setup = centralInvoiceFixture(status)
+    await savePlatformPayment(setup.client, 'pre-1', setup.invoice, setup.payment)
+    assert.equal(setup.existing.status, status)
+    assert.equal(setup.calls.writes, 0)
+  }
+})
+
+test('estorno SaaS concorrente vence uma aprovação antiga', async () => {
+  const setup = centralInvoiceFixture('pending', 'refunded')
+  await savePlatformPayment(setup.client, 'pre-1', setup.invoice, setup.payment)
+  assert.equal(setup.existing.status, 'refunded')
+  assert.equal(setup.calls.writes, 0)
+})
+
+test('novo pagamento SaaS aprovado pode substituir um pagamento estornado', async () => {
+  const setup = centralInvoiceFixture('refunded')
+  await savePlatformPayment(setup.client, 'pre-1', { ...setup.invoice, payment: { id: '53' } }, { ...setup.payment, id: '53' })
+  assert.equal(setup.existing.status, 'paid')
+  assert.equal(setup.existing.provider_payment_id, '53')
+  assert.equal(setup.calls.writes, 1)
+})
+
+test('shop cap overrides distinguish inheritance from an explicit uncapped price', async () => {
+  const inherited = fixture({ seats: 10, price: 790, base: null, defaultBase: 2990, cap: 9690 })
+  const inheritedQuote = await saasQuote(inherited.client, 'shop-1')
+  assert.equal(inheritedQuote.amount_cents, 9690)
+  const uncapped = fixture({ seats: 10, price: 790, base: null, defaultBase: 2990, cap: 9690, shopCap: 0 })
+  const uncappedQuote = await saasQuote(uncapped.client, 'shop-1')
+  assert.equal(uncappedQuote.monthly_cap_cents, 0)
+  assert.equal(uncappedQuote.amount_cents, 10890)
+  assert.equal(uncappedQuote.discount_cents, 0)
+  const custom = fixture({ seats: 10, price: 790, base: null, defaultBase: 2990, cap: 9690, shopCap: 8500 })
+  const customQuote = await saasQuote(custom.client, 'shop-1')
+  assert.equal(customQuote.amount_cents, 8500)
+  assert.equal(customQuote.discount_cents, 2390)
+  for (const setup of [inherited, uncapped, custom]) assert.equal(setup.calls.gets.length + setup.calls.puts.length, 0)
+})
+
+test('a zero quote is rejected before any provider request or local subscription write', async () => {
+  const setup = fixture({ seats: 0, base: 0, override: 0 })
+  await assert.rejects(startSaasSubscription(setup.client, 'shop-1', 'owner@example.com'), /mensalidade base ou preço positivo/)
+  assert.equal(setup.calls.gets.length + setup.calls.puts.length, 0)
+  assert.equal(setup.calls.updates.length, 0)
+})
+
+test('reusing a checkout requires the official provider amount, currency and ID to match', async () => {
+  for (const remotePatch of [
+    { auto_recurring: { transaction_amount: 25, currency_id: 'BRL' } },
+    { auto_recurring: { transaction_amount: 20, currency_id: 'USD' } },
+    { id: 'pre-other' },
+  ]) {
+    const setup = fixture()
+    Object.assign(setup.remote, remotePatch, { init_point: 'https://www.mercadopago.com.br/subscriptions/checkout' })
+    await assert.rejects(startSaasSubscription(setup.client, 'shop-1', 'owner@example.com'), /divergente/)
+    assert.equal(setup.calls.puts.length, 0)
+    assert.equal(setup.calls.updates.length, 0)
+  }
+  const valid = fixture()
+  valid.remote.init_point = 'https://www.mercadopago.com.br/subscriptions/checkout'
+  const result = await startSaasSubscription(valid.client, 'shop-1', 'owner@example.com')
+  assert.equal(result.amount_cents, 2000)
+  assert.equal(result.checkout_url, valid.remote.init_point)
+  assert.equal(valid.calls.gets.length, 1)
+  assert.equal(valid.calls.puts.length + valid.calls.updates.length, 0)
+})
+
+function concurrentSubscriptionFixture() {
+  const current = { barbershop_id: 'shop-1', provider_subscription_id: 'pre-1', status: 'authorized',
+    seat_count: 2, base_fee_cents: 0, unit_price_cents: 1000, discount_cents: 0, amount_cents: 2000 }
+  let writes = 0
+  const client = { from(table) {
+    assert.equal(table, 'platform_subscriptions')
+    const query = { filters: [], operation: 'select', record: null }
+    const builder = {
+      select() { return builder },
+      eq(name, value) { query.filters.push([name, value]); return builder },
+      update(record) { query.operation = 'update'; query.record = record; return builder },
+      single() { return Promise.resolve({ data: { ...current }, error: null }) },
+      maybeSingle() { return Promise.resolve({ data: { ...current }, error: null }) },
+      then(resolve, reject) {
+        assert.equal(query.operation, 'update')
+        if (query.filters.every(([name, value]) => current[name] === value)) {
+          writes++; Object.assign(current, query.record)
+        }
+        return Promise.resolve({ error: null }).then(resolve, reject)
+      },
+    }
+    return builder
+  } }
+  return { client, current, writes: () => writes,
+    replace() { current.provider_subscription_id = 'pre-new'; current.status = 'authorized' } }
+}
+
+test('a status fetched during a concurrent replacement cannot cancel the new subscription', async () => {
+  const setup = concurrentSubscriptionFixture()
+  global.fetch = async () => {
+    setup.replace()
+    return new Response(JSON.stringify({ id: 'pre-1', collector_id: 123,
+      external_reference: 'saas-shop-1', status: 'canceled' }), { status: 200 })
+  }
+  await syncPlatformPreapproval(setup.client, 'pre-1')
+  assert.equal(setup.current.provider_subscription_id, 'pre-new')
+  assert.equal(setup.current.status, 'authorized')
+  assert.equal(setup.writes(), 0)
+})
+
+test('cancelling an old provider subscription cannot cancel a concurrent replacement locally', async () => {
+  const setup = concurrentSubscriptionFixture()
+  const remote = { id: 'pre-1', collector_id: 123, external_reference: 'saas-shop-1', status: 'authorized' }
+  let puts = 0
+  global.fetch = async (url, options) => {
+    assert.equal(url, 'https://api.mercadopago.com/preapproval/pre-1')
+    if (options.method === 'PUT') {
+      puts++; remote.status = 'canceled'; setup.replace()
+    }
+    return new Response(JSON.stringify(remote), { status: 200 })
+  }
+  await cancelSaasSubscription(setup.client, 'shop-1')
+  assert.equal(puts, 1)
+  assert.equal(remote.status, 'canceled')
+  assert.equal(setup.current.provider_subscription_id, 'pre-new')
+  assert.equal(setup.current.status, 'authorized')
+  assert.equal(setup.writes(), 0)
 })

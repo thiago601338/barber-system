@@ -1,6 +1,7 @@
-import { isValidElement, useEffect, useRef, type ReactNode } from 'react'
+import { isValidElement, useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { AlertCircle, ArrowUpRight, LoaderCircle, Plus, Search, X } from 'lucide-react'
 import type { Row } from './types'
+import { errorMessage } from './lib/errorMessage'
 
 export function PageHeader({ eyebrow, title, description, action }: { eyebrow?: string; title: string; description?: string; action?: ReactNode }) {
   return <div className="page-header"><div><div className="eyebrow">{eyebrow || 'BARBER SYSTEM'}</div><h1>{title}</h1>{description && <p>{description}</p>}</div>{action && <div className="page-actions">{action}</div>}</div>
@@ -16,16 +17,18 @@ export function Empty({ title, text, action }: { title: string; text: string; ac
 
 export function Notice({ text, kind = 'error' }: { text: string | null | undefined; kind?: 'error' | 'info' | 'success' }) {
   if (!text) return null
-  return <div className={`notice ${kind}`}><AlertCircle size={17}/><span>{text}</span></div>
+  return <div className={`notice ${kind}`} role={kind === 'error' ? 'alert' : 'status'}><AlertCircle size={17}/><span>{kind === 'error' ? errorMessage(text) : text}</span></div>
 }
 
 export function Loading({ text = 'Carregando dados...' }: { text?: string }) { return <div className="loading"><LoaderCircle size={20} className="spin"/> {text}</div> }
 
-export function PrimaryButton({ children, onClick, type = 'button', disabled = false }: { children: ReactNode; onClick?: () => void; type?: 'button' | 'submit'; disabled?: boolean }) {
-  return <button className="button primary" type={type} onClick={onClick} disabled={disabled}>{children}</button>
+export function PrimaryButton({ children, className = '', type = 'button', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode }) {
+  return <button {...props} className={`button primary ${className}`.trim()} type={type}>{children}</button>
 }
 
-export function AddButton({ children, onClick }: { children: ReactNode; onClick: () => void }) { return <PrimaryButton onClick={onClick}><Plus size={17}/>{children}</PrimaryButton> }
+export function AddButton({ children, className = '', type = 'button', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode }) {
+  return <PrimaryButton {...props} type={type} className={className}><Plus size={17}/>{children}</PrimaryButton>
+}
 
 export function Modal({ title, subtitle, onClose, children, wide = false }: { title: string; subtitle?: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -70,8 +73,13 @@ export function Stat({ label, value, foot, icon }: { label: string; value: strin
 }
 
 export function DataTable({ rows, columns, empty, onRowClick }: { rows: Row[]; columns: { key: string; label: string; render?: (row: Row) => ReactNode }[]; empty: string; onRowClick?: (row: Row) => void }) {
+  const [page, setPage] = useState(0)
+  useEffect(() => { setPage(0) }, [rows.length, rows[0]?.id])
+  const lastPage = Math.max(0, Math.ceil(rows.length / 50) - 1)
+  const currentPage = Math.min(page, lastPage)
+  const shown = rows.slice(currentPage * 50, currentPage * 50 + 50)
   if (rows.length === 0) return <Empty title={empty} text="Os registros aparecerão aqui assim que forem cadastrados." />
-  return <div className="table-scroll"><table><thead><tr>{columns.map(column => <th key={column.key}>{column.label}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.id} className={onRowClick ? 'clickable' : ''} tabIndex={onRowClick ? 0 : undefined} onClick={event => { if (event.target instanceof Element && event.target.closest('button, a, input, select, textarea')) return; onRowClick?.(row) }} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (onRowClick && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onRowClick(row) } }}>{columns.map(column => <td key={column.key}>{column.render ? column.render(row) : String(row[column.key] ?? '—')}</td>)}</tr>)}</tbody></table></div>
+  return <div className="table-scroll"><table><thead><tr>{columns.map(column => <th key={column.key}>{column.label}</th>)}</tr></thead><tbody>{shown.map(row => <tr key={row.id} className={onRowClick ? 'clickable' : ''} tabIndex={onRowClick ? 0 : undefined} onClick={event => { if (event.target instanceof Element && event.target.closest('button, a, input, select, textarea')) return; onRowClick?.(row) }} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (onRowClick && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onRowClick(row) } }}>{columns.map(column => <td key={column.key}>{column.render ? column.render(row) : String(row[column.key] ?? '—')}</td>)}</tr>)}</tbody></table>{rows.length > 50 && <div className="table-pagination"><span>{currentPage*50+1}–{Math.min((currentPage+1)*50,rows.length)} de {rows.length}</span><div><button className="button outline" disabled={currentPage===0} onClick={()=>setPage(currentPage-1)}>Anterior</button><button className="button outline" disabled={currentPage===lastPage} onClick={()=>setPage(currentPage+1)}>Próxima</button></div></div>}</div>
 }
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {

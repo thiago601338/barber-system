@@ -79,14 +79,14 @@ async function syncShopPayment(client: SupabaseClient, paymentId: string, accoun
 
 async function platformBillingOwner(client: SupabaseClient, providerId: string) {
   const { data: current, error: currentError } = await client.from('platform_subscriptions')
-    .select('barbershop_id,provider_subscription_id,seat_count,base_fee_cents,unit_price_cents,amount_cents')
+    .select('barbershop_id,provider_subscription_id,seat_count,base_fee_cents,unit_price_cents,discount_cents,amount_cents')
     .eq('provider_subscription_id', providerId).maybeSingle()
   if (currentError) throw currentError
   if (current) return { ...current, historical_only: false }
   // A cancelled subscription can be replaced before its last invoice webhook
   // arrives. The append-only rate history still identifies the old owner.
   const { data: former, error: historyError } = await client.from('platform_subscription_rates')
-    .select('barbershop_id,provider_subscription_id,seat_count,base_fee_cents,unit_price_cents,amount_cents')
+    .select('barbershop_id,provider_subscription_id,seat_count,base_fee_cents,unit_price_cents,discount_cents,amount_cents')
     .eq('provider_subscription_id', providerId)
     .order('observed_at', { ascending: false }).limit(1).maybeSingle()
   if (historyError) throw historyError
@@ -110,6 +110,7 @@ export async function syncPlatformPreapproval(client: SupabaseClient, providerId
   const status = remote.status === 'canceled' ? 'cancelled' : remote.status
   const { error } = await client.from('platform_subscriptions').update({ status, updated_at: new Date().toISOString() })
     .eq('barbershop_id', local.barbershop_id)
+    .eq('provider_subscription_id', providerId)
   if (error) throw error
 }
 
@@ -136,7 +137,7 @@ export async function savePlatformPayment(client: SupabaseClient, providerId: st
   const invoiceDate = invoice.date_created ? new Date(invoice.date_created) : null
   if (!invoiceDate || Number.isNaN(invoiceDate.getTime())) throw new HttpError(502, 'Fatura SaaS sem data de criação válida.')
   const { data: historical, error: historyError } = await client.from('platform_subscription_rates')
-    .select('seat_count,base_fee_cents,unit_price_cents,amount_cents')
+    .select('seat_count,base_fee_cents,unit_price_cents,discount_cents,amount_cents')
     .eq('barbershop_id', local.barbershop_id).eq('provider_subscription_id', providerId)
     .eq('amount_cents', cents).lte('observed_at', invoiceDate.toISOString())
     .order('observed_at', { ascending: false }).limit(1).maybeSingle()
@@ -150,6 +151,7 @@ export async function savePlatformPayment(client: SupabaseClient, providerId: st
     barbershop_id: local.barbershop_id, period_start: start, period_end: end,
     seat_count: rate.seat_count, base_fee_cents: rate.base_fee_cents ?? 0,
     unit_price_cents: rate.unit_price_cents,
+    discount_cents: rate.discount_cents ?? 0,
     amount_cents: cents, status,
     provider_subscription_id: providerId, provider_invoice_id: providerInvoiceId,
     provider_payment_id: String(payment.id), updated_at: new Date().toISOString(),
@@ -160,9 +162,24 @@ export async function savePlatformPayment(client: SupabaseClient, providerId: st
   if (existing?.provider_payment_id && existing.provider_payment_id !== String(payment.id) && existing.status === 'paid') {
     throw new HttpError(409, 'Fatura SaaS já possui pagamento aprovado. Conciliação manual necessária.')
   }
-  const result = existing
-    ? await client.from('platform_invoices').update(record).eq('id', existing.id)
-    : await client.from('platform_invoices').insert(record)
+  const terminalStatuses = ['refunded', 'charged_back', 'cancelled', 'canceled']
+  const samePayment = existing?.provider_payment_id === String(payment.id)
+  if (samePayment && terminalStatuses.includes(existing.status) && !terminalStatuses.includes(status)) return
+  let result
+  if (existing) {
+    let update = client.from('platform_invoices').update(record).eq('id', existing.id)
+    // A different verified payment may replace a reversed one, but a stale
+    // notification must never overwrite a concurrently replaced payment.
+    update = existing.provider_payment_id
+      ? update.eq('provider_payment_id', existing.provider_payment_id)
+      : update.is('provider_payment_id', null)
+    if (samePayment && !terminalStatuses.includes(status)) {
+      // Check the current database state at write time, not only the snapshot
+      // above: a refund can arrive while the approval is being reconciled.
+      update = update.not('status', 'in', '(refunded,charged_back,cancelled,canceled)')
+    }
+    result = await update
+  } else result = await client.from('platform_invoices').insert(record)
   if (result.error) throw result.error
 }
 

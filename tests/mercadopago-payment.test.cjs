@@ -12,7 +12,7 @@ fs.mkdirSync(generated, { recursive: true })
 fs.writeFileSync(path.join(generated, 'package.json'), '{"type":"commonjs"}')
 const compile = childProcess.spawnSync(process.execPath, [
   path.join(project, 'node_modules', 'typescript', 'bin', 'tsc'),
-  '--ignoreConfig', '--target', 'ES2022', '--module', 'commonjs',
+  '--ignoreConfig', '--target', 'ES2022', '--module', 'commonjs', '--rewriteRelativeImportExtensions',
   '--moduleResolution', 'bundler', '--skipLibCheck',
   '--types', 'vite/client,@netlify/functions',
   '--rootDir', 'netlify/functions/_shared', '--outDir', generated,
@@ -27,6 +27,10 @@ function fixture({ status = 'past_due', existingPayment = null } = {}) {
     plan_id: 'plan-1', status, provider_subscription_id: 'preapproval-1',
     current_period_start: '2026-09-01T00:00:00.000Z',
     current_period_end: '2026-10-01T00:00:00.000Z',
+    contract_review_required: false,
+    contract_snapshot: { version: 1, captured_at: '2026-09-01T00:00:00.000Z', plan_name: 'Original', description: null,
+      price_cents: 5000, frequency_months: 1, visits_per_cycle: 4,
+      services: [{ id: 'service-1', name: 'Corte', price_cents: 0, duration_minutes: 30 }] },
   }
   const payments = new Map()
   if (existingPayment) payments.set(existingPayment.provider_payment_id, { ...existingPayment })
@@ -48,7 +52,7 @@ function fixture({ status = 'past_due', existingPayment = null } = {}) {
       }
       function filter(name) { return query.filters.find(([key]) => key === name)?.[1] }
       function execute() {
-        if (table === 'subscription_plans') return { data: { price_cents: 5000, frequency_months: 1 }, error: null }
+        if (table === 'subscription_plans') throw new Error('A conciliação não pode ler o preço mutável do plano')
         if (table === 'payments' && query.operation === 'select') {
           return { data: payments.get(filter('provider_payment_id')) || null, error: null }
         }
@@ -122,7 +126,7 @@ test('an approved payment from an older cycle cannot restore the current one', a
 test('an underpaid invoice never grants a visit entitlement', async () => {
   const setup = fixture()
   await assert.rejects(saveCustomerPayment(setup.client, setup.subscription,
-    payment('p3', 'approved', undefined, 10)), /Valor pago difere do plano/)
+    payment('p3', 'approved', undefined, 10)), /Valor pago difere do contratado/)
   assert.equal(setup.payments.size, 0)
   assert.equal(setup.subscription.status, 'past_due')
 })

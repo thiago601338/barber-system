@@ -1,0 +1,1 @@
+{"extends":"./tsconfig.functions.json","include":["tools/blog-staging","netlify/functions/_shared/core.ts"]}

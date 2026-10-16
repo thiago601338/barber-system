@@ -1,6 +1,7 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import { HttpError, requirePlatformAdmin, requireShopAdmin, userFromRequest } from './core'
 import type { MpPayment, MpPreapproval } from './mpApi'
+import { addContractMonths, subscriptionTerms } from './subscriptionTerms'
 
 export interface LocalSubscription {
   id: string
@@ -11,11 +12,13 @@ export interface LocalSubscription {
   provider_subscription_id: string | null
   current_period_start: string | null
   current_period_end: string | null
+  contract_snapshot: unknown
+  contract_review_required: boolean
 }
 
 export async function subscriptionById(client: SupabaseClient, id: string): Promise<LocalSubscription> {
   const { data, error } = await client.from('subscriptions')
-    .select('id,barbershop_id,client_id,plan_id,status,provider_subscription_id,current_period_start,current_period_end')
+    .select('id,barbershop_id,client_id,plan_id,status,provider_subscription_id,current_period_start,current_period_end,contract_snapshot,contract_review_required')
     .eq('id', id).maybeSingle()
   if (error) throw error
   if (!data) throw new HttpError(404, 'Assinatura não encontrada.')
@@ -24,7 +27,7 @@ export async function subscriptionById(client: SupabaseClient, id: string): Prom
 
 export async function subscriptionByProviderId(client: SupabaseClient, providerId: string): Promise<LocalSubscription> {
   const { data, error } = await client.from('subscriptions')
-    .select('id,barbershop_id,client_id,plan_id,status,provider_subscription_id,current_period_start,current_period_end')
+    .select('id,barbershop_id,client_id,plan_id,status,provider_subscription_id,current_period_start,current_period_end,contract_snapshot,contract_review_required')
     .eq('provider', 'mercadopago').eq('provider_subscription_id', providerId).maybeSingle()
   if (error) throw error
   if (!data) throw new HttpError(404, 'Assinatura do webhook não encontrada.')
@@ -57,7 +60,7 @@ export async function requireStartActor(request: Request, client: SupabaseClient
 export function localPreapprovalStatus(status: string, current: string): string {
   switch (status) {
     case 'pending': return 'pending'
-    case 'authorized': return current === 'active' ? 'active' : 'authorized'
+    case 'authorized': return ['active', 'past_due'].includes(current) ? current : 'authorized'
     case 'paused': return 'paused'
     case 'canceled': return 'cancelled'
     case 'expired': return 'expired'
@@ -125,11 +128,10 @@ export async function saveCustomerPayment(client: SupabaseClient, subscription: 
   if (existing && existing.subscription_id !== subscription.id) throw new HttpError(409, 'Pagamento já pertence a outra assinatura.')
   const terminalStatuses = ['refunded', 'charged_back', 'cancelled']
   if (existing && terminalStatuses.includes(existing.status) && !terminalStatuses.includes(status)) return
-  const { data: plan, error: planError } = await client.from('subscription_plans').select('price_cents,frequency_months')
-    .eq('barbershop_id', subscription.barbershop_id).eq('id', subscription.plan_id).single()
-  if (planError) throw planError
-  if (status === 'paid' && amountCents !== Number(plan.price_cents)) {
-    throw new HttpError(409, 'Valor pago difere do plano. Conciliação manual necessária antes de liberar visitas.')
+  // Refunds must still revoke entitlement even when a legacy contract needs review.
+  const terms = status === 'paid' && !subscription.contract_review_required ? subscriptionTerms(subscription) : null
+  if (terms && amountCents !== terms.price_cents) {
+    throw new HttpError(409, 'Valor pago difere do contratado. Conciliação manual necessária antes de liberar visitas.')
   }
   // Preserve the original approval date after a refund/chargeback so the
   // database can identify which billing cycle lost its supporting payment.
@@ -155,7 +157,9 @@ export async function saveCustomerPayment(client: SupabaseClient, subscription: 
     : await client.from('payments').insert(record).select('id').single()
   if (result.error) throw result.error
   if (!result.data) return // A concurrent reversal won the race against an older approval.
-  if (status !== 'paid' || ['cancelled', 'expired', 'paused'].includes(subscription.status)) return
+  // Keep verified receipts of legacy contracts without inventing a price/cycle.
+  // They remain under review and cannot issue new visits from unknown benefits.
+  if (status !== 'paid' || !terms || ['cancelled', 'expired', 'paused'].includes(subscription.status)) return
   const paymentDate = new Date(paidAt!)
   if (Number.isNaN(paymentDate.getTime())) throw new HttpError(502, 'Data de pagamento inválida no Mercado Pago.')
   const currentStart = subscription.current_period_start ? new Date(subscription.current_period_start) : null
@@ -173,8 +177,7 @@ export async function saveCustomerPayment(client: SupabaseClient, subscription: 
     if (reconcileError) throw reconcileError
     return
   }
-  const periodEnd = new Date(paymentDate)
-  periodEnd.setUTCMonth(periodEnd.getUTCMonth() + Number(plan.frequency_months))
+  const periodEnd = addContractMonths(paymentDate, terms!.frequency_months)
   let update = client.from('subscriptions').update({
     status: 'active',
     current_period_start: paymentDate.toISOString(),

@@ -49,8 +49,12 @@ type InvoiceFilter = 'all' | 'paid' | 'open' | 'failed'
 
 interface Props {
   overview: MasterOverview
+  basePrice: string
+  setBasePrice: (value: string) => void
   seatPrice: string
   setSeatPrice: (value: string) => void
+  monthlyCap: string
+  setMonthlyCap: (value: string) => void
   billing: boolean
   setBilling: (value: boolean) => void
   busy: boolean
@@ -62,13 +66,21 @@ interface Props {
 }
 
 function amount(value: unknown): number { const number = Number(value); return Number.isFinite(number) ? number : 0 }
+function shopPrice(shop: Row, settings: MasterOverview['settings'], seats: number) {
+  const base = amount(shop.base_monthly_cents ?? settings?.base_monthly_cents)
+  const unit = amount(shop.per_barber_monthly_cents ?? settings?.seat_price_cents)
+  const cap = amount(shop.monthly_cap_cents ?? settings?.monthly_cap_cents)
+  const subtotal = base + seats * unit
+  const total = cap > 0 ? Math.min(subtotal, cap) : subtotal
+  return { base, unit, cap, subtotal, discount: subtotal - total, total }
+}
 function statusText(value: unknown): string { return String(value || '').toLowerCase() }
 function isOpenStatus(value: unknown): boolean { return ['pending', 'in_process', 'in_mediation', 'authorized'].includes(statusText(value)) }
 function isFailedStatus(value: unknown): boolean { return ['failed', 'rejected', 'cancelled'].includes(statusText(value)) }
 function isRefundedStatus(value: unknown): boolean { return ['refunded', 'charged_back'].includes(statusText(value)) }
 function isActiveSubscription(value: unknown): boolean { return ['authorized', 'active'].includes(statusText(value)) }
 
-export function MasterDashboard({ overview, seatPrice, setSeatPrice, billing, setBilling, busy, onSavePrice, onCreateShop, onInviteAdmin, onManageBilling, onRefresh }: Props) {
+export function MasterDashboard({ overview, basePrice, setBasePrice, seatPrice, setSeatPrice, monthlyCap, setMonthlyCap, billing, setBilling, busy, onSavePrice, onCreateShop, onInviteAdmin, onManageBilling, onRefresh }: Props) {
   const [view, setView] = useState<View>('overview')
   const [invoiceFilter, setInvoiceFilter] = useState<InvoiceFilter>('all')
   const [shopFilter, setShopFilter] = useState('all')
@@ -97,8 +109,7 @@ export function MasterDashboard({ overview, seatPrice, setSeatPrice, billing, se
   const platformPaymentReady = Boolean(overview.payment_configuration?.platform_credentials_present && overview.payment_configuration?.platform_webhook_secret_present && overview.payment_configuration?.platform_checkout_url_configured)
   const monthlyExpected = summary ? amount(summary.monthly_expected_cents) : [...subscriptionsByShop.values()].filter(item => isActiveSubscription(item.status)).reduce((sum, item) => sum + amount(item.amount_cents), 0)
   const potential = summary?.monthly_potential_cents ?? activeShops.reduce((sum, shop) => {
-    const unit = shop.per_barber_monthly_cents == null ? amount(overview.settings?.seat_price_cents) : amount(shop.per_barber_monthly_cents)
-    return sum + amount(shop.base_monthly_cents) + (seatsByShop.get(String(shop.id)) || 0) * unit
+    return sum + shopPrice(shop, overview.settings, seatsByShop.get(String(shop.id)) || 0).total
   }, 0)
   const openCount = summary?.open_invoice_count ?? sampleOpen.length
   const paidCount = summary?.paid_invoice_count ?? samplePaid.length
@@ -122,7 +133,7 @@ export function MasterDashboard({ overview, seatPrice, setSeatPrice, billing, se
   const monthlyMax = Math.max(1, ...monthly.map(item => amount(item.paid_cents) + amount(item.pending_cents) + amount(item.failed_cents) + amount(item.refunded_cents) + amount(item.other_cents)))
 
   return <div className="page-stack master-page">
-    <PageHeader eyebrow="CENTRAL DA PLATAFORMA" title="Painel master" description="Acompanhe a operação e a cobrança central de todas as barbearias em um só lugar." action={<div className="button-row"><button className="button outline" type="button" onClick={onRefresh}><RefreshCw size={16}/> Atualizar</button><button className="button primary" type="button" onClick={onCreateShop}><Plus size={16}/> Nova barbearia</button></div>}/>
+    <PageHeader eyebrow="CENTRAL DA PLATAFORMA" title="Painel master" description="Acompanhe a operação e a cobrança central de todas as barbearias em um só lugar." action={<div className="button-row"><button className="button outline" type="button" onClick={onRefresh} data-tour-action="master-refresh"><RefreshCw size={16}/> Atualizar</button><button className="button primary" type="button" onClick={onCreateShop} data-tour-action="master-create-shop"><Plus size={16}/> Nova barbearia</button></div>}/>
 
     <section className="master-hero" aria-label="Resumo da plataforma">
       <div className="master-hero-copy"><div className="master-hero-eyebrow"><Crown size={15}/> VISÃO DA PLATAFORMA</div><h2>Seu negócio, em perspectiva.</h2><p>Receita da plataforma, assinaturas SaaS e desempenho das barbearias. Os pagamentos dos clientes pertencem a cada barbearia e não entram nesta receita.</p><div className="master-hero-actions"><button type="button" onClick={() => setView('billing')}>Ver cobranças <ArrowRight size={16}/></button><button type="button" onClick={() => setView('shops')}>Gerenciar barbearias <ArrowRight size={16}/></button></div></div>
@@ -130,7 +141,7 @@ export function MasterDashboard({ overview, seatPrice, setSeatPrice, billing, se
     </section>
 
     <div className="master-tabs" role="tablist" aria-label="Seções do painel master">
-      {([['overview', 'Visão geral', Activity], ['billing', 'Cobranças', Wallet], ['shops', 'Barbearias', Building2], ['settings', 'Configurações', Settings2]] as const).map(([key, label, Icon]) => <button key={key} type="button" role="tab" aria-selected={view === key} className={view === key ? 'active' : ''} onClick={() => setView(key)}><Icon size={17}/>{label}</button>)}
+      {([['overview', 'Visão geral', Activity], ['billing', 'Cobranças', Wallet], ['shops', 'Barbearias', Building2], ['settings', 'Configurações', Settings2]] as const).map(([key, label, Icon]) => <button key={key} type="button" role="tab" data-tour-master-view={key} aria-selected={view === key} className={view === key ? 'active' : ''} onClick={() => setView(key)}><Icon size={17}/>{label}</button>)}
     </div>
 
     {view === 'overview' && <div className="page-stack" role="tabpanel">
@@ -150,7 +161,7 @@ export function MasterDashboard({ overview, seatPrice, setSeatPrice, billing, se
         </Panel>
         <Panel title="Carteira de barbearias" subtitle="Acesso, profissionais e recorrência central">
           <div className="master-health-list"><div><span><Building2 size={18}/> Barbearias ativas</span><strong>{activeShops.length}</strong></div><div><span><CreditCard size={18}/> Assinaturas ativas</span><strong>{activeSubscriptions}</strong></div><div><span><CalendarClock size={18}/> Sem checkout criado</span><strong>{unconfiguredCount}</strong></div><div><span><Scissors size={18}/> Potencial mensal da base</span><strong>{money(potential)}</strong></div></div>
-          <p className="master-panel-note">O potencial soma mensalidade base e barbeiros ativos de todas as lojas ativas. É uma projeção de preços, não um pagamento recebido.</p>
+          <p className="master-panel-note">O potencial calcula a base e os barbeiros ativos de cada loja, aplicando o teto mensal individual ou padrão. É uma projeção de preços, não um pagamento recebido.</p>
           <button className="master-text-action" type="button" onClick={() => setView('shops')}>Ver barbearias <ArrowRight size={16}/></button>
         </Panel>
       </div>
@@ -181,20 +192,19 @@ export function MasterDashboard({ overview, seatPrice, setSeatPrice, billing, se
     </div>}
 
     {view === 'shops' && <div className="page-stack" role="tabpanel">
-      <div className="master-section-heading"><div><h2>Barbearias da plataforma</h2><p>Consulte a equipe ativa, a assinatura central e os acessos de cada empresa.</p></div><button className="button outline" type="button" onClick={onInviteAdmin}><Plus size={16}/> Convidar administrador</button></div>
+      <div className="master-section-heading"><div><h2>Barbearias da plataforma</h2><p>Consulte a equipe ativa, a assinatura central e os acessos de cada empresa.</p></div><button className="button outline" type="button" onClick={onInviteAdmin} data-tour-action="master-invite-admin"><Plus size={16}/> Convidar administrador</button></div>
       <div className="master-shop-toolbar"><Search size={17}/><input type="search" value={shopSearch} onChange={event => setShopSearch(event.target.value)} placeholder="Buscar barbearia ou endereço" aria-label="Buscar barbearia"/><span>{visibleShops.length} de {overview.shops.length}</span></div>
-      {visibleShops.length === 0 ? <Empty title="Nenhuma barbearia encontrada" text="Ajuste a busca ou cadastre uma nova barbearia." action={<button type="button" className="button primary" onClick={onCreateShop}>Nova barbearia</button>}/> : <div className="master-shop-grid">{visibleShops.map(shop => {
+      {visibleShops.length === 0 ? <Empty title="Nenhuma barbearia encontrada" text="Ajuste a busca ou cadastre uma nova barbearia." action={<button type="button" className="button primary" onClick={onCreateShop} data-tour-action="master-create-shop">Nova barbearia</button>}/> : <div className="master-shop-grid">{visibleShops.map(shop => {
         const seats = seatsByShop.get(String(shop.id)) || 0
         const subscription = subscriptionsByShop.get(String(shop.id))
-        const unit = shop.per_barber_monthly_cents == null ? amount(overview.settings?.seat_price_cents) : amount(shop.per_barber_monthly_cents)
-        const base = amount(shop.base_monthly_cents)
-        return <article className="master-shop-card" key={shop.id}><div className="master-shop-card-top"><div className="master-shop-monogram">{String(shop.name || 'B').slice(0, 1).toUpperCase()}</div><div><h3>{asText(shop.name)}</h3><span>/b/{asText(shop.slug)}</span></div><Status value={shop.active ? 'active' : 'paused'}/></div><div className="master-shop-metrics"><div><span>Barbeiros ativos</span><strong>{seats}</strong></div><div><span>Potencial mensal</span><strong>{money(shop.active ? base + seats * unit : 0)}</strong></div></div><p className="master-shop-formula">{money(base)} base + {seats} × {money(unit)} por barbeiro{shop.per_barber_monthly_cents == null ? ' (padrão)' : ''}</p><div className="master-shop-subscription"><span>Assinatura central</span>{subscription ? <Status value={subscription.status}/> : <strong>Não criada</strong>}</div><button type="button" className="button outline master-shop-action" onClick={() => onManageBilling(shop)}><CreditCard size={16}/> Gerenciar cobrança <ArrowRight size={15}/></button></article>
+        const price = shopPrice(shop, overview.settings, seats)
+        return <article className="master-shop-card" key={shop.id}><div className="master-shop-card-top"><div className="master-shop-monogram">{String(shop.name || 'B').slice(0, 1).toUpperCase()}</div><div><h3>{asText(shop.name)}</h3><span>/b/{asText(shop.slug)}</span></div><Status value={shop.active ? 'active' : 'paused'}/></div><div className="master-shop-metrics"><div><span>Barbeiros ativos</span><strong>{seats}</strong></div><div><span>Potencial mensal</span><strong>{money(shop.active ? price.total : 0)}</strong></div></div><p className="master-shop-formula">Base {money(price.base)}{shop.base_monthly_cents == null ? ' (padrão)' : ''} + {seats} × {money(price.unit)} por barbeiro{shop.per_barber_monthly_cents == null ? ' (padrão)' : ''} = {money(price.subtotal)} bruto.<br/>Teto {price.cap > 0 ? money(price.cap) : 'sem limite'}{shop.monthly_cap_cents == null ? ' (padrão)' : ''} · abatimento {money(price.discount)} · total {money(price.total)} por mês.{!shop.active && <><br/>Loja pausada: este valor não entra no potencial da plataforma.</>}</p><div className="master-shop-subscription"><span>Assinatura central</span>{subscription ? <Status value={subscription.status}/> : <strong>Não criada</strong>}</div><button type="button" className="button outline master-shop-action" onClick={() => onManageBilling(shop)}><CreditCard size={16}/> Gerenciar cobrança <ArrowRight size={15}/></button></article>
       })}</div>}
     </div>}
 
     {view === 'settings' && <div className="page-stack" role="tabpanel">
-      <div className="master-section-heading"><div><h2>Preço e cobrança</h2><p>Defina quanto cada barbearia paga por barbeiro ativo. O valor é cobrado na conta central da plataforma.</p></div></div>
-      <div className="master-settings-grid"><Panel title="Preço padrão por barbeiro" subtitle="Valor inicial; cada barbearia pode ter preço próprio"><form className="form-grid" onSubmit={onSavePrice}><label className="field"><span>Valor padrão por barbeiro ativo / mês (R$)</span><input type="number" min="0" step="0.01" required value={seatPrice} onChange={event => setSeatPrice(event.target.value)}/></label><label className="check-field"><input type="checkbox" checked={billing} onChange={event => setBilling(event.target.checked)}/> Permitir cobrança central após configurar o Mercado Pago</label><button className="button primary" type="submit" disabled={busy}>{busy ? 'Salvando...' : 'Salvar preço padrão'}</button></form><p className="panel-footnote">O valor específico de cada barbearia é configurado em Barbearias → Gerenciar cobrança. Faturas emitidas preservam a composição aplicada na época.</p></Panel><Panel title="Como a receita é separada" subtitle="Transparência entre plataforma e barbearia"><div className="master-revenue-explain"><div><Wallet size={19}/><div><strong>Conta central</strong><p>Recebe a mensalidade SaaS da barbearia, incluindo valor base e barbeiros ativos.</p></div></div><div><Building2 size={19}/><div><strong>Conta da barbearia</strong><p>Recebe as assinaturas e pagamentos dos próprios clientes após conectar sua conta Mercado Pago.</p></div></div></div></Panel></div>
+      <div className="master-section-heading"><div><h2>Preço e cobrança</h2><p>Defina a base por barbearia, o adicional por barbeiro e o limite mensal. A mensalidade SaaS é destinada à conta central da plataforma.</p></div></div>
+      <div className="master-settings-grid"><Panel title="Preços padrão da plataforma" subtitle="Cada barbearia pode herdar os três valores ou definir exceções individuais"><form className="form-grid" onSubmit={onSavePrice} data-tour-action="master-seat-price"><label className="field"><span>Base por barbearia / mês (R$)</span><input type="number" min="0" max="100000" step="0.01" required disabled={busy} value={basePrice} onChange={event => setBasePrice(event.target.value)}/></label><label className="field"><span>Por barbeiro ativo / mês (R$)</span><input type="number" min="0" max="100000" step="0.01" required disabled={busy} value={seatPrice} onChange={event => setSeatPrice(event.target.value)}/></label><label className="field"><span>Teto mensal por barbearia (R$)</span><input type="number" min="0" max="100000" step="0.01" required disabled={busy} value={monthlyCap} onChange={event => setMonthlyCap(event.target.value)}/><small>Use 0 para não limitar a mensalidade.</small></label><p className="panel-footnote">O bruto é base + barbeiros ativos × valor por barbeiro. Quando há um teto, o total mensal é o menor valor entre o bruto e o teto.</p><label className="check-field"><input type="checkbox" disabled={busy} checked={billing} onChange={event => setBilling(event.target.checked)}/> Permitir cobrança central após configurar o Mercado Pago</label><button className="button primary" type="submit" disabled={busy}>{busy ? 'Salvando...' : 'Salvar preços padrão'}</button></form><p className="panel-footnote">Valores específicos são configurados em Barbearias → Gerenciar cobrança. Faturas já emitidas preservam a composição aplicada na época.</p></Panel><Panel title="Como a receita é separada" subtitle="Transparência entre plataforma e barbearia"><div className="master-revenue-explain"><div><Wallet size={19}/><div><strong>Conta central</strong><p>Recebe a mensalidade SaaS da barbearia, considerando base, barbeiros ativos e teto mensal.</p></div></div><div><Building2 size={19}/><div><strong>Conta da barbearia</strong><p>Recebe as assinaturas e pagamentos dos próprios clientes após conectar sua conta Mercado Pago.</p></div></div></div></Panel></div>
       <Panel title="Configuração de pagamentos" subtitle="Presença das configurações do Mercado Pago no servidor; não confirma uma cobrança de teste nem a entrega de webhook.">
         {overview.payment_configuration ? <div className="master-integration-grid"><div><h3>Conta central da plataforma</h3><IntegrationCheck label="Credenciais da conta central" present={overview.payment_configuration.platform_credentials_present}/><IntegrationCheck label="Segredo do webhook central" present={overview.payment_configuration.platform_webhook_secret_present}/><IntegrationCheck label="URL pública de checkout" present={overview.payment_configuration.platform_checkout_url_configured}/></div><div><h3>Contas das barbearias</h3><IntegrationCheck label="Aplicação OAuth" present={overview.payment_configuration.shop_oauth_configured}/><IntegrationCheck label="Segredo do webhook das lojas" present={overview.payment_configuration.shop_webhook_secret_present}/><IntegrationCheck label="URL pública de retorno" present={overview.payment_configuration.shop_checkout_url_configured}/></div></div> : <p className="master-panel-note">O diagnóstico da integração não está disponível no momento.</p>}
       </Panel>
@@ -215,3 +225,4 @@ function InvoiceTable({ rows, shopsById }: { rows: Row[]; shopsById: Map<string,
 function IntegrationCheck({ label, present }: { label: string; present: boolean }) {
   return <div className="master-integration-check"><span>{label}</span><strong className={present ? 'present' : 'missing'}>{present ? 'Presente' : 'Pendente'}</strong></div>
 }
+

@@ -1,6 +1,6 @@
 import type { Config } from '@netlify/functions'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { body, db, failure, HttpError, json, optionalSetting, requireShopAdmin, setting, userFromRequest, uuid } from './_shared/core'
+import { body, db, failure, HttpError, json, optionalSetting, redirectResponse, requireShopAdmin, setting, userFromRequest, uuid } from './_shared/core'
 import { constantTimeEqual, randomToken, seal, unseal } from './_shared/mpCrypto'
 
 type JsonRecord = Record<string, unknown>
@@ -172,7 +172,7 @@ async function callback(request: Request): Promise<Response> {
     if (returnUrl) {
       const parsed = new URL(returnUrl)
       if (parsed.protocol !== 'https:') throw new HttpError(503, 'META_OAUTH_RETURN_URL deve ser HTTPS.')
-      response = Response.redirect(parsed, 303)
+      response = redirectResponse(parsed)
     } else {
       response = new Response('Instagram conectado. Volte ao Barber System para escolher a conta.', {
         status: 200, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },

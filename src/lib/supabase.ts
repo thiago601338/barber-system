@@ -16,6 +16,7 @@ export function requireSupabase(): SupabaseClient {
 }
 
 export async function authedApi<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  if(document.querySelector('.guided-tour-training'))throw new Error('Modo de treino: nenhuma ação real é enviada. Termine ou saia do guia para operar o sistema.')
   const client = requireSupabase()
   const { data } = await client.auth.getSession()
   const token = data.session?.access_token

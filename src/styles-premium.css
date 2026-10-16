@@ -18,7 +18,7 @@ h1,.page-header h1,.auth-brand h1,.auth-form h2,.public-hero h1,.public-section-
 .brand-lockup.compact .brand-wordmark strong{font-size:15px}.brand-lockup.compact .brand-wordmark b{font-size:9px;margin-top:5px}
 
 .auth-layout{grid-template-columns:minmax(0,55fr) minmax(0,45fr);background:#f8f5ef}
-.auth-brand{background:linear-gradient(90deg,rgba(12,22,18,.94) 0%,rgba(12,22,18,.72) 45%,rgba(12,22,18,.18) 100%),linear-gradient(0deg,rgba(10,18,15,.82),transparent 52%),url('./assets/barbershop-hero.png') center center/cover no-repeat;color:#fff;padding:38px clamp(36px,4.5vw,78px) 46px;min-height:100vh}
+.auth-brand{background:linear-gradient(90deg,rgba(12,22,18,.94) 0%,rgba(12,22,18,.72) 45%,rgba(12,22,18,.18) 100%),linear-gradient(0deg,rgba(10,18,15,.82),transparent 52%),url('./assets/barbershop-hero.webp') center center/cover no-repeat;color:#fff;padding:38px clamp(36px,4.5vw,78px) 46px;min-height:100vh}
 .auth-brand>.brand-lockup{position:relative;z-index:2}
 .auth-brand h1{font-size:clamp(56px,5.7vw,90px);line-height:.95;max-width:690px;margin:auto 0 18px;text-shadow:0 5px 22px #0008;position:relative;z-index:1}
 .auth-brand p{font-size:14px;line-height:1.75;max-width:430px;color:#e6e2d7;text-shadow:0 2px 7px #0009;position:relative;z-index:1;margin-bottom:27px}
@@ -67,9 +67,9 @@ table th{color:#8d907f;border-color:#e8e8df}table td{color:#49594b;border-color:
 .segmented{background:#edeadd}.segmented button.selected{color:#1e392b;background:#fffefa}
 .status.good{background:#eaf1df;color:#557743}.status.warn{background:#f8eee0;color:#9a7845}
 .modal{background:#fffefa;border:1px solid #e5e2d7;border-radius:16px}
-.dashboard-hero{min-height:214px;border-radius:15px;overflow:hidden;padding:32px 38px;background:linear-gradient(90deg,rgba(13,24,20,.96) 0%,rgba(13,24,20,.76) 45%,rgba(13,24,20,.08) 100%),url('./assets/barber-detail.png') center 45%/cover no-repeat;display:flex;flex-direction:column;justify-content:center;color:#fff;box-shadow:0 17px 35px #202b211d}
+.dashboard-hero{min-height:214px;border-radius:15px;overflow:hidden;padding:32px 38px;background:linear-gradient(90deg,rgba(13,24,20,.96) 0%,rgba(13,24,20,.76) 45%,rgba(13,24,20,.08) 100%),url('./assets/barber-detail.webp') center 45%/cover no-repeat;display:flex;flex-direction:column;justify-content:center;color:#fff;box-shadow:0 17px 35px #202b211d}
 .dashboard-hero span{font-size:9px;letter-spacing:.24em;color:#dfc792;font-weight:800}.dashboard-hero h2{font-size:clamp(34px,4vw,56px);line-height:.95;margin:14px 0 9px}.dashboard-hero p{font-size:12px;max-width:400px;line-height:1.55;color:#d2d9cf;margin:0}
-.tutorial-overview{background:linear-gradient(90deg,#162a21e8,#162a21b8),url('./assets/barber-detail.png') center center/cover no-repeat;border:1px solid #3a4837;border-radius:14px;box-shadow:0 15px 30px #132d1b24}
+.tutorial-overview{background:linear-gradient(90deg,#162a21e8,#162a21b8),url('./assets/barber-detail.webp') center center/cover no-repeat;border:1px solid #3a4837;border-radius:14px;box-shadow:0 15px 30px #132d1b24}
 .tutorial-overview-copy span{color:#e1c790}.tutorial-progress-ring{background:conic-gradient(#d8b77d var(--tutorial-progress),#ffffff26 0)}.tutorial-progress-ring>div{background:#1e3328}
 .tutorial-module-head{background:#faf8f1}.tutorial-module-icon,.tutorial-step-index{background:#efe6d6;color:#8f744a;border-radius:8px}.tutorial-step.is-done .tutorial-step-index{background:#dfebd4;color:#4e7744}
 .tutorial-complete.completed{color:#557b49}.tutorial-module-head>span{background:#ede7d8;color:#79643f}

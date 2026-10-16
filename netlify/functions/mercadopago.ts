@@ -1,5 +1,5 @@
 import type { Config } from '@netlify/functions'
-import { body, db, failure, HttpError, json, optionalSetting, requirePlatformAdmin, requireShopAdmin, setting, userFromRequest, uuid } from './_shared/core'
+import { body, db, failure, HttpError, json, optionalSetting, redirectResponse, requirePlatformAdmin, requireShopAdmin, setting, userFromRequest, uuid } from './_shared/core'
 import { mpOauthToken, mpPublicUrl, mpRequest, saveShopToken, type MpPreapproval, verifyCollector } from './_shared/mpApi'
 import { cancelCustomerSubscription, cancelSaasSubscription, checkoutLink, customerSubscriptionStatus, saasQuote, startCustomerSubscription, startSaasSubscription, syncSaasAmount } from './_shared/mpBilling'
 import { oauthCallbackUri, shopOauthConfigured } from './_shared/mpConfiguration'
@@ -70,14 +70,14 @@ async function oauthCallback(request: Request): Promise<Response> {
     }
     await saveShopToken(client, saved.shopId, token)
     const returnUrl = optionalSetting('MP_OAUTH_RETURN_URL')
-    if (returnUrl) response = Response.redirect(mpPublicUrl('MP_OAUTH_RETURN_URL'), 303)
+    if (returnUrl) response = redirectResponse(mpPublicUrl('MP_OAUTH_RETURN_URL'))
     else {
       const { data: shop, error: shopError } = await client.from('barbershops').select('slug').eq('id', saved.shopId).single()
       if (shopError) throw shopError
       const destination = new URL('/', request.url)
       destination.searchParams.set('shop', shop.slug)
       destination.searchParams.set('page', 'settings')
-      response = Response.redirect(destination, 303)
+      response = redirectResponse(destination)
     }
   } catch (error) {
     response = failure(error)

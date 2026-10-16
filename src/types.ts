@@ -4,8 +4,8 @@ export type Row = Record<string, unknown> & { id: string }
 export type Role = 'master' | 'admin' | 'barber' | 'client'
 export type ModuleKey =
   | 'dashboard' | 'reports' | 'appointments' | 'clients' | 'services' | 'subscriptions'
-  | 'products' | 'bar' | 'finance' | 'goals' | 'partners' | 'marketing'
-  | 'ai' | 'bio' | 'branding' | 'settings'
+  | 'products' | 'bar' | 'finance' | 'profit' | 'goals' | 'partners' | 'marketing'
+  | 'ai' | 'bio' | 'branding' | 'settings' | 'barbers' | 'whatsapp' | 'quick'
   | 'tutorial'
 
 export interface Shop {
@@ -22,6 +22,8 @@ export interface Shop {
   brand_theme?: unknown
   pix_key?: string | null
   active?: boolean
+  created_via?: 'master' | 'self_service' | null
+  onboarding_completed_at?: string | null
 }
 
 export interface Membership {
@@ -48,9 +50,9 @@ export interface Identity {
 export const moduleLabels: Record<ModuleKey, string> = {
   dashboard: 'Visão geral', reports: 'Relatórios', appointments: 'Agenda', clients: 'Clientes',
   services: 'Serviços', subscriptions: 'Assinaturas', products: 'Produtos',
-  bar: 'Bar e cozinha', finance: 'Financeiro', goals: 'Metas',
+  bar: 'Bar e cozinha', finance: 'Financeiro', profit: 'Margem de Lucro', goals: 'Metas',
   partners: 'Parceiros', marketing: 'Marketing', ai: 'Ajuda de IA',
-  bio: 'Mini bio', branding: 'Identidade visual', settings: 'Configurações', tutorial: 'Passo a passo',
+  bio: 'Mini bio', branding: 'Identidade visual', settings: 'Configurações', tutorial: 'Passo a passo', barbers: 'Barbeiros', whatsapp: 'WhatsApp com IA', quick: 'Cadastro rápido',
 }
 
 export function money(cents: unknown): string {

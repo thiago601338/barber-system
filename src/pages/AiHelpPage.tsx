@@ -6,6 +6,8 @@ import { date, dateTime, money, type Shop } from '../types'
 import { Notice, PageHeader } from '../ui'
 import { AiPage } from './GrowthPage'
 import { SpeechInputButton } from '../SpeechInputButton'
+import { AiOperationalActions } from '../AiOperationalActions'
+import { aiActionLabels, aiDisplayFields } from '../lib/aiActionDisplay'
 
 type Action = { type: string; label: string; values: Record<string, unknown> }
 type Quota = { daily_limit: number; remaining: number }
@@ -41,6 +43,7 @@ function readableValue(key: string, value: unknown, shop: Shop | null, values: R
 }
 
 function ActionFields({ action, shop }: { action: Action; shop: Shop | null }) {
+  if(action.type in aiActionLabels) return <dl className="ai-help-fields">{aiDisplayFields(action.values,shop?.timezone??undefined).map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
   const fields = Object.entries(action.values || {})
   if (!fields.length) return <p className="ai-help-muted">A proposta não trouxe campos para revisar. Faça outro pedido antes de confirmar.</p>
   return <dl className="ai-help-fields">{fields.map(([key, value]) => <div key={key}><dt>{fieldNames[key] || key.replace(/_/g, ' ')}</dt><dd>{readableValue(key, value, shop, action.values)}</dd></div>)}</dl>
@@ -48,8 +51,8 @@ function ActionFields({ action, shop }: { action: Action; shop: Shop | null }) {
 
 function capabilities(role: PageProps['role'], hasShop: boolean, permissions: Record<string, boolean>): string[] {
   if (role === 'master' && !hasShop) return ['Criar barbearia']
-  if (role === 'master' || role === 'admin') return ['Cadastrar serviço', 'Cadastrar produto', 'Definir meta da barbearia', 'Criar tarefa de marketing']
-  if (role === 'barber') return [permissions.goals && 'Criar meta pessoal', permissions.marketing && 'Criar tarefa de marketing'].filter((value): value is string => Boolean(value))
+  if (role === 'master' || role === 'admin') return ['Agendar atendimento', 'Bloquear horário', 'Cadastrar e atualizar cliente', 'Cadastrar serviço e produto', 'Atualizar dados do catálogo', 'Definir meta da barbearia', 'Criar tarefa de marketing']
+  if (role === 'barber') return [permissions.appointments && 'Agendar seus clientes', permissions.availability && 'Bloquear seus horários', permissions.clients && 'Cadastrar e atualizar seus clientes', permissions.goals && 'Criar meta pessoal', permissions.marketing && 'Criar tarefa de marketing'].filter((value): value is string => Boolean(value))
   return []
 }
 
@@ -188,7 +191,7 @@ export function AiHelpPage({ identity, role, notify }: PageProps) {
 
   if (role === 'client') return null
   return <div className="page-stack ai-help-page">
-    <PageHeader eyebrow="ASSISTENTE INTELIGENTE" title="Ajuda de IA" description="Converse sobre sua rotina, peça orientações ou prepare cadastros com revisão antes de salvar."/>
+    <PageHeader eyebrow="ASSISTENTE INTELIGENTE" title="Ajuda de IA" description="Converse sobre sua rotina, peça orientações ou prepare ações com revisão antes de salvar." action={effectiveShopId&&<AiOperationalActions key={effectiveShopId} shopId={effectiveShopId} notify={notify}/>}/>
     {canShowAnalysis && <div className="ai-help-tabs" role="tablist" aria-label="Áreas da ajuda de IA"><button type="button" role="tab" aria-selected={tab === 'conversation'} className={tab === 'conversation' ? 'active' : ''} onClick={() => setTab('conversation')}><Sparkles size={16}/> Conversar com a IA</button><button type="button" role="tab" aria-selected={tab === 'analysis'} className={tab === 'analysis' ? 'active' : ''} onClick={() => setTab('analysis')}><Lightbulb size={16}/> Análise com dados</button></div>}
     {tab === 'analysis' && canShowAnalysis ? <div role="tabpanel" className="ai-help-legacy" aria-label="Análise com dados da barbearia"><AiPage identity={identity} role={role} notify={notify}/></div> : <div role="tabpanel" className="ai-help-content" aria-label="Conversa com a IA">
       {role === 'master' && shop && <div className="ai-help-scope" role="group" aria-label="Contexto da conversa"><span>Você está falando como master em</span><div><button type="button" disabled={busy !== null} className={scope === 'platform' ? 'active' : ''} aria-pressed={scope === 'platform'} onClick={() => changeScope('platform')}>Plataforma</button><button type="button" disabled={busy !== null} className={scope === 'shop' ? 'active' : ''} aria-pressed={scope === 'shop'} onClick={() => changeScope('shop')}>{shop.name}</button></div></div>}

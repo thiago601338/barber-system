@@ -1,23 +1,28 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
+import { serverSupabaseFetch } from './supabaseFetch.ts'
 
 export class HttpError extends Error {
-  constructor(public status: number, message: string) { super(message) }
+  status: number
+  constructor(status: number, message: string) { super(message); this.status = status }
 }
 
 export function setting(name: string): string {
-  const value = Netlify.env.get(name)
+  const value = optionalSetting(name)
   if (!value) throw new HttpError(503, `Integração não configurada: ${name}`)
   return value
 }
 
 export function optionalSetting(name: string): string | undefined {
-  return Netlify.env.get(name) || undefined
+  const raw=Netlify.env.get(name)?.trim()
+  if(!raw)return undefined
+  return /^(['"])([\s\S]*)\1$/.exec(raw)?.[2] || raw
 }
 
 export function db(): SupabaseClient {
   const secret = optionalSetting('SUPABASE_SECRET_KEY') || optionalSetting('SUPABASE_SERVICE_ROLE_KEY')
   if (!secret) throw new HttpError(503, 'Integração não configurada: SUPABASE_SECRET_KEY')
   return createClient(setting('SUPABASE_URL'), secret, {
+    global:{fetch:serverSupabaseFetch(secret,setting('SUPABASE_URL'))},
     auth: { autoRefreshToken: false, persistSession: false },
   })
 }
@@ -26,6 +31,15 @@ export function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+  })
+}
+
+// Response.redirect() has immutable headers, so OAuth callbacks cannot clear
+// their state cookie on it. Construct the redirect with writable headers.
+export function redirectResponse(destination: string | URL, status = 303): Response {
+  return new Response(null, {
+    status,
+    headers: { location: destination.toString(), 'cache-control': 'no-store' },
   })
 }
 

@@ -1,0 +1,38 @@
+.operations-ledger { min-width:0; }
+.ops-toolbar,.ops-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+.ops-toolbar { justify-content:space-between; }
+.ops-actions .button { white-space:normal; }
+.ops-entry-line { display:flex; gap:12px; align-items:end; flex-wrap:wrap; padding:16px; border:1px solid var(--border,#dce5f2); border-radius:16px; background:var(--surface-soft,#f5f8fd); }
+.ops-entry-line > .field { flex:1 1 120px; min-width:0; }
+.ops-entry-line > .field:first-child { flex-grow:2; }
+.ops-entry-line input,.ops-entry-line select { width:100%; }
+.ops-basket { display:grid; gap:8px; }
+.ops-basket > div { display:flex; gap:12px; align-items:center; padding:12px 14px; border:1px solid var(--border,#dce5f2); border-radius:12px; }
+.ops-basket > div > span { flex:1; min-width:0; overflow-wrap:anywhere; }
+.ops-basket strong { white-space:nowrap; }
+.ops-total { display:flex; justify-content:space-between; gap:16px; align-items:center; padding:18px; background:var(--surface-soft,#f2f6ff); border:1px solid var(--border,#dce5f2); border-radius:14px; }
+.ops-total strong { font-size:1.3rem; white-space:nowrap; }
+.ops-money-grid,.ops-filter-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; margin-top:18px; }
+.ops-money-grid .stat { min-width:0; }
+.ops-print-receipt { padding:16px; overflow-wrap:anywhere; }
+.ops-print-receipt h2 { margin-top:0; }
+.ops-print-receipt ul { padding-left:20px; }
+.ops-ledger-tabs { margin-bottom:22px; }
+@media(max-width:640px) {
+ .ops-toolbar { align-items:stretch; }
+ .ops-toolbar > *,.ops-toolbar .ops-actions { width:100%; }
+ .ops-actions .button { flex:1 1 130px; }
+ .ops-entry-line { display:grid; grid-template-columns:1fr 1fr; padding:12px; }
+ .ops-entry-line > .field:first-child { grid-column:1/-1; }
+ .ops-entry-line > .button { grid-column:1/-1; }
+ .ops-money-grid,.ops-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .ops-total { flex-wrap:wrap; }
+ .ops-basket > div { gap:8px; padding:10px; }
+ .ops-ledger-tabs { width:100%; }
+}
+@media print {
+ body:has(.ops-print-receipt) * { visibility:hidden; }
+ body:has(.ops-print-receipt) .ops-print-receipt,body:has(.ops-print-receipt) .ops-print-receipt * { visibility:visible; }
+ body:has(.ops-print-receipt) .ops-print-receipt { position:fixed; inset:0; width:100%; color:#111; background:#fff; padding:20px; }
+ body:has(.ops-print-receipt) .ops-no-print { display:none; }
+}
