@@ -1,5 +1,7 @@
 /  /inicio.html 200!
 /inicio  /inicio.html 200!
+/blog  /.netlify/functions/blog-public 200!
+/blog/*  /.netlify/functions/blog-public 200!
 /precos  /tests/marketing/precos.html 200!
 /agenda-online-para-barbearia  /tests/marketing/agenda-online-para-barbearia.html 200!
 /sistema-barbearia-por-assinatura  /tests/marketing/sistema-barbearia-por-assinatura.html 200!

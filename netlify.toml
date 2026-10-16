@@ -22,6 +22,18 @@
   force = true
 
 [[redirects]]
+  from = "/blog"
+  to = "/.netlify/functions/blog-public"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/blog/*"
+  to = "/.netlify/functions/blog-public"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/precos"
   to = "/tests/marketing/precos.html"
   status = 200
