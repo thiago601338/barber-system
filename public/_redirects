@@ -7,6 +7,7 @@
 /blog/categoria/clientes  /tests/blog/category-clientes.html 200!
 /blog/categoria/marketing  /tests/blog/category-marketing.html 200!
 /blog/categoria/gestao  /tests/blog/category-gestao.html 200!
+/blog/como-organizar-a-agenda-da-barbearia-rotina-pratica-para-reduzir-conflitos  /tests/blog/article.html 200!
 /blog/*  /tests/blog/article.html 200!
 /precos  /tests/marketing/precos.html 200!
 /agenda-online-para-barbearia  /tests/marketing/agenda-online-para-barbearia.html 200!
