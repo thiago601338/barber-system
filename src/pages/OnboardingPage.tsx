@@ -185,6 +185,12 @@ function PaymentStep({ status, reload }: { status: Status; reload: () => Promise
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [polls, setPolls] = useState(0)
+  const [checking, setChecking] = useState(false)
+  const [checked, setChecked] = useState(false)
+  async function checkPayment() {
+    setChecking(true); setError(null)
+    try { await reload() } finally { setChecking(false); setChecked(true) }
+  }
   useEffect(() => {
     if (!returning || payment.paid || polls >= 24) return
     const timer = window.setTimeout(() => { setPolls(n => n + 1); void reload() }, 5000)
@@ -210,7 +216,8 @@ function PaymentStep({ status, reload }: { status: Status; reload: () => Promise
     {!payment.configured && <div className="onb-alert"><strong>O pagamento online está sendo liberado.</strong> Chama a gente no WhatsApp que a gente conclui sua assinatura e libera a configuração na hora.<a className="onb-btn ghost" href={SUPPORT_WHATSAPP} target="_blank" rel="noopener noreferrer">Falar no WhatsApp</a></div>}
     {returning && polls >= 24 && !payment.paid && <p className="onb-error">Ainda não recebemos a confirmação. Se você concluiu o pagamento, aguarde alguns minutos e <button className="onb-link" onClick={() => { setPolls(0); void reload() }}>confira de novo</button>.</p>}
     {error && <p className="onb-error" role="alert">{error}</p>}
-    <div className="onb-actions">{payment.configured && <button className="onb-btn primary" onClick={() => void pay()} disabled={busy}>{busy && <LoaderCircle className="onb-spin" size={17}/>}{payment.status === 'pending' ? 'Continuar pagamento no Mercado Pago' : 'Pagar com Mercado Pago'} <ArrowRight size={17}/></button>}<button className="onb-btn ghost" onClick={() => void reload()}>Já paguei, conferir</button></div>
+    <div className="onb-actions">{payment.configured && <button className="onb-btn primary" onClick={() => void pay()} disabled={busy}>{busy && <LoaderCircle className="onb-spin" size={17}/>}{payment.status === 'pending' ? 'Continuar pagamento no Mercado Pago' : 'Pagar com Mercado Pago'} <ArrowRight size={17}/></button>}<button className="onb-btn ghost" onClick={() => void checkPayment()} disabled={checking}>{checking && <LoaderCircle className="onb-spin" size={17}/>}Já paguei, conferir</button></div>
+    {checked && !checking && !payment.paid && <p className="onb-error" role="status">Ainda não há pagamento confirmado pelo Mercado Pago{payment.status ? ` (situação: ${payment.status === 'pending' ? 'aguardando pagamento' : payment.status})` : ''}. O acesso ao sistema é liberado assim que a assinatura for aprovada.</p>}
   </div>
 }
 

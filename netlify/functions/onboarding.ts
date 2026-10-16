@@ -59,6 +59,12 @@ async function status(client: SupabaseClient, user: User, requested: string | nu
   for (const result of [{ error: shopError }, services, members, rules, connection]) if (result.error) throw result.error
   const free = !quote.billing_enabled || quote.amount_cents <= 0
   const paid = free || subscription?.status === 'authorized'
+  // Barbearia criada pela inscrição só fica liberada (painel e página pública) depois do pagamento confirmado.
+  if (shop!.created_via === 'self_service' && !shop!.onboarding_completed_at && Boolean(shop!.active) !== paid) {
+    const { error: activeError } = await client.from('barbershops').update({ active: paid, updated_at: new Date().toISOString() }).eq('id', shopId)
+    if (activeError) throw activeError
+    shop!.active = paid
+  }
   return {
     stage: shop!.onboarding_completed_at ? 'done' : paid ? 'setup' : 'payment',
     account, pricing, shop, quote,
@@ -87,7 +93,7 @@ async function createShop(client: SupabaseClient, user: User, input: Payload) {
   const taken = await client.from('barbershops').select('id').eq('slug', slug).maybeSingle()
   if (taken.error) throw taken.error
   if (taken.data) throw new HttpError(409, 'Esse endereço já está em uso. Escolha outro.')
-  const { data: shop, error } = await client.from('barbershops').insert({ name, slug, whatsapp, phone: whatsapp, address: city, created_via: 'self_service' }).select('id').single()
+  const { data: shop, error } = await client.from('barbershops').insert({ name, slug, whatsapp, phone: whatsapp, address: city, created_via: 'self_service', active: false }).select('id').single()
   if (error) {
     if (error.code === '23505') throw new HttpError(409, 'Esse endereço já está em uso. Escolha outro.')
     throw error
