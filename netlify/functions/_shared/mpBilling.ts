@@ -166,7 +166,16 @@ export async function startSaasSubscription(client: SupabaseClient, shopId: stri
     return { ...quote, status: existing.status, checkout_url: checkoutLink(remote) }
   }
   if (existing && !existing.provider_subscription_id && existing.status === 'pending') {
-    throw new HttpError(409, 'Cobrança SaaS em criação. Concilie antes de tentar novamente.')
+    // Tentativa anterior interrompida: se o Mercado Pago chegou a criar a cobrança, reaproveita; senão cria de novo.
+    const found = await mpRequest<{ results?: MpPreapproval[] }>(`/preapproval/search?external_reference=saas-${shopId}`, token)
+    const remote = (found.results || []).filter(item => item.external_reference === `saas-${shopId}` && ['pending', 'authorized'].includes(item.status))
+      .find(item => Math.round(Number(item.auto_recurring?.transaction_amount) * 100) === quote.amount_cents)
+    if (remote?.id) {
+      verifyCollector(remote, accountId)
+      const { error: linkError } = await client.from('platform_subscriptions').update({ provider_subscription_id: remote.id, updated_at: new Date().toISOString() }).eq('barbershop_id', shopId)
+      if (linkError) throw linkError
+      return { ...quote, status: 'pending', checkout_url: checkoutLink(remote) }
+    }
   }
   const { error: pendingError } = await client.from('platform_subscriptions').upsert({
     barbershop_id: shopId, payer_email: payerEmail, provider_subscription_id: null,
