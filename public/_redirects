@@ -7,7 +7,8 @@
 /blog/categoria/clientes  /tests/blog/category-clientes.html 200!
 /blog/categoria/marketing  /tests/blog/category-marketing.html 200!
 /blog/categoria/gestao  /tests/blog/category-gestao.html 200!
-/blog/*  /tests/blog/article.html 200!`r`n/precos  /tests/marketing/precos.html 200!
+/blog/*  /tests/blog/article.html 200!
+/precos  /tests/marketing/precos.html 200!
 /agenda-online-para-barbearia  /tests/marketing/agenda-online-para-barbearia.html 200!
 /sistema-barbearia-por-assinatura  /tests/marketing/sistema-barbearia-por-assinatura.html 200!
 /controle-financeiro-barbearia  /tests/marketing/controle-financeiro-barbearia.html 200!
