@@ -18,7 +18,7 @@ document.querySelectorAll('.feature-video[data-video]').forEach(box=>{
  const start=()=>{
   if(box.classList.contains('is-playing'))return
   document.querySelectorAll('.feature-video.is-playing video').forEach(other=>other.pause())
-  const video=document.createElement('video');video.src=box.dataset.video;video.controls=true;video.playsInline=true;video.preload='auto';video.poster=box.querySelector('img')?.getAttribute('src')||''
+  const video=document.createElement('video');;[['video/mp4',box.dataset.video],['video/webm',box.dataset.video.replace(/\.mp4$/,'.webm')]].forEach(([type,src])=>{const source=document.createElement('source');source.src=src;source.type=type;video.appendChild(source)});video.controls=true;video.playsInline=true;video.preload='auto';video.poster=box.querySelector('img')?.getAttribute('src')||''
   video.addEventListener('play',()=>document.querySelectorAll('.feature-video video').forEach(other=>{if(other!==video)other.pause()}))
   box.classList.add('is-playing');box.appendChild(video);video.play().catch(()=>{})
  }
