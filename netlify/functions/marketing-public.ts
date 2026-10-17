@@ -18,4 +18,4 @@ export default async(request:Request)=>{
  const html=renderMarketingPage(path.replace(/\/$/,'')||'/',pricing)
  return new Response(request.method==='HEAD'?null:html||'Página não encontrada.',{status:html?200:404,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'public,max-age=0,must-revalidate','Netlify-CDN-Cache-Control':'public,max-age=600','X-Content-Type-Options':'nosniff','Content-Security-Policy':publicContentSecurityPolicy,'Referrer-Policy':'strict-origin-when-cross-origin'}})
 }
-export const config:Config={path:['/inicio','/agenda-online-para-barbearia','/sistema-barbearia-por-assinatura','/controle-financeiro-barbearia','/site-para-barbearia','/sistema-para-barbeiro-autonomo','/aplicativo-cliente-barbearia','/precos'],preferStatic:false}
+export const config:Config={path:['/inicio','/agenda-online-para-barbearia','/sistema-barbearia-por-assinatura','/controle-financeiro-barbearia','/site-para-barbearia','/sistema-para-barbeiro-autonomo','/aplicativo-cliente-barbearia','/atendimento-whatsapp-ia-barbearia','/precos'],preferStatic:false}

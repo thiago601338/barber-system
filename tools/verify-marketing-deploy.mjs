@@ -4,7 +4,7 @@ const base=process.argv[2]
 const expectedPricing=(process.argv[3]||'2990,790,9690').split(',').map(Number)
 assert(expectedPricing.length===3&&expectedPricing.every(n=>Number.isSafeInteger(n)&&n>=0),'Provide the current configured base, barber and cap cents')
 assert(/^https:\/\/[a-z0-9.-]+$/.test(base),'Use an explicit HTTPS deployment origin')
-const paths=['/','/agenda-online-para-barbearia','/sistema-barbearia-por-assinatura','/controle-financeiro-barbearia','/site-para-barbearia','/sistema-para-barbeiro-autonomo','/aplicativo-cliente-barbearia','/precos','/blog','/blog/como-comecar-no-barber-system']
+const paths=['/','/agenda-online-para-barbearia','/sistema-barbearia-por-assinatura','/controle-financeiro-barbearia','/site-para-barbearia','/sistema-para-barbeiro-autonomo','/aplicativo-cliente-barbearia','/atendimento-whatsapp-ia-barbearia','/precos','/blog','/blog/como-comecar-no-barber-system']
 const results=[]
 const pagePhotos=new Set()
 for(const path of paths){

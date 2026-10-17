@@ -13,6 +13,7 @@
     '/site-para-barbearia': 'Site para barbearia — Barber System',
     '/sistema-para-barbeiro-autonomo': 'Barbeiro autônomo — Barber System',
     '/aplicativo-cliente-barbearia': 'Área do cliente — Barber System',
+    '/atendimento-whatsapp-ia-barbearia': 'WhatsApp com IA — Barber System',
     '/precos': 'Preços — Barber System'
   });
   const SENSITIVE_KEYS = ['shop', 'code', 'token', 'access_token', 'refresh_token', 'preview', 'preview_token', 'draft'];

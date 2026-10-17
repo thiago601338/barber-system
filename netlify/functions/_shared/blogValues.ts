@@ -6,6 +6,8 @@ export function blogImage(value:unknown):string|null {
  try {const url=new URL(value);if(url.protocol==='https:'&&!url.username&&!url.password&&!url.port&&/^[a-z0-9.-]+$/i.test(url.hostname)&&url.hostname.includes('.')&&!/^\d+(?:\.\d+){3}$/.test(url.hostname)&&!url.hostname.endsWith('.local')&&!url.hostname.endsWith('.localhost'))return url.href}catch{/* Invalid image stays unset. */}
  return null
 }
+/** Gravações de tela do próprio site (com capa .jpg ao lado), para embutir em artigos com ![legenda](/marketing/videos/x.mp4). */
+export function blogVideo(value:unknown):string|null {return typeof value==='string'&&/^\/marketing\/videos\/[a-z0-9]+(?:-[a-z0-9]+)*\.mp4$/.test(value)?value:null}
 function string(value:unknown,label:string,min:number,max:number):string {if(typeof value!=='string'||value.trim().length<min||value.trim().length>max)throw new HttpError(422,`${label}: informe entre ${min} e ${max} caracteres.`);return value.trim()}
 export function blogPostValues(value:unknown,partial=false):Record<string,unknown> {
  if(!value||typeof value!=='object'||Array.isArray(value))throw new HttpError(422,'Artigo inválido.')

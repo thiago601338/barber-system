@@ -1,7 +1,7 @@
 import type { Config } from '@netlify/functions'
 import { createHmac } from 'node:crypto'
 import { body, db, email, failure, HttpError, json, optionalSetting, requirePlatformAdmin, setting, text, userFromRequest, uuid } from './_shared/core'
-const sourcePaths = new Set(['/', '/agenda-online-para-barbearia', '/sistema-barbearia-por-assinatura', '/controle-financeiro-barbearia', '/site-para-barbearia', '/sistema-para-barbeiro-autonomo', '/aplicativo-cliente-barbearia', '/precos', '/blog'])
+const sourcePaths = new Set(['/', '/agenda-online-para-barbearia', '/sistema-barbearia-por-assinatura', '/controle-financeiro-barbearia', '/site-para-barbearia', '/sistema-para-barbeiro-autonomo', '/aplicativo-cliente-barbearia', '/atendimento-whatsapp-ia-barbearia', '/precos', '/blog'])
 export default async (request: Request) => {
  try {
   const path = new URL(request.url).pathname

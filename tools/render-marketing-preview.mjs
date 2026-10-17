@@ -14,5 +14,5 @@ for (const page of marketingPages){
  await fs.writeFile(new URL(file,directory),html)
 }
 assert.equal(renderMarketingPage('/nao-existe'),null)
-assert.equal(new Set(marketingPages.map(page=>page.title)).size,8)
-console.log('8 páginas comerciais com título, canonical, H1 e contato por WhatsApp validados. Prévia local criada.')
+assert.equal(new Set(marketingPages.map(page=>page.title)).size,9)
+console.log('9 páginas comerciais com título, canonical, H1 e contato por WhatsApp validados. Prévia local criada.')

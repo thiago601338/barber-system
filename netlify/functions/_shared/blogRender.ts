@@ -1,6 +1,6 @@
 import {publicAnalyticsAssets} from './publicAnalytics.ts'
 import MarkdownIt from 'markdown-it'
-import {blogImage} from './blogValues.ts'
+import {blogImage,blogVideo} from './blogValues.ts'
 import {canonicalOrigin,publicMarketingPaths} from './blogPublicLinks.ts'
 import {company,companyFooterBlock,whatsappFloat} from './companyInfo.ts'
 export interface BlogPost {id?:string;slug:string;title:string;excerpt:string;body_md?:string;category_name?:string|null;category_slug?:string|null;tags?:string[];visible_at:string;updated_at?:string;seo_title?:string|null;seo_description?:string|null;cover_url?:string|null;cover_alt?:string;author_name:string;reading_minutes?:number}
@@ -34,13 +34,19 @@ export function renderBlogMarkdown(source:string,visibleArticles?:ReadonlySet<st
  const images:string[]=[]
  for(let i=0;i<tokens.length-2;i++)if(tokens[i].type==='paragraph_open'&&tokens[i+1].type==='inline'&&tokens[i+2].type==='paragraph_close'){
   const children=tokens[i+1].children||[],visuals=children.filter(x=>x.type==='image'),other=children.filter(x=>x.type!=='image'&&!(x.type==='text'&&!x.content.trim()))
-  if(visuals.length===1&&!other.length&&blogImage(visuals[0].attrGet('src'))){
-   tokens[i].tag='figure';tokens[i].attrSet('class','article-visual'+(/-infographic\.svg$/.test(String(visuals[0].attrGet('src')||''))?' article-infographic':''));tokens[i+2].tag='figure';visuals[0].meta={...(visuals[0].meta||{}),standalone:true}
+  if(visuals.length===1&&!other.length&&(blogImage(visuals[0].attrGet('src'))||blogVideo(visuals[0].attrGet('src')))){
+   tokens[i].tag='figure';tokens[i].attrSet('class','article-visual'+(/-infographic\.svg$/.test(String(visuals[0].attrGet('src')||''))?' article-infographic':'')+(blogVideo(visuals[0].attrGet('src'))?' article-video':''));tokens[i+2].tag='figure';visuals[0].meta={...(visuals[0].meta||{}),standalone:true}
   }
  }
  const defaultLink=md.renderer.rules.link_open||((items,i,options,_env,self)=>self.renderToken(items,i,options))
  md.renderer.rules.link_open=(items,i,options,env,self)=>{items[i].attrSet('rel','noopener noreferrer');return defaultLink(items,i,options,env,self)}
  md.renderer.rules.image=(items,i,options,_env,self)=>{
+  const video=blogVideo(items[i].attrGet('src'))
+  if(video){
+   const label=items[i].content||'Vídeo do Barber System',poster=video.replace(/\.mp4$/,'.jpg')
+   const player=`<div class="feature-video" data-video="${escapeHtml(video)}"><img src="${escapeHtml(poster)}" alt="${escapeHtml(label)}" width="960" height="600" loading="lazy" decoding="async"><button type="button" class="video-play" aria-label="Assistir ao vídeo: ${escapeHtml(label)}"><span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5v13l11-6.5-11-6.5Z" fill="currentColor"/></svg></span></button><span class="video-chip">▶ Veja no sistema, com narração</span></div>`
+   return items[i].meta?.standalone?`${player}<figcaption><span>${escapeHtml(items[i].attrGet('title')||label)}</span></figcaption>`:player
+  }
   const token=items[i],src=blogImage(token.attrGet('src'));if(!src)return escapeHtml(token.content)
   images.push(src);token.attrSet('src',src);token.attrSet('alt',token.content);token.attrSet('loading','lazy');token.attrSet('decoding','async')
   const image=self.renderToken(items,i,options);if(!token.meta?.standalone)return image

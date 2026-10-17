@@ -22,6 +22,7 @@ export const marketingPages = [
     faqs: [
       ['Sou só eu na barbearia. Serve pra mim?', 'Serve, sim. Você tem acesso à gestão completa do seu negócio, mesmo atendendo sozinho. Dá para organizar agenda, clientes, serviços e dinheiro no mesmo lugar.'],
       ['Como funcionam os pagamentos?', 'Você pode registrar o que recebeu e acompanhar o que está pendente. Para cobrar pela integração de pagamento, é preciso conectar e autorizar a conta da barbearia. Assim, fica claro o que já caiu e o que ainda está por vir.'],
+      ['O sistema atende meus clientes pelo WhatsApp?', 'Atende. Conecte o WhatsApp da barbearia e ligue o atendimento por IA: ela responde preços, serviços e horários livres, e pode marcar direto na agenda. Ela só responde quando o cliente escreve primeiro.'],
       ['Vou conseguir aprender a usar?', 'Você pode seguir um guia dentro do sistema, com orientações e exercícios para ir fazendo junto. O modo de treino deixa você experimentar os passos sem salvar cadastros ou fazer cobranças de verdade.'],
     ],
   },
@@ -47,7 +48,7 @@ export const marketingPages = [
     faqs: [
       ['Posso colocar um tempo diferente para cada barbeiro?', 'Pode. Você ajusta a duração do serviço para cada profissional, de acordo com o jeito de trabalhar de cada um.'],
       ['Oferecer uma vaga já confirma o agendamento?', 'Ainda não. O cliente precisa aceitar, e o sistema confere se o horário continua disponível antes de confirmar a reserva.'],
-      ['O WhatsApp manda lembretes sozinho?', 'O botão prepara o contato para você revisar e enviar. Lembretes automáticos precisam de uma integração específica, configurada e autorizada.'],
+      ['O cliente consegue marcar pelo WhatsApp?', 'Consegue. Com o atendimento por IA no WhatsApp ligado, a IA consulta as vagas livres de cada barbeiro e pode deixar o horário marcado na conversa. Ela só responde quando o cliente escreve primeiro.'],
     ],
   },
   {
@@ -173,6 +174,31 @@ export const marketingPages = [
       ['O cliente precisa baixar na loja de aplicativos?', 'Não. O acesso é pelo navegador, e a opção de adicionar à tela inicial aparece nos dispositivos compatíveis. Não é um aplicativo publicado na App Store ou no Google Play.'],
       ['O cliente também pode dar comandos para a IA?', 'A Ajuda de IA para fazer tarefas no sistema fica com a administração e os barbeiros autorizados. O cliente usa os recursos da própria conta e o guia disponível para ele.'],
       ['Dá para consultar sem internet?', 'Para consultar os dados da conta, é preciso ter internet. Se estiver sem conexão, a tela avisa para tentar de novo quando ela voltar.'],
+    ],
+  },
+  {
+    path: '/atendimento-whatsapp-ia-barbearia',
+    title: 'Atendimento por IA no WhatsApp para barbearia: preços, horários e agendamento',
+    description: 'Conecte o WhatsApp da barbearia e deixe a IA responder preços, serviços e horários livres, e agendar direto na agenda. Ela só responde quando o cliente escreve.',
+    eyebrow: 'ATENDIMENTO POR IA NO WHATSAPP',
+    heading: '“Tem horário amanhã?” A IA responde enquanto você corta.',
+    intro: 'Conecte o WhatsApp da barbearia pela API oficial da Meta. A IA conhece seus serviços, preços e a agenda de cada barbeiro, responde quem chama e pode deixar o horário marcado.',
+    section: 'Seu WhatsApp atendendo no ritmo da barbearia',
+    cards: [
+      ['Conecte o WhatsApp da barbearia', 'Use o número que você já tem no WhatsApp Business e continue respondendo pelo celular, ou conecte um número novo só para o atendimento. A conexão é feita pela API oficial da Meta.'],
+      ['Preços e serviços na hora', 'A IA já sabe os serviços, os preços e o tempo de cada atendimento cadastrados no sistema. Antes de ligar, você testa as respostas ali mesmo, como se fosse um cliente.'],
+      ['Agenda direto pela conversa', 'Quando o cliente pede um horário, a IA consulta as vagas livres de cada barbeiro e pode deixar a reserva feita. Todas as conversas ficam reunidas no painel.'],
+      ['Do seu jeito de atender', 'Escreva as regras da casa: tom de voz, formas de pagamento, tolerância de atraso, estacionamento. Ligue ou desligue o atendimento automático quando quiser.'],
+      ['A equipe assume quando precisar', 'Abra a conversa e clique em assumir. A IA pausa naquele atendimento enquanto alguém da equipe responde, e volta quando você devolver a conversa.'],
+      ['Modelos de mensagem', 'Crie e acompanhe os modelos aprovados pela Meta, como confirmação de horário e lembrete. A IA não usa modelos para puxar conversa: ela só responde quem escreve primeiro.'],
+    ],
+    scenarioTitle: 'Ela só fala quando o cliente chama.',
+    scenario: 'A IA nunca inicia conversa nem manda propaganda. Ela responde as mensagens que chegam, com as informações da sua barbearia. Como toda resposta fica dentro da conversa aberta pelo cliente, o custo da Meta é o menor possível, cerca de R$ 0,04 por resposta, cobrado na conta do WhatsApp da barbearia. Se alguém da equipe responder pelo celular ou pelo painel, a IA pausa naquela conversa.',
+    steps: ['Abra a aba WhatsApp com IA e conecte o número da barbearia.', 'Escreva as regras de atendimento e teste as respostas.', 'Ligue a IA e acompanhe as conversas pelo painel.'],
+    faqs: [
+      ['A IA vai mandar mensagem para meus clientes sem eles pedirem?', 'Não. Ela só responde quando o cliente escreve primeiro. Não envia propaganda nem puxa conversa.'],
+      ['Posso continuar usando o WhatsApp no meu celular?', 'Pode. Ao conectar o número que você já usa no WhatsApp Business, o app continua funcionando no celular. Quando alguém da equipe responde por lá, a IA pausa naquela conversa.'],
+      ['Quanto custa cada resposta?', 'A Meta cobra pelas respostas na conta do WhatsApp da barbearia, cerca de R$ 0,04 cada. Respostas para quem chega por anúncio de clique para o WhatsApp ficam gratuitas por 72 horas, conforme as regras da Meta.'],
     ],
   },
   {

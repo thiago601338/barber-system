@@ -56,3 +56,20 @@ if(signup){
   finally{submit.disabled=false}
  })
 }
+// Vídeos por função: toca no próprio cartão, um de cada vez.
+document.querySelectorAll('.feature-video[data-video]').forEach(box=>{
+ const start=()=>{
+  if(box.classList.contains('is-playing'))return
+  document.querySelectorAll('.feature-video.is-playing video').forEach(other=>other.pause())
+  const video=document.createElement('video')
+  video.src=box.dataset.video;video.controls=true;video.playsInline=true;video.preload='auto'
+  video.poster=box.querySelector('img')?.getAttribute('src')||''
+  video.setAttribute('aria-label',box.querySelector('.video-play')?.getAttribute('aria-label')||'Vídeo')
+  video.addEventListener('play',()=>document.querySelectorAll('.feature-video video').forEach(other=>{if(other!==video)other.pause()}))
+  box.classList.add('is-playing');box.appendChild(video)
+  video.play().catch(()=>{})
+  if(window.gtag)window.gtag('event','video_play',{video:box.dataset.video})
+ }
+ box.addEventListener('click',event=>{if(!event.target.closest('video'))start()})
+ box.querySelector('.video-play')?.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();start()}})
+})

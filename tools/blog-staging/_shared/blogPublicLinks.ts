@@ -8,5 +8,6 @@ export const publicMarketingPaths:{path:string;title:string}[]=[
  {path:'/site-para-barbearia',title:'Site para barbearia'},
  {path:'/sistema-para-barbeiro-autonomo',title:'Barbeiro autônomo'},
  {path:'/aplicativo-cliente-barbearia',title:'Aplicativo do cliente'},
+ {path:'/atendimento-whatsapp-ia-barbearia',title:'WhatsApp com IA'},
  {path:'/precos',title:'Preços'}
 ]
