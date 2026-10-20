@@ -65,6 +65,20 @@ export function mpPublicUrl(name: string): string {
   return url.toString()
 }
 
+function mpErrorDetail(raw: string): string {
+  if (!raw) return ''
+  let parsed: unknown
+  try { parsed = JSON.parse(raw) } catch { return ` ${raw.slice(0, 180).replace(/\s+/g, ' ').trim()}` }
+  const payload = parsed as { error?: unknown; message?: unknown; error_description?: unknown; cause?: unknown }
+  const parts = [payload.error, payload.error_description, payload.message]
+    .filter(value => typeof value === 'string' && value) as string[]
+  const cause = Array.isArray(payload.cause)
+    ? payload.cause.map(item => (item && typeof item === 'object' ? String((item as { description?: unknown }).description ?? '') : String(item)))
+      .filter(Boolean) : []
+  const text = [...new Set([...parts, ...cause])].join(' — ').slice(0, 180)
+  return text ? ` ${text}` : ''
+}
+
 export async function mpRequest<T>(path: string, token: string, method = 'GET', payload?: unknown, idempotencyKey?: string): Promise<T> {
   if (!/^\/[A-Za-z0-9_/?=&.-]+$/.test(path)) throw new HttpError(500, 'Caminho do Mercado Pago inválido.')
   const controller = new AbortController()
@@ -81,7 +95,12 @@ export async function mpRequest<T>(path: string, token: string, method = 'GET', 
       body: payload === undefined ? undefined : JSON.stringify(payload),
       signal: controller.signal,
     })
-    if (!response.ok) throw new HttpError(502, `Mercado Pago recusou a operação (HTTP ${response.status}).`)
+    if (!response.ok) {
+      const raw = await response.text().catch(() => '')
+      const detail = mpErrorDetail(raw)
+      console.error(`mercadopago ${method} ${path} -> HTTP ${response.status}${detail}`)
+      throw new HttpError(502, `Mercado Pago recusou a operação (HTTP ${response.status}).${detail}`)
+    }
     return await response.json() as T
   } catch (error) {
     if (error instanceof HttpError) throw error

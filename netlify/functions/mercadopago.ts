@@ -55,7 +55,10 @@ async function oauthCallback(request: Request): Promise<Response> {
     const state = url.searchParams.get('state') || ''
     const code = url.searchParams.get('code') || ''
     const cookie = cookieValue(request)
-    if (!state || !code || !cookie) throw new HttpError(400, 'Conexão Mercado Pago expirada. Inicie novamente.')
+    if (!state || !code) throw new HttpError(400, 'Retorno do Mercado Pago incompleto. Inicie a conexão novamente.')
+    if (!cookie) {
+      throw new HttpError(400, 'Este link de retorno do Mercado Pago já foi usado ou expirou (vale 10 minutos e uma única vez). Volte ao sistema e clique em Conectar Mercado Pago novamente.')
+    }
     const saved = await unseal<OAuthCookie>(cookie)
     if (!constantTimeEqual(state, saved.state) || Date.now() > saved.expiresAt) {
       throw new HttpError(400, 'Estado OAuth inválido ou expirado.')
@@ -65,8 +68,8 @@ async function oauthCallback(request: Request): Promise<Response> {
     const token = await mpOauthToken({
       grant_type: 'authorization_code', code, code_verifier: saved.verifier, redirect_uri: oauthCallbackUri(),
     })
-    if (!token.refresh_token || !token.scope?.split(' ').includes('offline_access')) {
-      throw new HttpError(502, 'O Mercado Pago não concedeu acesso renovável. Verifique os escopos da aplicação.')
+    if (!token.refresh_token) {
+      throw new HttpError(502, 'O Mercado Pago não concedeu acesso renovável (offline_access). Verifique os escopos da aplicação.')
     }
     await saveShopToken(client, saved.shopId, token)
     const returnUrl = optionalSetting('MP_OAUTH_RETURN_URL')
@@ -80,6 +83,7 @@ async function oauthCallback(request: Request): Promise<Response> {
       response = redirectResponse(destination)
     }
   } catch (error) {
+    console.error('mercadopago oauth-callback falhou:', error instanceof Error ? error.message : error)
     response = failure(error)
   }
   response.headers.set('set-cookie', oauthCookie('', 0))
