@@ -10,6 +10,16 @@ import '../styles-extras.css'
 const tokenPattern = /^\/(?:c|tv)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i
 function pathToken(): string | null { return tokenPattern.exec(window.location.pathname)?.[1]?.toLowerCase() ?? null }
 
+/** Páginas abertas por código pessoal não devem aparecer em buscadores. */
+function useNoIndex() {
+  useEffect(() => {
+    const meta = document.createElement('meta')
+    meta.name = 'robots'; meta.content = 'noindex,nofollow'
+    document.head.appendChild(meta)
+    return () => { meta.remove() }
+  }, [])
+}
+
 function longDay(value: unknown, timezone: string): string {
   return new Intl.DateTimeFormat('pt-BR', { timeZone: timezone, weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(String(value)))
 }
@@ -22,6 +32,7 @@ interface Confirmation {
 
 /** Página aberta pelo link do lembrete: o cliente confere o horário e confirma a presença, sem login. */
 export function ConfirmAppointmentPage() {
+  useNoIndex()
   const token = pathToken()
   const [data, setData] = useState<Confirmation | null | undefined>(undefined)
   const [busy, setBusy] = useState(false)
@@ -76,6 +87,7 @@ interface Board { shop: { name: string; logo_url: string | null; brand_theme: un
 
 /** Painel de TV da barbearia: em atendimento, quem já chegou e os próximos horários. Atualiza sozinho. */
 export function TvBoardPage() {
+  useNoIndex()
   const token = pathToken()
   const [board, setBoard] = useState<Board | null | undefined>(undefined)
   const [now, setNow] = useState(() => new Date())

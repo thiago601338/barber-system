@@ -14,7 +14,7 @@
 .quiet-tag{display:inline-flex;align-items:center;border-radius:100px;padding:3px 8px;font-size:10px;font-weight:750;background:color-mix(in srgb,var(--shop-accent,#7a9c63) 16%,transparent);color:var(--shop-text,#3d5a36);white-space:nowrap}
 
 /* Situação do cliente: uma cor por etapa, usada no bloco, na legenda e no detalhe */
-.stage-waiting{--stage:#9aa39c;--stage-bg:#f2f4f0;--stage-fg:#4f5b52}
+.stage-waiting{--stage:#b3a37c;--stage-bg:#f5f0e3;--stage-fg:#574c33}
 .stage-reminded{--stage:#c99a3c;--stage-bg:#fbf4e2;--stage-fg:#7a5a1a}
 .stage-confirmed{--stage:#3f7fd1;--stage-bg:#e9f1fd;--stage-fg:#234f8f}
 .stage-arrived{--stage:#1d9a8b;--stage-bg:#e1f5f1;--stage-fg:#14675d}
@@ -39,6 +39,7 @@
 .reminder-list small{display:block;color:var(--shop-muted,#84948a);margin-top:2px}
 .reminder-list .button{min-height:34px;padding:7px 12px}
 .tv-link-actions{flex-wrap:wrap}
+.appointment-actions p.muted{font-size:12px;margin:12px 0 0}
 
 /* Página de confirmação do cliente */
 .confirm-page{min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:var(--shop-background,#f4f6f2);color:var(--shop-text,#1c2822)}
@@ -95,7 +96,7 @@
 
 /* Calendário de assinaturas */
 .month-nav{margin:0;gap:6px}
-.month-nav strong{min-width:150px;text-align:center;text-transform:capitalize;font-size:13px}
+.month-nav strong{min-width:150px;text-align:center;text-transform:none;font-size:13px}
 .calendar-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
 .calendar-summary>div{border:1px solid var(--shop-border,#e7ede4);border-radius:13px;padding:13px 15px;min-width:0}
 .calendar-summary span{display:block;font-size:11px;font-weight:700;color:var(--shop-muted,#7a867d)}

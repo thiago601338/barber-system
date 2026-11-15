@@ -11,7 +11,7 @@ interface Due extends Row {
   subscription_id: string; day: string; client_name: string; phone: string | null; plan_name: string
   amount_cents: number; status: string; projected: boolean; ending: boolean; overdue: boolean
 }
-interface CalendarData { today: string; due: Due[]; received: { day: string; amount_cents: number; count: number }[] }
+interface CalendarData { today: string; due: Due[]; received: { day: string; amount_cents: number; count: number }[]; overdue?: { count: number; amount_cents: number } }
 
 const weekdayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const monthStart = (day: string) => `${day.slice(0, 7)}-01`
@@ -22,7 +22,8 @@ function shiftMonth(month: string, offset: number): string {
 }
 function monthEnd(month: string): string { return shiftCalendarDay(shiftMonth(month, 1), -1) }
 function monthLabel(month: string): string {
-  return new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${month}T12:00:00Z`))
+  const label = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${month}T12:00:00Z`))
+  return label.charAt(0).toUpperCase() + label.slice(1)
 }
 const shortMoney = (cents: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(cents / 100)
 
@@ -59,7 +60,8 @@ export function SubscriptionCalendar({ shopId, shopName, timezone, admin, revisi
   }, [month])
   const due = data?.due ?? []
   const expected = due.filter(item => !item.overdue).reduce((sum, item) => sum + Number(item.amount_cents || 0), 0)
-  const overdue = due.filter(item => item.overdue)
+  const overdueCount = Number(data?.overdue?.count ?? due.filter(item => item.overdue).length)
+  const overdueAmount = Number(data?.overdue?.amount_cents ?? due.filter(item => item.overdue).reduce((sum, item) => sum + Number(item.amount_cents || 0), 0))
   const received = (data?.received ?? []).reduce((sum, item) => sum + Number(item.amount_cents || 0), 0)
   const dayItems = byDay.get(selected) ?? []
   const dayReceived = receivedByDay.get(selected)
@@ -77,7 +79,7 @@ export function SubscriptionCalendar({ shopId, shopName, timezone, admin, revisi
       <div className="calendar-summary">
         <div><span>A vencer no mês</span><strong>{money(expected)}</strong><small>{due.filter(item => !item.overdue).length} vencimento(s)</small></div>
         {admin && <div><span>Recebido no mês</span><strong>{money(received)}</strong><small>{(data?.received ?? []).reduce((sum, item) => sum + Number(item.count || 0), 0)} mensalidade(s)</small></div>}
-        <div className={overdue.length ? 'alert' : ''}><span>Em atraso neste mês</span><strong>{money(overdue.reduce((sum, item) => sum + Number(item.amount_cents || 0), 0))}</strong><small>{overdue.length} contrato(s)</small></div>
+        <div className={overdueCount ? 'alert' : ''}><span>Em atraso hoje</span><strong>{money(overdueAmount)}</strong><small>{overdueCount} contrato(s), em qualquer mês</small></div>
       </div>
       {loading && !data ? <Loading text="Montando o calendário..."/> : <div className={`month-grid ${loading ? 'is-loading' : ''}`} role="grid" aria-label={`Vencimentos de ${monthLabel(month)}`}>
         {weekdayNames.map(name => <div key={name} className="month-grid-weekday" role="columnheader">{name}</div>)}
