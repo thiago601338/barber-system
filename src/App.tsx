@@ -41,6 +41,8 @@ const BrandIdentityPage = lazy(() => import('./pages/BrandIdentityPage').then(m 
 const WhatsappPage = lazy(() => import('./pages/WhatsappPage').then(m => ({ default: m.WhatsappPage })))
 const AiHelpPage = lazy(() => import('./pages/AiHelpPage').then(m => ({ default: m.AiHelpPage })))
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then(m => ({ default: m.OnboardingPage })))
+const ConfirmAppointmentPage = lazy(() => import('./pages/PublicAgendaPages').then(m => ({ default: m.ConfirmAppointmentPage })))
+const TvBoardPage = lazy(() => import('./pages/PublicAgendaPages').then(m => ({ default: m.TvBoardPage })))
 
 export interface PageProps { identity: Identity; role: Role; notify: (message: string, kind?: 'success' | 'error') => void }
 
@@ -84,6 +86,10 @@ function requestedShopSlug(): string | null {
 export default function App() {
   if (configuredPublicPath()) return <Suspense fallback={<Loading text="Abrindo a barbearia..."/>}><PublicPage /></Suspense>
   if (!isConfigured) return <SetupPage />
+  // Links públicos por código: confirmação de horário enviada no lembrete e painel de TV da barbearia.
+  const tokenRoute = /^\/(c|tv)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/i.exec(window.location.pathname)?.[1]?.toLowerCase()
+  if (tokenRoute === 'c') return <Suspense fallback={<Loading text="Abrindo seu horário..."/>}><ConfirmAppointmentPage /></Suspense>
+  if (tokenRoute === 'tv') return <Suspense fallback={<Loading text="Abrindo o painel..."/>}><TvBoardPage /></Suspense>
   if (/^\/comecar\/?$/.test(window.location.pathname)) return <Suspense fallback={<Loading text="Abrindo sua inscrição..."/>}><OnboardingPage /></Suspense>
   return <Suspense fallback={<Loading text="Abrindo sua área..."/>}><AuthenticatedApp /></Suspense>
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Bot, ImagePlus, Landmark, Package, ReceiptText, Sparkles, Target, TrendingUp } from 'lucide-react'
+import { Bot, ImagePlus, Landmark, Package, ReceiptText, RotateCcw, Sparkles, Target, TrendingUp } from 'lucide-react'
 import type { PageProps } from '../App'
 import { authedApi, requireSupabase } from '../lib/supabase'
 import { createRow, updateRow, useRows } from '../lib/useRows'
@@ -12,6 +12,7 @@ import { currentMonth, monthDays, MonthPicker } from '../MonthRangeFilter'
 import { CashRegisterPage } from './CashRegisterPage'
 import { CommissionsPage } from './CommissionsPage'
 import { SaleComposer } from './SaleComposer'
+import { RepurchaseModal } from './RepurchaseModal'
 import { asText, cents, date, money, type Row } from '../types'
 import { AddButton, DataTable, Empty, Field, Loading, Modal, Notice, PageHeader, Panel, PrimaryButton, Stat, Status } from '../ui'
 import '../styles-products.css'
@@ -30,9 +31,21 @@ export function ProductsPage({ identity, role, notify }: PageProps) {
   const [filter, setFilter] = useState('all')
   const [editor, setEditor] = useState<Row | 'new' | null>(null)
   const [form, setForm] = useState({
-    name: '', sku: '', description: '', category: 'retail', price: '',
+    name: '', sku: '', description: '', category: 'retail', product_group: '', repurchase_days: '', price: '',
     cost: '', stock_quantity: '0', minimum_stock: '0', active: true,
   })
+  const [repurchaseOpen, setRepurchaseOpen] = useState(false)
+  const [repurchase, setRepurchase] = useState<Row[]>([])
+  const repurchaseConfigured = products.rows.some(product => product.repurchase_days != null)
+  const productGroups = [...new Set(products.rows.map(product => String(product.product_group || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  useEffect(() => {
+    if (!shopId || !repurchaseConfigured) { setRepurchase([]); return }
+    let cancelled = false
+    void requireSupabase().rpc('repurchase_due', { p_barbershop_id: shopId, p_window: 7 }).then(({ data, error: problem }) => {
+      if (!cancelled) setRepurchase(problem ? [] : (data ?? []) as Row[])
+    })
+    return () => { cancelled = true }
+  }, [shopId, repurchaseConfigured, products.rows])
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [removePhoto, setRemovePhoto] = useState(false)
@@ -84,13 +97,15 @@ export function ProductsPage({ identity, role, notify }: PageProps) {
       sku: String(row.sku || ''),
       description: String(row.description || ''),
       category: String(row.category || 'retail'),
+      product_group: String(row.product_group || ''),
+      repurchase_days: row.repurchase_days == null ? '' : String(row.repurchase_days),
       price: String(Number(row.price_cents || 0) / 100),
       cost: String(Number(row.cost_cents || 0) / 100),
       stock_quantity: String(row.stock_quantity ?? 0),
       minimum_stock: String(row.minimum_stock ?? 0),
       active: Boolean(row.active),
     } : {
-      name: '', sku: '', description: '', category: 'retail', price: '',
+      name: '', sku: '', description: '', category: 'retail', product_group: '', repurchase_days: '', price: '',
       cost: '', stock_quantity: '0', minimum_stock: '0', active: true,
     })
   }
@@ -122,6 +137,8 @@ export function ProductsPage({ identity, role, notify }: PageProps) {
         sku: form.sku.trim() || null,
         description: form.description.trim() || null,
         category: form.category,
+        product_group: form.product_group.trim() || null,
+        repurchase_days: form.repurchase_days.trim() ? Number(form.repurchase_days) : null,
         price_cents: cents(form.price),
         cost_cents: cents(form.cost || '0'),
         stock_quantity: Number(form.stock_quantity),
@@ -165,10 +182,10 @@ export function ProductsPage({ identity, role, notify }: PageProps) {
       <button type="button" className={filter === 'supply' ? 'selected' : ''} onClick={() => setFilter('supply')}>Insumos</button>
     </div>
     <Notice text={products.error}/>
-    <Panel title="Catálogo" subtitle={`${rows.length} item(ns) no filtro`}>
+    <Panel title="Catálogo" subtitle={`${rows.length} item(ns) no filtro`} action={<button type="button" className="button outline" onClick={() => setRepurchaseOpen(true)}><RotateCcw size={15}/>Recompra{repurchase.length > 0 ? ` · ${repurchase.length}` : ''}</button>}>
       {products.loading ? <Loading/> : <DataTable rows={rows} empty="Nenhum produto cadastrado" onRowClick={canEdit ? edit : undefined} columns={[
         { key: 'name', label: 'Produto', render: row => <div className="person-cell"><ProductThumb path={row.image_path} shopId={shopId || ''} name={asText(row.name)}/><div><strong>{asText(row.name)}</strong><small>{photoPending(row) ? <span className="product-ai-pending"><Sparkles size={12}/> Gerando foto com IA…</span> : asText(row.sku)}</small></div></div> },
-        { key: 'category', label: 'Categoria', render: row => ({ retail: 'Barbearia', bar: 'Bar', kitchen: 'Cozinha', supply: 'Insumos' }[String(row.category)] || asText(row.category)) },
+        { key: 'category', label: 'Categoria', render: row => { const sector = { retail: 'Barbearia', bar: 'Bar', kitchen: 'Cozinha', supply: 'Insumos' }[String(row.category)] || asText(row.category); return row.product_group ? <div className="cell-stack"><span>{String(row.product_group)}</span><small>{sector}</small></div> : sector } },
         { key: 'price_cents', label: 'Preço', render: row => money(row.price_cents) },
         { key: 'stock_quantity', label: 'Estoque' },
         { key: 'active', label: 'Status', render: row => <Status value={row.active ? 'active' : 'paused'}/> },
@@ -195,14 +212,17 @@ export function ProductsPage({ identity, role, notify }: PageProps) {
         </div>
         <div className="form-row"><Field label="Nome"><input required value={form.name} onChange={event => setForm({ ...form, name: event.target.value })}/></Field><Field label="SKU"><input value={form.sku} onChange={event => setForm({ ...form, sku: event.target.value })}/></Field></div>
         <Field label="Descrição"><textarea rows={2} maxLength={1000} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })}/></Field>
-        <Field label="Categoria"><select value={form.category} onChange={event => setForm({ ...form, category: event.target.value })}><option value="retail">Barbearia</option><option value="bar">Bar</option><option value="kitchen">Cozinha</option><option value="supply">Insumos / consumo interno</option></select></Field>
+        <div className="form-row"><Field label="Setor"><select value={form.category} onChange={event => setForm({ ...form, category: event.target.value })}><option value="retail">Barbearia</option><option value="bar">Bar</option><option value="kitchen">Cozinha</option><option value="supply">Insumos / consumo interno</option></select></Field><Field label="Categoria"><input list="product-group-options" maxLength={60} placeholder="Ex.: Cosméticos" value={form.product_group} onChange={event => setForm({ ...form, product_group: event.target.value })}/></Field></div>
+        <datalist id="product-group-options">{productGroups.map(name => <option key={name} value={name}/>)}</datalist>
         <div className="form-row"><Field label="Preço de venda (R$)"><input type="number" min="0" step="0.01" required value={form.price} onChange={event => setForm({ ...form, price: event.target.value })}/></Field><Field label="Custo (R$)"><input type="number" min="0" step="0.01" value={form.cost} onChange={event => setForm({ ...form, cost: event.target.value })}/></Field></div>
         <div className="form-row"><Field label={editor === 'new' ? 'Estoque inicial' : 'Estoque atual'} hint={editor === 'new' ? 'O cadastro registra o saldo inicial na trilha do estoque.' : 'Receba compras ou use Movimentar para alterar o saldo com justificativa.'}><input type="number" min="0" step="1" required disabled={editor !== 'new'} value={form.stock_quantity} onChange={event => setForm({ ...form, stock_quantity: event.target.value })}/></Field><Field label="Estoque mínimo para reposição"><input type="number" min="0" step="1" required value={form.minimum_stock} onChange={event => setForm({ ...form, minimum_stock: event.target.value })}/></Field></div>
+        {form.category === 'retail' && <Field label="Prazo de recompra (dias)" hint="Opcional. Quando esse prazo passar desde a última compra, o cliente aparece em Recompra para você oferecer de novo."><input type="number" min="1" max="730" step="1" placeholder="Ex.: 60" value={form.repurchase_days} onChange={event => setForm({ ...form, repurchase_days: event.target.value })}/></Field>}
         <label className="check-field"><input type="checkbox" checked={form.active} onChange={event => setForm({ ...form, active: event.target.checked })}/> Produto ativo</label>
         <Notice text={error}/>
         <div className="form-actions"><button type="button" className="button ghost" onClick={() => setEditor(null)} disabled={busy}>Cancelar</button><PrimaryButton type="submit" disabled={busy}>{busy ? 'Salvando...' : 'Salvar produto'}</PrimaryButton></div>
       </form>
     </Modal>}
+    {repurchaseOpen && <RepurchaseModal rows={repurchase} shopName={identity.shop?.name || 'barbearia'} configured={repurchaseConfigured} onClose={() => setRepurchaseOpen(false)}/>}
     {canEdit && <InventoryLedger identity={identity} role={role} notify={notify} onChange={products.refresh}/>}
   </div>
 }

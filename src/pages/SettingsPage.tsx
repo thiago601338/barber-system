@@ -3,6 +3,7 @@ import { Camera, Check, Copy, CreditCard, MailPlus, ShieldCheck, Trash2 } from '
 import type { PageProps } from '../App'
 import { TeamAvatar, teamAvatarUrl } from '../TeamAvatar'
 import { CashbarberMigrationPanel } from '../CashbarberMigrationPanel'
+import { AuditPanel } from './AuditPanel'
 import { validateProductImageChoice, verifyImageSignature } from '../lib/productImages'
 import { authedApi, authedGet, requireSupabase } from '../lib/supabase'
 import { useRows } from '../lib/useRows'
@@ -205,6 +206,7 @@ export function SettingsPage({ identity, role, notify, onRefresh, onGoBranding }
         {barbers.length ? barbers.map(row => <button key={row.id} className="permission-person" onClick={() => setSelectedBarber(row)}><TeamAvatar path={row.avatar_path} name={String(row.display_name || 'B')} shopId={shop.id} memberId={row.id}/><span><strong>{asText(row.display_name)}</strong><small>{permissionModules.filter(module => assigned(row.user_id, module)).length} abas liberadas</small></span><ShieldCheck size={18}/></button>) : <p className="muted">Convide um barbeiro para definir seus acessos.</p>}
       </div>
     </Panel>}
+    {admin && <AuditPanel shopId={shop.id} timezone={shop.timezone || 'America/Sao_Paulo'} members={members.rows}/>}
     {invite && <Modal title="Convidar integrante" subtitle={inviteUrl ? 'Acesso criado; compartilhe o link com a pessoa convidada.' : 'Cadastre o acesso por e-mail e senha.'} onClose={() => { setInvite(false); setInviteUrl(null) }}>
       {inviteUrl ? <div className="form-grid invite-manual-link">
         <Notice kind="info" text="E-mail não enviado. Compartilhe o link somente com a pessoa convidada. O link é de uso único e tem prazo limitado."/>

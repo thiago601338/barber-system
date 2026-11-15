@@ -15,7 +15,7 @@ export function useRows(table: string, barbershopId: string | null, enabled = tr
     setLoading(true)
     setError(null)
     const columns = table === 'services'
-      ? 'id,barbershop_id,name,description,duration_minutes,price_cents,requires_subscription,active,created_at,updated_at'
+      ? 'id,barbershop_id,name,description,category,duration_minutes,price_cents,requires_subscription,active,created_at,updated_at'
       : '*'
     try {
       const all: Row[] = []
@@ -47,14 +47,14 @@ export function useRows(table: string, barbershopId: string | null, enabled = tr
 }
 
 export async function createRow(table: string, values: Record<string, unknown>) {
-  const columns = table === 'services' ? 'id,barbershop_id,name,description,duration_minutes,price_cents,requires_subscription,active,created_at,updated_at' : '*'
+  const columns = table === 'services' ? 'id,barbershop_id,name,description,category,duration_minutes,price_cents,requires_subscription,active,created_at,updated_at' : '*'
   const { data, error } = await requireSupabase().from(table).insert(values).select(columns).single()
   if (error) throw new Error(error.message)
   return data as unknown as Row
 }
 
 export async function updateRow(table: string, id: string, values: Record<string, unknown>) {
-  const columns = table === 'services' ? 'id,barbershop_id,name,description,duration_minutes,price_cents,requires_subscription,active,created_at,updated_at' : '*'
+  const columns = table === 'services' ? 'id,barbershop_id,name,description,category,duration_minutes,price_cents,requires_subscription,active,created_at,updated_at' : '*'
   const { data, error } = await requireSupabase().from(table).update(values).eq('id', id).select(columns).single()
   if (error) throw new Error(error.message)
   return data as unknown as Row
