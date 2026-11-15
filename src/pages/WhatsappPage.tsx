@@ -3,6 +3,7 @@ import { Bot, CheckCheck, Hand, MessageCircle, PhoneCall, Power, RefreshCw, Send
 import type { PageProps } from '../App'
 import { authedApi, requireSupabase } from '../lib/supabase'
 import { Empty, Field, Loading, Notice, PageHeader, PrimaryButton } from '../ui'
+import { SubscriptionNoticesPanel } from './SubscriptionNoticesPanel'
 import '../styles-whatsapp.css'
 
 interface Connection {
@@ -83,7 +84,7 @@ export function WhatsappPage({ identity, notify }: PageProps) {
     <PageHeader eyebrow="CRESCIMENTO" title="Atendimento IA no WhatsApp" description="Conecte o WhatsApp da barbearia e deixe a IA responder os clientes: preços, horários livres e agendamento. Ela só responde quando o cliente manda mensagem primeiro."/>
     <Notice text={error}/>
     {loading ? <Loading text="Carregando o WhatsApp..."/> : connected
-      ? <><ConnectedPanel connection={connection!} shopId={shop.id} aiReady={!!config?.ai_ready} onChanged={load} notify={notify}/><Inbox shopId={shop.id} notify={notify}/><TemplatesPanel shopId={shop.id} notify={notify}/></>
+      ? <><ConnectedPanel connection={connection!} shopId={shop.id} aiReady={!!config?.ai_ready} onChanged={load} notify={notify}/><Inbox shopId={shop.id} notify={notify}/><SubscriptionNoticesPanel shopId={shop.id} notify={notify}/><TemplatesPanel shopId={shop.id} notify={notify}/></>
       : <><ConnectPanel config={config} shopId={shop.id} previous={connection} onConnected={load} notify={notify}/><TestPanel shopId={shop.id} aiReady={!!config?.ai_ready}/></>}
   </div>
 }

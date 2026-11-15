@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { body, db, failure, HttpError, json, optionalSetting, userFromRequest, uuid } from './_shared/core'
 import { aiReply, type ChatTurn } from './_shared/whatsappAi'
 import { exchangeSignupCode, graph, graphVersion, loadSecret, preview, saveSecret, sendText, whatsappReady } from './_shared/whatsapp'
+import { noticeTemplates } from './_shared/subscriptionNotices'
 
 type Input = Record<string, unknown>
 
@@ -182,6 +183,32 @@ async function createTemplate(client: SupabaseClient, shopId: string, input: Inp
   return { id: result.id ?? null, status: result.status ?? 'PENDING', category: result.category ?? category }
 }
 
+// Modelos dos avisos de assinatura: situação de cada um e envio dos que faltam para aprovação da Meta.
+async function noticeTemplateStatus(client: SupabaseClient, shopId: string) {
+  const { wabaId, token } = await connectionWithToken(client, shopId)
+  const list = await graph<{ data?: Template[] }>(`${wabaId}/message_templates`, token, { query: { fields: 'name,status,language', limit: '200' } })
+  return noticeTemplates.map(item => {
+    const found = (list.data ?? []).find(t => t.name === item.name && t.language === 'pt_BR')
+    return { kind: item.kind, name: item.name, label: item.label, body: item.body, status: found?.status ?? 'MISSING' }
+  })
+}
+
+async function noticeTemplateCreate(client: SupabaseClient, shopId: string) {
+  const current = await noticeTemplateStatus(client, shopId)
+  const { wabaId, token } = await connectionWithToken(client, shopId)
+  const errors: string[] = []
+  for (const item of noticeTemplates) {
+    if (current.find(t => t.name === item.name)?.status !== 'MISSING') continue
+    try {
+      await graph(`${wabaId}/message_templates`, token, { method: 'POST', body: {
+        name: item.name, category: 'UTILITY', language: 'pt_BR',
+        components: [{ type: 'BODY', text: item.body, example: { body_text: [item.examples] } }],
+      } })
+    } catch (problem) { errors.push(`${item.label}: ${problem instanceof Error ? problem.message : String(problem)}`) }
+  }
+  return { templates: await noticeTemplateStatus(client, shopId), errors }
+}
+
 async function disconnect(client: SupabaseClient, shopId: string) {
   const { data: connection } = await client.from('whatsapp_connections').select('waba_id').eq('barbershop_id', shopId).maybeSingle()
   if (connection) {
@@ -215,6 +242,8 @@ export default async (request: Request) => {
     if (action === 'simulate') return json(await simulate(client, shopId, input))
     if (action === 'templates') return json(await templates(client, shopId))
     if (action === 'template-create') return json(await createTemplate(client, shopId, input))
+    if (action === 'notice-templates') return json({ templates: await noticeTemplateStatus(client, shopId) })
+    if (action === 'notice-templates-create') return json(await noticeTemplateCreate(client, shopId))
     if (action === 'disconnect') return json(await disconnect(client, shopId))
     if (['read', 'pause', 'resume', 'send'].includes(action)) return json(await conversationAction(client, shopId, action, input))
     throw new HttpError(404, 'Ação desconhecida.')
