@@ -14,7 +14,7 @@ const compile = childProcess.spawnSync(process.execPath, [
   'netlify/functions/_shared/mpStore.ts', 'netlify/functions/_shared/subscriptionTerms.ts',
 ], { cwd: project, encoding: 'utf8' })
 if (compile.status !== 0) throw new Error(compile.stderr || compile.stdout)
-const { subscriptionTerms, addContractMonths } = require(path.join(generated, 'subscriptionTerms.js'))
+const { subscriptionTerms, addContractMonths, contractAcceptance } = require(path.join(generated, 'subscriptionTerms.js'))
 const { saveCustomerPayment, localPreapprovalStatus } = require(path.join(generated, 'mpStore.js'))
 
 function fixture({ review = false, price = 10000, months = 1, status = 'pending' } = {}) {
@@ -90,4 +90,16 @@ test('missing or corrupt commercial terms cannot be treated as a free contract',
     assert.throws(() => subscriptionTerms({ contract_snapshot: changed, contract_review_required: false }), /condições originais/)
   }
   assert.throws(() => subscriptionTerms({ ...f.subscription, contract_review_required: true }), /condições originais/)
+})
+
+test('a shop with published terms only creates a contract with acceptance of the version in force', () => {
+  const active = { version: 'shop_terms_v2' }
+  assert.equal(contractAcceptance(null, undefined, true), null)
+  assert.equal(contractAcceptance(undefined, 'anything', false), null)
+  assert.deepEqual(contractAcceptance(active, 'shop_terms_v2', true), { acceptance: { version: 'shop_terms_v2', source: 'online' } })
+  assert.deepEqual(contractAcceptance(active, 'shop_terms_v2', false), { acceptance: { version: 'shop_terms_v2', source: 'staff_assisted' } })
+  for (const sent of [undefined, null, '', true, 'shop_terms_v1', ['shop_terms_v2']]) {
+    assert.throws(() => contractAcceptance(active, sent, true), error => error.status === 409 && /termo de aceite/.test(error.message))
+  }
+  assert.throws(() => contractAcceptance({ version: '' }, '', true), error => error.status === 409)
 })

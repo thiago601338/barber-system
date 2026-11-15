@@ -27,6 +27,17 @@ export function subscriptionTerms(subscription: { contract_snapshot?: unknown; c
   return value as SubscriptionContractTerms
 }
 
+/**
+ * Barbearia com termo de aceite vigente só cria contrato com o aceite dessa mesma versão.
+ * O aceite segue na criação do contrato e o banco o grava nas condições contratadas.
+ */
+export function contractAcceptance(active: { version?: unknown } | null | undefined, acceptedVersion: unknown, actorIsClient: boolean): { acceptance: { version: string; source: 'online' | 'staff_assisted' } } | null {
+  if (!active) return null
+  const version = typeof active.version === 'string' ? active.version : ''
+  if (!version || acceptedVersion !== version) throw new HttpError(409, 'Para assinar, é preciso ler e aceitar o termo de aceite da barbearia.')
+  return { acceptance: { version, source: actorIsClient ? 'online' : 'staff_assisted' } }
+}
+
 /** Jan 31 + one month ends Feb 28/29, never March 2/3. All times remain UTC. */
 export function addContractMonths(startsAt: Date, months: number): Date {
   if (Number.isNaN(startsAt.getTime()) || !Number.isSafeInteger(months) || months < 1 || months > 12) {

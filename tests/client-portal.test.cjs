@@ -58,6 +58,7 @@ function harness(file, exported, props, mocks = {}) {
     '../TeamAvatar': { TeamAvatar: 'TeamAvatar' },
     './BookingEnhancements': {problemMessage:p=>p?.message||String(p),useBookingEligibility:()=>mocks.eligibility||{loading:false,error:null,value:{subscriptions:[]}},BookingRules:'BookingRules',EligibilityChoice:'EligibilityChoice',WaitlistJoin:'WaitlistJoin'},
     './AppointmentActions': { AppointmentActions: 'AppointmentActions' },
+    './SubscriptionTerms': { TermsAcceptance: 'TermsAcceptance', useSubscriptionTerms: () => mocks.terms || { terms: null, failed: false } },
     './ScheduleSettings': { ScheduleSettings: 'ScheduleSettings' },
     './WaitlistPanel': { WaitlistPanel: 'WaitlistPanel' },
     './ClientRecordsPanel': { ClientRecordsPanel: 'ClientRecordsPanel', ClientConsentPanel: 'ClientConsentPanel' },
@@ -178,4 +179,32 @@ test('cliente logado assina pelo convite com o próprio cadastro e segue para o 
  button.props.onClick();await flush();await flush();h.render()
  assert.deepEqual(JSON.parse(JSON.stringify(calls)),[['/api/mercadopago/subscription-start',{barbershop_id:'shop',client_id:'client',plan_id:invitedPlan}]])
  h.find(n=>n.type==='Notice'&&n.props.text==='O pagamento ainda não está disponível para este plano.')
+})
+const shopTerms={terms:{version:'shop_terms_v2',title:'Termo de Aceite da Assinatura',statement:'Li e aceito o Termo de Aceite da Assinatura.'},failed:false}
+test('barbearia com termo de aceite: sem marcar o aceite nada é criado; marcado, o aceite da versão segue com o pedido',async()=>{
+ const calls=[];let lookups=0
+ const client={...readiness(true),from:()=>{lookups++;const b={select:()=>b,eq:()=>b,maybeSingle:async()=>({data:{id:'client'},error:null})};return b}}
+ const h=harness('PublicPage.tsx','__PublicPlans',{shop:customer.identity.shop,plans:invitePlans,user:customer.identity.user,covered:{},invite:{planId:invitedPlan}},{client,terms:shopTerms,api:async(url,body)=>{calls.push([url,body]);return{}}})
+ h.render();await flush();h.render()
+ const box=h.find(n=>n.type==='TermsAcceptance');assert.equal(box.props.terms.version,'shop_terms_v2');assert.equal(box.props.accepted,false);assert.equal(box.props.shopId,'shop')
+ h.find(n=>n.type==='button'&&n.props.children==='Fazer assinatura').props.onClick();await flush();h.render()
+ assert.equal(calls.length,0);assert.equal(lookups,0);h.find(n=>n.type==='Notice'&&/marque que você leu e aceita o Termo de Aceite da Assinatura/.test(n.props.text||''))
+ h.find(n=>n.type==='TermsAcceptance').props.onChange(true);h.render();assert.equal(h.find(n=>n.type==='TermsAcceptance').props.accepted,true)
+ h.find(n=>n.type==='button'&&n.props.children==='Fazer assinatura').props.onClick();await flush();await flush();h.render()
+ assert.deepEqual(JSON.parse(JSON.stringify(calls)),[['/api/mercadopago/subscription-start',{barbershop_id:'shop',client_id:'client',plan_id:invitedPlan,terms_version:'shop_terms_v2'}]])
+})
+test('visitante sem conta e barbearia sem pagamento online podem ler o termo, sem caixa de aceite',async()=>{
+ for(const [user,ready] of [[null,true],[customer.identity.user,false]]){
+  const h=harness('PublicPage.tsx','__PublicPlans',{shop:customer.identity.shop,plans:invitePlans,user,covered:{},invite:{planId:invitedPlan}},{client:readiness(ready),terms:shopTerms})
+  h.render();await flush();h.render();const box=h.find(n=>n.type==='TermsAcceptance');assert.equal(box.props.onChange,undefined);assert.equal(box.props.terms.title,'Termo de Aceite da Assinatura')
+ }
+})
+test('falha ao carregar o termo impede a assinatura em vez de seguir sem aceite',async()=>{
+ const calls=[];const h=harness('PublicPage.tsx','__PublicPlans',{shop:customer.identity.shop,plans:invitePlans,user:customer.identity.user,covered:{},invite:{planId:invitedPlan}},{client:readiness(true),terms:{terms:null,failed:true},api:async(...args)=>{calls.push(args);return{}}})
+ h.render();await flush();h.render();h.find(n=>n.type==='button'&&n.props.children==='Fazer assinatura').props.onClick();await flush();h.render()
+ assert.equal(calls.length,0);h.find(n=>n.type==='Notice'&&/Não foi possível carregar o termo de aceite/.test(n.props.text||''))
+})
+test('texto do termo vira parágrafos com os títulos das cláusulas destacados',()=>{
+ const blocks=harness('SubscriptionTerms.tsx','termBlocks','1. Objetivo\n\nOs termos deste documento.\n\n\n(82) 993657663\n\nA BARBEARIA NÃO SE RESPONSABILIZARÁ\n\n(1) Por defeitos de projeto.\n\n10. Vigência e Extinção / Política de Cancelamento\n').render()
+ assert.deepEqual(JSON.parse(JSON.stringify(blocks)),[{text:'1. Objetivo',heading:true},{text:'Os termos deste documento.',heading:false},{text:'(82) 993657663',heading:false},{text:'A BARBEARIA NÃO SE RESPONSABILIZARÁ',heading:true},{text:'(1) Por defeitos de projeto.',heading:false},{text:'10. Vigência e Extinção / Política de Cancelamento',heading:true}])
 })

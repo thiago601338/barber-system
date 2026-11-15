@@ -11,6 +11,7 @@ import { asText, money, type Row, type Shop } from '../types'
 import { Empty, Field, Loading, Notice, PrimaryButton } from '../ui'
 import { brandStyle, readBrandTheme, safeBrandImage, safeInstagramUrl, ShopBrand } from '../shopBrand'
 import { BookingRules, EligibilityChoice, problemMessage, useBookingEligibility, WaitlistJoin } from './BookingEnhancements'
+import { TermsAcceptance, useSubscriptionTerms } from './SubscriptionTerms'
 import '../styles-products.css'
 import '../styles-public-campaign.css'
 
@@ -177,6 +178,9 @@ function PublicPlans({ shop, plans, user, covered, invite }: { shop: Shop; plans
   const [error, setError] = useState<string | null>(null)
   // null enquanto consulta; false quando a barbearia ainda não recebe assinaturas online.
   const [ready, setReady] = useState<boolean | null>(null)
+  // Barbearia com termo de aceite: o cliente lê e marca o aceite antes de seguir para o pagamento.
+  const { terms, failed: termsFailed } = useSubscriptionTerms(shop.id)
+  const [accepted, setAccepted] = useState(false)
   useEffect(() => { setName(String(user?.user_metadata?.full_name || '')) }, [user])
   useEffect(() => {
     let cancelled = false
@@ -187,6 +191,8 @@ function PublicPlans({ shop, plans, user, covered, invite }: { shop: Shop; plans
   }, [shop.id])
   async function subscribe(planId: string) {
     if (!user) return
+    if (termsFailed) { setError('Não foi possível carregar o termo de aceite da barbearia. Recarregue a página para assinar.'); return }
+    if (terms && !accepted) { setError(`Para assinar, marque que você leu e aceita o ${terms.title}.`); return }
     setBusyPlan(planId); setError(null)
     try {
       const client = requireSupabase()
@@ -199,7 +205,7 @@ function PublicPlans({ shop, plans, user, covered, invite }: { shop: Shop; plans
         if (inserted.error) throw inserted.error
         clientId = inserted.data.id
       }
-      const result = await authedApi<{ checkout_url?: string }>('/api/mercadopago/subscription-start', { barbershop_id: shop.id, client_id: clientId, plan_id: planId })
+      const result = await authedApi<{ checkout_url?: string }>('/api/mercadopago/subscription-start', { barbershop_id: shop.id, client_id: clientId, plan_id: planId, ...(terms ? { terms_version: terms.version } : {}) })
       if (!result.checkout_url) throw new Error('O pagamento ainda não está disponível para este plano.')
       window.location.assign(result.checkout_url)
     } catch (problem) { setError(problem instanceof Error ? problem.message : 'Não foi possível iniciar a assinatura.'); setBusyPlan(null) }
@@ -220,6 +226,9 @@ function PublicPlans({ shop, plans, user, covered, invite }: { shop: Shop; plans
     {invite && closed && shown.length > 0 && <Notice kind="info" text="A assinatura online desta barbearia ainda não está liberada. Fale com a barbearia para assinar."/>}
     {invite && closed && contactUrl && <a className="button outline public-invite-contact" href={contactUrl} target="_blank" rel="noreferrer">Falar com a barbearia</a>}
     {user && !closed && shown.length > 0 && <div className="form-row public-plan-identity"><Field label="Seu nome completo"><input value={name} onChange={event => setName(event.target.value)} placeholder="Usado se esta for sua primeira visita"/></Field><Field label="Telefone"><input value={phone} onChange={event => setPhone(event.target.value)}/></Field></div>}
+    {terms && shown.length > 0 && (user && !closed
+      ? <TermsAcceptance shopId={shop.id} terms={terms} accepted={accepted} onChange={value => { setAccepted(value); if (value) setError(null) }}/>
+      : <TermsAcceptance shopId={shop.id} terms={terms}/>)}
     <Notice text={error}/>
     <div className={`public-service-grid ${shown.length === 1 ? 'single' : ''}`}>{shown.map(plan => {
       const blurb = planBlurb(plan.description)

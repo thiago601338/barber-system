@@ -20,6 +20,16 @@
 .public-invite .public-service-grid.single strong{font-size:22px}
 .public-invite .public-service.plan>.button{min-height:46px}
 @media(max-width:650px){.public-invite .public-service-grid.single .public-service{padding:20px}}
+/* Termo de aceite da assinatura: caixa de aceite e leitura do texto, na página pública e em Nova assinatura. */
+.terms-acceptance{display:flex;flex-direction:column;align-items:flex-start;gap:9px;margin:0 0 16px;padding:14px 16px;border:1px solid var(--shop-border,#e3eade);border-radius:12px;background:var(--shop-surface,#fff)}
+.modal .terms-acceptance{margin:0}
+.terms-check{display:flex;align-items:flex-start;gap:10px;font-size:13px;line-height:1.45;font-weight:650;cursor:pointer}
+.terms-check input{flex:none;width:18px;height:18px;margin:1px 0 0;accent-color:var(--shop-accent,#3f6b4b)}
+.terms-toggle{border:0;background:transparent;padding:0;font:inherit;font-size:12px;font-weight:750;text-decoration:underline;text-underline-offset:3px;color:inherit;cursor:pointer}
+.terms-body{align-self:stretch;max-height:min(52vh,430px);overflow:auto;padding:14px 16px;border:1px solid var(--shop-border,#e3eade);border-radius:9px;font-size:12.5px;line-height:1.6;text-align:left}
+.terms-body h4{font-size:13px;margin:16px 0 6px}
+.terms-body h4:first-child{margin-top:0}
+.terms-body p{margin:0 0 9px;font-size:inherit;color:inherit;flex:none}
 .tutorial-overview{display:flex;align-items:center;gap:20px;background:linear-gradient(125deg,#213b2b,#36553a);color:white;border-radius:18px;padding:23px 27px;box-shadow:0 12px 30px #1e3b241c}
 .tutorial-overview-icon{width:56px;height:56px;border-radius:15px;background:#ffffff20;color:#ccec9e;display:grid;place-items:center;flex:none}
 .tutorial-overview-copy{flex:1}.tutorial-overview-copy span{font-size:10px;color:#bbd396;letter-spacing:.15em;font-weight:800}.tutorial-overview-copy strong{display:block;font-size:20px;margin:5px 0}.tutorial-overview-copy p{font-size:12px;color:#c4d2c2;margin:0}

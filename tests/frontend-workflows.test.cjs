@@ -62,6 +62,7 @@ function harness(file, exported, props, mocks = {}) {
     './AgendaExtras': { RemindersModal: 'RemindersModal', StageChip: 'StageChip', StageLegend: 'StageLegend', TvBoardModal: 'TvBoardModal' },
     './SubscriptionCalendar': { SubscriptionCalendar: 'SubscriptionCalendar' },
     './SubscriptionInvite': { InviteLinkModal: 'InviteLinkModal' },
+    './SubscriptionTerms': { TermsAcceptance: 'TermsAcceptance', useSubscriptionTerms: () => mocks.terms || { terms: null, failed: false } },
     '../lib/appointmentStage': { clientStage: () => 'waiting', stageLabels: { waiting: 'Aguardando' } },
     '../TeamAvatar': { TeamAvatar: 'TeamAvatar' },
     './ScheduleSettings': { ScheduleSettings: 'ScheduleSettings' },
@@ -258,4 +259,29 @@ test('consulta de assinatura de cliente anterior não substitui os contratos do 
   const choice=h.find(n=>n.type==='select'&&!n.props.required)
   assert.match(JSON.stringify(choice.props.children),/Plano B/)
   assert.doesNotMatch(JSON.stringify(choice.props.children),/Plano A/)
+})
+
+test('nova assinatura em barbearia com termo de aceite só gera checkout após a equipe confirmar o aceite do cliente', async () => {
+  const calls = []
+  const h = harness('SubscriptionsPage.tsx', 'SubscriptionsPage', base, {
+    rows: { clients: [{ id: 'client', full_name: 'Cliente' }], subscription_plans: [{ id: 'plan', name: 'Plano', price_cents: 9900, active: true }] },
+    client: { rpc: async () => ({ data: null }) },
+    terms: { terms: { version: 'shop_terms_v2', title: 'Termo de Aceite da Assinatura', statement: 'Li e aceito.' }, failed: false },
+    api: async (url, body) => { calls.push([url, body]); return { subscription_id: 'sub', status: 'pending', checkout_url: 'https://checkout.example/x' } },
+  })
+  h.render(); h.find(n => n.props['data-tour-action'] === 'subscription-start').props.onClick(); h.render()
+  const startForm = () => h.find(n => n.type === 'form' && n.props['data-tour-form'] === 'subscription-start')
+  const pick = (index, value) => {
+    const selects = []
+    ;(function visit(node) { if (!node || typeof node !== 'object') return; if (Array.isArray(node)) return node.forEach(visit); if (node.type === 'select') selects.push(node); if (node.props) Object.values(node.props).forEach(visit) })(startForm())
+    selects[index].props.onChange({ target: { value } })
+  }
+  pick(0, 'client'); h.render(); pick(1, 'plan'); h.render()
+  const box = h.find(n => n.type === 'TermsAcceptance')
+  assert.match(box.props.statement, /Confirmo que o cliente leu e aceitou o Termo de Aceite da Assinatura\./)
+  assert.equal(h.find(n => n.type === 'PrimaryButton' && n.props.type === 'submit').props.disabled, true)
+  box.props.onChange(true); h.render()
+  assert.equal(h.find(n => n.type === 'PrimaryButton' && n.props.type === 'submit').props.disabled, false)
+  await startForm().props.onSubmit(event)
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [['/api/mercadopago/subscription-start', { barbershop_id: 'shop', client_id: 'client', plan_id: 'plan', terms_version: 'shop_terms_v2' }]])
 })

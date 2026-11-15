@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { email, HttpError, setting, uuid } from './core'
 import { mpId, mpPublicUrl, mpRequest, type MpPreapproval, shopToken, verifyCollector } from './mpApi'
 import { requireStartActor, requireSubscriptionActor, savePreapprovalStatus, subscriptionById } from './mpStore'
-import { subscriptionTerms } from './subscriptionTerms'
+import { contractAcceptance, subscriptionTerms } from './subscriptionTerms'
 import { calculatePlatformPrice } from './platformPricing'
 
 function amount(cents: number): number {
@@ -23,16 +23,20 @@ export async function startCustomerSubscription(request: Request, client: Supaba
   const shopId = uuid(input.barbershop_id)
   const clientId = uuid(input.client_id)
   const planId = uuid(input.plan_id)
-  await requireStartActor(request, client, shopId, clientId)
+  const actor = await requireStartActor(request, client, shopId, clientId)
   const { data: shop, error: shopError } = await client.from('barbershops').select('id,active').eq('id', shopId).single()
   if (shopError) throw shopError
   if (!shop.active) throw new HttpError(409, 'Barbearia inativa.')
-  const [{ data: person, error: personError }, { data: plan, error: planError }] = await Promise.all([
-    client.from('clients').select('email').eq('barbershop_id', shopId).eq('id', clientId).single(),
+  const [{ data: person, error: personError }, { data: plan, error: planError }, { data: shopTerms, error: shopTermsError }] = await Promise.all([
+    client.from('clients').select('email,user_id').eq('barbershop_id', shopId).eq('id', clientId).single(),
     client.from('subscription_plans').select('name,price_cents,frequency_months,active').eq('barbershop_id', shopId).eq('id', planId).single(),
+    client.from('subscription_terms').select('version').eq('barbershop_id', shopId).eq('active', true).maybeSingle(),
   ])
   if (personError) throw personError
   if (planError) throw planError
+  if (shopTermsError) throw shopTermsError
+  // Quem aceita é o próprio cliente quando a conta é dele; a equipe registra o aceite em nome do cliente.
+  const acceptance = contractAcceptance(shopTerms, input.terms_version, person.user_id === actor.id)
   if (!plan.active) throw new HttpError(409, 'Plano de assinatura inativo.')
   if (!Number.isSafeInteger(plan.price_cents) || plan.price_cents <= 0) throw new HttpError(409, 'Defina um valor positivo para a recorrência no cartão ou Pix.')
   const payerEmail = email(person.email)
@@ -51,6 +55,7 @@ export async function startCustomerSubscription(request: Request, client: Supaba
   }
   const { data: created, error: createError } = await client.from('subscriptions').insert({
     barbershop_id: shopId, client_id: clientId, plan_id: planId, provider: 'mercadopago', status: 'pending',
+    ...(acceptance ? { contract_snapshot: acceptance } : {}),
   }).select('id,contract_snapshot,contract_review_required').single()
   if (createError) throw createError
   const terms = subscriptionTerms(created)
