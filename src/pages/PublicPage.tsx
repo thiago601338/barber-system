@@ -72,6 +72,7 @@ export function PublicPage() {
         const serviceName = serviceNames.get(String(item.service_id))
         if (serviceName) (included[String(item.plan_id)] ||= []).push(serviceName)
       }
+      for (const names of Object.values(included)) names.sort((a, b) => a.localeCompare(b, 'pt-BR'))
       setCovered(included)
       setLinks((linksResult.data ?? []) as Row[])
       setBarbers((barbersResult.data ?? []) as Row[])
@@ -89,6 +90,8 @@ export function PublicPage() {
     void load()
     return () => { cancelled = true }
   }, [slug])
+  const shopName = shop?.name
+  useEffect(() => { if (subscribePage && shopName) document.title = `Convite para assinar · ${shopName}` }, [subscribePage, shopName])
   if (busy) return <div className="public-loading"><Loading text="Carregando barbearia..."/></div>
   if (!shop) return <div className="public-loading"><div><h2>Barbearia indisponível</h2><Notice text={error}/><a className="button outline" href="/">Voltar</a></div></div>
   const activeTheme = readBrandTheme(shop.brand_theme)
@@ -210,7 +213,7 @@ function PublicPlans({ shop, plans, user, covered, invite }: { shop: Shop; plans
   const closed = ready === false
   return <section className="public-section" id={invite ? undefined : 'planos'}>
     {invite
-      ? <div className="public-section-title"><span>CONVITE</span><h1>{invited ? 'Seu convite para assinar' : 'Escolha seu plano'}</h1><p>{shop.name} convidou você para {invited ? 'o plano abaixo' : 'assinar um plano'}. Entre ou crie sua conta, confira as condições e conclua o pagamento pelo Mercado Pago.</p></div>
+      ? <div className="public-section-title"><span>CONVITE</span><h1>{invited ? 'Seu convite para assinar' : 'Escolha seu plano'}</h1><p>{shop.name} convidou você para {invited ? 'o plano abaixo' : 'assinar um plano'}.{!closed && ' Entre ou crie sua conta, confira as condições e conclua o pagamento pelo Mercado Pago.'}</p></div>
       : <div className="public-section-title"><span>ASSINATURAS</span><h2>Mais vantagens para você</h2></div>}
     {invite && invite.planId && !invited && shown.length > 0 && <Notice kind="info" text="O plano deste convite não está mais disponível. Estes são os planos atuais."/>}
     {invite && shown.length === 0 && <Empty title="Nenhum plano disponível" text="Esta barbearia não tem planos abertos para assinatura no momento."/>}
@@ -232,7 +235,7 @@ function PublicPlans({ shop, plans, user, covered, invite }: { shop: Shop; plans
           : <a className={`button ${invite ? 'primary' : 'outline'}`} href={loginHref}>Entrar para assinar</a>}
       </div>
     })}</div>
-    <p className="public-hint">{closed && !invite ? 'A assinatura online ainda não está liberada nesta barbearia. Fale com a barbearia para assinar.' : 'A assinatura só fica ativa após confirmação do pagamento pelo Mercado Pago. Os meios disponíveis aparecem no checkout.'}</p>
+    {!(closed && invite) && <p className="public-hint">{closed ? 'A assinatura online ainda não está liberada nesta barbearia. Fale com a barbearia para assinar.' : 'A assinatura só fica ativa após confirmação do pagamento pelo Mercado Pago. Os meios disponíveis aparecem no checkout.'}</p>}
   </section>
 }
 
