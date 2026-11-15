@@ -61,6 +61,7 @@ function harness(file, exported, props, mocks = {}) {
     './AppointmentActions': { AppointmentActions: 'AppointmentActions' },
     './AgendaExtras': { RemindersModal: 'RemindersModal', StageChip: 'StageChip', StageLegend: 'StageLegend', TvBoardModal: 'TvBoardModal' },
     './SubscriptionCalendar': { SubscriptionCalendar: 'SubscriptionCalendar' },
+    './SubscriptionInvite': { InviteLinkModal: 'InviteLinkModal' },
     '../lib/appointmentStage': { clientStage: () => 'waiting', stageLabels: { waiting: 'Aguardando' } },
     '../TeamAvatar': { TeamAvatar: 'TeamAvatar' },
     './ScheduleSettings': { ScheduleSettings: 'ScheduleSettings' },

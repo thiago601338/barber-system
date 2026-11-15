@@ -151,3 +151,31 @@ test('reserva da campanha envia todos os parâmetros juntos ao wrapper atômico'
  const h=harness('PublicPage.tsx','__PublicBooking',{shop:customer.identity.shop,user:customer.identity.user,services:[{id:'service',name:'Corte',price_cents:5000,duration_minutes:30}],barbers:[{id:'barber'}],error:null},{search:'?campaign=campanha',client})
  h.render();await flush();h.render();h.find(n=>n.type==='input'&&n.props.type==='checkbox').props.onChange({target:{checked:true}});h.render();h.find(n=>n.type==='input'&&n.props.type==='radio').props.onChange();h.render();await flush();h.render();h.find(n=>n.type==='button'&&n.props.className==='slot ').props.onClick();h.render();await h.find(n=>n.type==='form').props.onSubmit(event);h.render();const saved=calls.filter(c=>c[0].startsWith('book_'));assert.equal(saved.length,1);assert.equal(saved[0][0],'book_attributed_appointment');assert.equal(saved[0][1].p_campaign_code,'campanha');assert.equal(saved[0][1].p_client_id,'client');assert.equal(saved[0][1].p_coupon_code,null);h.find(n=>n.type==='h1'&&n.props.children==='Agendamento registrado')
 })
+const invitedPlan='0f9d2b6e-3c1a-4d55-9a7e-2b1c4d5e6f70'
+const invitePlans=[{id:invitedPlan,name:'Classic',description:'Plano migrado do CashBarber (id 1). Cobrança mensal.',price_cents:8990,frequency_months:1,visits_per_cycle:1},{id:'other',name:'Outro plano',description:'Corte toda semana.',price_cents:5000,frequency_months:3,visits_per_cycle:4}]
+const readiness=value=>({rpc:async(name,args)=>{assert.equal(name,'subscription_checkout_ready');assert.equal(args.p_barbershop_id,'shop');return{data:value,error:null}}})
+test('convite de assinatura mostra só o plano do link e manda o visitante ao login com retorno ao próprio convite',async()=>{
+ const h=harness('PublicPage.tsx','__PublicPlans',{shop:customer.identity.shop,plans:invitePlans,user:null,covered:{[invitedPlan]:['Corte','Barba']},invite:{planId:invitedPlan}},{client:readiness(true)})
+ h.render();await flush();const text=JSON.stringify(h.render())
+ assert.equal(h.find(n=>n.type==='a'&&n.props.children==='Entrar para assinar').props.href,`/?shop=test&return=${encodeURIComponent(`/b/test/assinar?plano=${invitedPlan}`)}`)
+ assert.equal(text.split('"public-service plan"').length-1,1);assert.match(text,/Inclui: Corte, Barba\./);assert.match(text,/"uso"/);assert.doesNotMatch(text,/CashBarber|Outro plano/)
+})
+test('convite sem plano válido lista os planos ativos e avisa que o plano do link saiu do ar',async()=>{
+ const h=harness('PublicPage.tsx','__PublicPlans',{shop:customer.identity.shop,plans:invitePlans,user:null,covered:{},invite:{planId:'11111111-2222-3333-4444-555555555555'}},{client:readiness(true)})
+ h.render();await flush();const text=JSON.stringify(h.render())
+ assert.equal(text.split('"public-service plan"').length-1,2);assert.match(text,/a cada 3 meses/);h.find(n=>n.type==='Notice'&&/não está mais disponível/.test(n.props.text))
+ assert.equal(h.find(n=>n.type==='a'&&n.props.children==='Entrar para assinar').props.href,`/?shop=test&return=${encodeURIComponent('/b/test/assinar')}`)
+})
+test('sem pagamento online conectado o convite informa a indisponibilidade e não oferece assinatura nem cria cliente',async()=>{
+ const h=harness('PublicPage.tsx','__PublicPlans',{shop:customer.identity.shop,plans:invitePlans,user:customer.identity.user,covered:{},invite:{planId:invitedPlan}},{client:readiness(false)})
+ h.render();await flush();const text=JSON.stringify(h.render())
+ h.find(n=>n.type==='Notice'&&/ainda não está liberada/.test(n.props.text));assert.doesNotMatch(text,/Fazer assinatura|Entrar para assinar|Seu nome completo/)
+})
+test('cliente logado assina pelo convite com o próprio cadastro e segue para o checkout',async()=>{
+ const calls=[];const client={...readiness(true),from:table=>{assert.equal(table,'clients');const b={select:()=>b,eq:()=>b,maybeSingle:async()=>({data:{id:'client'},error:null}),insert:()=>{throw new Error('não deve criar outro cliente')}};return b}}
+ const h=harness('PublicPage.tsx','__PublicPlans',{shop:customer.identity.shop,plans:invitePlans,user:customer.identity.user,covered:{},invite:{planId:invitedPlan}},{client,api:async(url,body)=>{calls.push([url,body]);return{}}})
+ h.render();await flush();h.render();const button=h.find(n=>n.type==='button'&&n.props.children==='Fazer assinatura');assert.equal(button.props.className,'button primary')
+ button.props.onClick();await flush();await flush();h.render()
+ assert.deepEqual(JSON.parse(JSON.stringify(calls)),[['/api/mercadopago/subscription-start',{barbershop_id:'shop',client_id:'client',plan_id:invitedPlan}]])
+ h.find(n=>n.type==='Notice'&&n.props.text==='O pagamento ainda não está disponível para este plano.')
+})

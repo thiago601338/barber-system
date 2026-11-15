@@ -14,6 +14,7 @@ import { GuidedTour } from './GuidedTour'
 import { getTourChapters, type TourStep, type TourModule } from './tour'
 import { useTourProgress } from './lib/useTourProgress'
 import { authCallbackMode, authRedirectUrl } from './lib/authFlow'
+import { isInviteReturn } from './lib/subscriptionInvite'
 import type { MasterView } from './pages/MasterPage'
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
@@ -70,7 +71,7 @@ const navItems: { key: ModuleKey; icon: typeof LayoutDashboard; group: string }[
   { key: 'tutorial', icon: BookOpenCheck, group: 'SISTEMA' },
 ]
 
-function configuredPublicPath() { return /^\/b\/[^/]+(?:\/agendar)?\/?$/.test(window.location.pathname) }
+function configuredPublicPath() { return /^\/b\/[^/]+(?:\/(?:agendar|assinar))?\/?$/.test(window.location.pathname) }
 function requestedMasterView(): MasterView | null {
   const view = new URLSearchParams(window.location.search).get('master')
   return view === 'overview' || view === 'blog' || view === 'leads' ? view : null
@@ -79,7 +80,7 @@ function requestedShopSlug(): string | null {
   const params = new URLSearchParams(window.location.search)
   const explicit = params.get('shop')
   if (explicit && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(explicit)) return explicit
-  const fromReturn = params.get('return')?.match(/^\/b\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/agendar)?(?:#.*)?$/)
+  const fromReturn = params.get('return')?.match(/^\/b\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/(?:agendar|assinar))?(?:\?[^#]*)?(?:#.*)?$/)
   return fromReturn?.[1] || null
 }
 
@@ -227,6 +228,14 @@ function AuthenticatedApp() {
     const { data } = supabase.auth.onAuthStateChange((event, next) => { setSession(next); if (event === 'PASSWORD_RECOVERY') setPasswordFlow('recovery'); if (event === 'SIGNED_IN' && window.location.hash.includes('type=invite')) setPasswordFlow('invite'); if (event === 'SIGNED_OUT') setPasswordFlow(null) })
     return () => data.subscription.unsubscribe()
   }, [])
+
+  // Quem criou a conta a partir de um convite de assinatura volta ao convite depois de confirmar o e-mail.
+  const sessionUserId = session?.user?.id
+  useEffect(() => {
+    if (!sessionUserId || passwordFlow) return
+    const returnTo = new URLSearchParams(window.location.search).get('return')
+    if (isInviteReturn(returnTo)) window.location.replace(returnTo)
+  }, [sessionUserId, passwordFlow])
 
   const loadIdentity = useCallback(async () => {
     const requestId = ++identityRequestRef.current

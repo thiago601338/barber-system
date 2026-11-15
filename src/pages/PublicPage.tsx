@@ -5,6 +5,7 @@ import { authedApi, isConfigured, requireSupabase } from '../lib/supabase'
 import { productImageUrl } from '../lib/productImages'
 import { whatsappUrl } from '../lib/whatsapp'
 import { shopClock, shopDateTime, shopToday } from '../lib/shopTime'
+import { cycleLabel, invitedPlanId, invitePath, planBlurb } from '../lib/subscriptionInvite'
 import { TeamAvatar } from '../TeamAvatar'
 import { asText, money, type Row, type Shop } from '../types'
 import { Empty, Field, Loading, Notice, PrimaryButton } from '../ui'
@@ -24,10 +25,12 @@ export function PublicPage() {
   const parts = window.location.pathname.split('/').filter(Boolean)
   const slug = parts[1]
   const bookingPage = parts[2] === 'agendar'
+  const subscribePage = parts[2] === 'assinar'
   const [shop, setShop] = useState<Shop | null>(null)
   const [services, setServices] = useState<Row[]>([])
   const [products, setProducts] = useState<Row[]>([])
   const [plans, setPlans] = useState<Row[]>([])
+  const [covered, setCovered] = useState<Record<string, string[]>>({})
   const [links, setLinks] = useState<Row[]>([])
   const [barbers, setBarbers] = useState<Row[]>([])
   const [partnerOffers, setPartnerOffers] = useState<PartnerPublicOffer[]>([])
@@ -50,17 +53,26 @@ export function PublicPage() {
       if (cancelled) return
       if (shopError || !shopData) { setError(shopError?.message || 'Barbearia não encontrada.'); setBusy(false); return }
       setShop(shopData as Shop)
-      const [servicesResult, plansResult, linksResult, barbersResult, productsResult, partnerOffersResult] = await Promise.all([
+      const [servicesResult, plansResult, linksResult, barbersResult, productsResult, partnerOffersResult, coveredResult] = await Promise.all([
         client.from('services').select('id,barbershop_id,name,description,duration_minutes,price_cents,active,requires_subscription').eq('barbershop_id', shopData.id).eq('active', true).order('name'),
         client.from('subscription_plans').select('*').eq('barbershop_id', shopData.id).eq('active', true).order('price_cents'),
         client.from('bio_links').select('*').eq('barbershop_id', shopData.id).eq('active', true).order('position'),
         client.rpc('public_barber_profiles', { p_barbershop_id: shopData.id }),
         client.rpc('public_products', { p_barbershop_id: shopData.id }),
         client.rpc('list_partner_offers', { p_barbershop_id: shopData.id }),
+        client.from('subscription_plan_services').select('plan_id,service_id').eq('barbershop_id', shopData.id),
       ])
       if (cancelled) return
       setServices((servicesResult.data ?? []) as Row[])
       setPlans((plansResult.data ?? []) as Row[])
+      // Serviços incluídos em cada plano, pelo nome. Se a consulta falhar, o plano aparece sem essa linha.
+      const serviceNames = new Map(((servicesResult.data ?? []) as Row[]).map(service => [String(service.id), String(service.name || '')]))
+      const included: Record<string, string[]> = {}
+      for (const item of (coveredResult.data ?? []) as { plan_id: string; service_id: string }[]) {
+        const serviceName = serviceNames.get(String(item.service_id))
+        if (serviceName) (included[String(item.plan_id)] ||= []).push(serviceName)
+      }
+      setCovered(included)
       setLinks((linksResult.data ?? []) as Row[])
       setBarbers((barbersResult.data ?? []) as Row[])
       setProducts((productsResult.data ?? []) as Row[])
@@ -83,7 +95,7 @@ export function PublicPage() {
   const instagramUrl = safeInstagramUrl(shop.instagram_url)
   const logo = safeBrandImage(activeTheme?.logoUrl || shop.logo_url)
   const contactUrl = whatsappUrl(shop.whatsapp, '')
-  return <div className={`public-layout ${activeTheme ? 'shop-themed' : ''}`} data-shop-theme={activeTheme ? '' : undefined} style={brandStyle(activeTheme)}><header className="public-header"><a href={`/b/${slug}`} className="client-brand"><ShopBrand shop={shop} compact/></a><div>{instagramUrl && <a href={instagramUrl} target="_blank" rel="noreferrer" aria-label="Instagram"><Camera size={19}/></a>}<a className="button outline" href={`/?shop=${encodeURIComponent(shop.slug)}`}>Minha conta</a></div></header>{bookingPage ? <PublicBooking key={shop.id} shop={shop} user={user} services={services} plans={plans} barbers={barbers} error={error}/> : <div className="public-bio"><div className="public-hero"><div className="public-emblem">{logo ? <img src={logo} alt={`Logo ${shop.name}`}/> : shop.name.slice(0,1)}</div><div className="eyebrow">BEM-VINDO À BARBEARIA</div><h1>{shop.name}</h1><p>{activeTheme?.tagline || shop.bio_description || 'Escolha seu próximo horário, conheça nossos serviços e fique por dentro dos planos.'}</p></div><div className="public-links"><a href={bookingLink(slug)} className="public-link primary">Agendar procedimento <ArrowUpRight size={19}/></a>{partnerOffers.length > 0 && <a href="#parceiros" className="public-link">Clube do Parceiro <ArrowUpRight size={19}/></a>}{products.length > 0 && <a href="#produtos" className="public-link">Ver produtos <ArrowUpRight size={19}/></a>}{plans.length > 0 && <a href="#planos" className="public-link">Ver planos e fazer assinatura <ArrowUpRight size={19}/></a>}{links.map(link => { const url = safeLink(link.url); return url ? <a key={link.id} href={url} target="_blank" rel="noreferrer" className="public-link">{asText(link.label)} <ArrowUpRight size={19}/></a> : null })}{contactUrl && <a href={contactUrl} target="_blank" rel="noreferrer" className="public-link">Entrar em contato <ArrowUpRight size={19}/></a>}</div><PublicWelcome shop={shop} instagramUrl={instagramUrl}/>{!partnerOffersError && partnerOffers.length > 0 && <PublicPartnerOffers shop={shop} offers={partnerOffers}/>} {services.length > 0 && <section className="public-section"><div className="public-section-title"><span>SERVIÇOS</span><h2>Cuide do seu estilo</h2></div><div className="public-service-grid">{services.slice(0, 6).map(service => <div key={service.id} className="public-service"><div className="service-icon"><Scissors size={19}/></div><h3>{asText(service.name)}</h3><p>{asText(service.description)}</p><div><span><Clock3 size={15}/>{asText(service.duration_minutes)} min</span><strong>{money(service.price_cents)}</strong></div></div>)}</div></section>}{products.length > 0 && <PublicProducts shop={shop} products={products}/>} {plans.length > 0 && <PublicPlans shop={shop} plans={plans} user={user}/>}</div>}<footer className="public-footer">{shop.name} · Powered by Barber System</footer></div>
+  return <div className={`public-layout ${activeTheme ? 'shop-themed' : ''}`} data-shop-theme={activeTheme ? '' : undefined} style={brandStyle(activeTheme)}><header className="public-header"><a href={`/b/${slug}`} className="client-brand"><ShopBrand shop={shop} compact/></a><div>{instagramUrl && <a href={instagramUrl} target="_blank" rel="noreferrer" aria-label="Instagram"><Camera size={19}/></a>}<a className="button outline" href={`/?shop=${encodeURIComponent(shop.slug)}`}>Minha conta</a></div></header>{bookingPage ? <PublicBooking key={shop.id} shop={shop} user={user} services={services} plans={plans} barbers={barbers} error={error}/> : subscribePage ? <main className="public-booking public-invite"><a href={`/b/${shop.slug}`} className="back-button"><ArrowLeft size={17}/> Conhecer a barbearia</a><Notice text={error}/><PublicPlans shop={shop} plans={plans} user={user} covered={covered} invite={{ planId: invitedPlanId(window.location.search) }}/></main> : <div className="public-bio"><div className="public-hero"><div className="public-emblem">{logo ? <img src={logo} alt={`Logo ${shop.name}`}/> : shop.name.slice(0,1)}</div><div className="eyebrow">BEM-VINDO À BARBEARIA</div><h1>{shop.name}</h1><p>{activeTheme?.tagline || shop.bio_description || 'Escolha seu próximo horário, conheça nossos serviços e fique por dentro dos planos.'}</p></div><div className="public-links"><a href={bookingLink(slug)} className="public-link primary">Agendar procedimento <ArrowUpRight size={19}/></a>{partnerOffers.length > 0 && <a href="#parceiros" className="public-link">Clube do Parceiro <ArrowUpRight size={19}/></a>}{products.length > 0 && <a href="#produtos" className="public-link">Ver produtos <ArrowUpRight size={19}/></a>}{plans.length > 0 && <a href="#planos" className="public-link">Ver planos e fazer assinatura <ArrowUpRight size={19}/></a>}{links.map(link => { const url = safeLink(link.url); return url ? <a key={link.id} href={url} target="_blank" rel="noreferrer" className="public-link">{asText(link.label)} <ArrowUpRight size={19}/></a> : null })}{contactUrl && <a href={contactUrl} target="_blank" rel="noreferrer" className="public-link">Entrar em contato <ArrowUpRight size={19}/></a>}</div><PublicWelcome shop={shop} instagramUrl={instagramUrl}/>{!partnerOffersError && partnerOffers.length > 0 && <PublicPartnerOffers shop={shop} offers={partnerOffers}/>} {services.length > 0 && <section className="public-section"><div className="public-section-title"><span>SERVIÇOS</span><h2>Cuide do seu estilo</h2></div><div className="public-service-grid">{services.slice(0, 6).map(service => <div key={service.id} className="public-service"><div className="service-icon"><Scissors size={19}/></div><h3>{asText(service.name)}</h3><p>{asText(service.description)}</p><div><span><Clock3 size={15}/>{asText(service.duration_minutes)} min</span><strong>{money(service.price_cents)}</strong></div></div>)}</div></section>}{products.length > 0 && <PublicProducts shop={shop} products={products}/>} {plans.length > 0 && <PublicPlans shop={shop} plans={plans} user={user} covered={covered}/>}</div>}<footer className="public-footer">{shop.name} · Powered by Barber System</footer></div>
 }
 
 function PublicWelcome({ shop, instagramUrl }: { shop: Shop; instagramUrl: string | null }) {
@@ -155,12 +167,21 @@ function PublicProducts({ shop, products }: { shop: Shop; products: Row[] }) {
     <p className="public-hint">Consulte a disponibilidade e combine a compra diretamente com a barbearia.</p>
   </section>
 }
-function PublicPlans({ shop, plans, user }: { shop: Shop; plans: Row[]; user: User | null }) {
+function PublicPlans({ shop, plans, user, covered, invite }: { shop: Shop; plans: Row[]; user: User | null; covered: Record<string, string[]>; invite?: { planId: string | null } }) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [busyPlan, setBusyPlan] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // null enquanto consulta; false quando a barbearia ainda não recebe assinaturas online.
+  const [ready, setReady] = useState<boolean | null>(null)
   useEffect(() => { setName(String(user?.user_metadata?.full_name || '')) }, [user])
+  useEffect(() => {
+    let cancelled = false
+    void Promise.resolve(requireSupabase().rpc('subscription_checkout_ready', { p_barbershop_id: shop.id }))
+      .then(({ data, error: problem }) => { if (!cancelled && !problem) setReady(data === true) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [shop.id])
   async function subscribe(planId: string) {
     if (!user) return
     setBusyPlan(planId); setError(null)
@@ -180,7 +201,39 @@ function PublicPlans({ shop, plans, user }: { shop: Shop; plans: Row[]; user: Us
       window.location.assign(result.checkout_url)
     } catch (problem) { setError(problem instanceof Error ? problem.message : 'Não foi possível iniciar a assinatura.'); setBusyPlan(null) }
   }
-  return <section className="public-section" id="planos"><div className="public-section-title"><span>ASSINATURAS</span><h2>Mais vantagens para você</h2></div>{user && <div className="form-row public-plan-identity"><Field label="Seu nome completo"><input value={name} onChange={event => setName(event.target.value)} placeholder="Usado se esta for sua primeira visita"/></Field><Field label="Telefone"><input value={phone} onChange={event => setPhone(event.target.value)}/></Field></div>}<Notice text={error}/><div className="public-service-grid">{plans.map(plan => <div key={plan.id} className="public-service plan"><div className="service-icon"><CreditCard size={19}/></div><h3>{asText(plan.name)}</h3><p>{asText(plan.description)}</p><div><span>{String(plan.visits_per_cycle)} usos por ciclo</span><strong>{money(plan.price_cents)}</strong></div>{user ? <button className="button outline" disabled={busyPlan !== null} onClick={() => void subscribe(plan.id)}>{busyPlan === plan.id ? 'Abrindo pagamento...' : 'Fazer assinatura'}</button> : <a className="button outline" href={`/?shop=${encodeURIComponent(shop.slug)}&return=${encodeURIComponent(`/b/${shop.slug}#planos`)}`}>Entrar para assinar</a>}</div>)}</div><p className="public-hint">A assinatura só fica ativa após confirmação do pagamento pelo Mercado Pago. Os meios disponíveis aparecem no checkout.</p></section>
+  // Convite: o plano indicado no link aparece sozinho; sem plano (ou com um que saiu do ar), o cliente escolhe entre os ativos.
+  const invited = invite?.planId ? plans.find(plan => plan.id === invite.planId) || null : null
+  const shown = invited ? [invited] : plans
+  const returnPath = invite ? invitePath(shop.slug, invited ? String(invited.id) : null) : `/b/${shop.slug}#planos`
+  const loginHref = `/?shop=${encodeURIComponent(shop.slug)}&return=${encodeURIComponent(returnPath)}`
+  const contactUrl = whatsappUrl(shop.whatsapp, 'Olá! Recebi o convite e quero assinar um plano.')
+  const closed = ready === false
+  return <section className="public-section" id={invite ? undefined : 'planos'}>
+    {invite
+      ? <div className="public-section-title"><span>CONVITE</span><h1>{invited ? 'Seu convite para assinar' : 'Escolha seu plano'}</h1><p>{shop.name} convidou você para {invited ? 'o plano abaixo' : 'assinar um plano'}. Entre ou crie sua conta, confira as condições e conclua o pagamento pelo Mercado Pago.</p></div>
+      : <div className="public-section-title"><span>ASSINATURAS</span><h2>Mais vantagens para você</h2></div>}
+    {invite && invite.planId && !invited && shown.length > 0 && <Notice kind="info" text="O plano deste convite não está mais disponível. Estes são os planos atuais."/>}
+    {invite && shown.length === 0 && <Empty title="Nenhum plano disponível" text="Esta barbearia não tem planos abertos para assinatura no momento."/>}
+    {invite && closed && shown.length > 0 && <Notice kind="info" text="A assinatura online desta barbearia ainda não está liberada. Fale com a barbearia para assinar."/>}
+    {invite && closed && contactUrl && <a className="button outline public-invite-contact" href={contactUrl} target="_blank" rel="noreferrer">Falar com a barbearia</a>}
+    {user && !closed && shown.length > 0 && <div className="form-row public-plan-identity"><Field label="Seu nome completo"><input value={name} onChange={event => setName(event.target.value)} placeholder="Usado se esta for sua primeira visita"/></Field><Field label="Telefone"><input value={phone} onChange={event => setPhone(event.target.value)}/></Field></div>}
+    <Notice text={error}/>
+    <div className={`public-service-grid ${shown.length === 1 ? 'single' : ''}`}>{shown.map(plan => {
+      const blurb = planBlurb(plan.description)
+      const includes = covered[String(plan.id)] || []
+      const visits = Number(plan.visits_per_cycle || 0)
+      return <div key={plan.id} className="public-service plan">
+        <div className="service-icon"><CreditCard size={19}/></div>
+        <h3>{asText(plan.name)}</h3>
+        <p>{blurb}{blurb && includes.length > 0 && <br/>}{includes.length > 0 && `Inclui: ${includes.join(', ')}.`}</p>
+        <div><span>{visits} {visits === 1 ? 'uso' : 'usos'} por ciclo</span><strong>{money(plan.price_cents)} <small>{cycleLabel(plan.frequency_months)}</small></strong></div>
+        {closed ? null : user
+          ? <button className={`button ${invite ? 'primary' : 'outline'}`} disabled={busyPlan !== null} onClick={() => void subscribe(plan.id)}>{busyPlan === plan.id ? 'Abrindo pagamento...' : 'Fazer assinatura'}</button>
+          : <a className={`button ${invite ? 'primary' : 'outline'}`} href={loginHref}>Entrar para assinar</a>}
+      </div>
+    })}</div>
+    <p className="public-hint">{closed && !invite ? 'A assinatura online ainda não está liberada nesta barbearia. Fale com a barbearia para assinar.' : 'A assinatura só fica ativa após confirmação do pagamento pelo Mercado Pago. Os meios disponíveis aparecem no checkout.'}</p>
+  </section>
 }
 
 function PublicBooking({ shop, user, services, barbers, error: initialError }: { shop: Shop; user: User | null; services: Row[]; plans: Row[]; barbers: Row[]; error: string | null }) {
