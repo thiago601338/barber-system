@@ -6,6 +6,7 @@ import { validateProductImageChoice, verifyImageSignature } from '../lib/product
 import { authedApi, requireSupabase } from '../lib/supabase'
 import { money, type ModuleKey } from '../types'
 import { BarberFinancials } from './BarberFinancials'
+import { BarberHours } from './BarberHours'
 import { AddButton, Empty, Field, Loading, Modal, Notice, PageHeader, PrimaryButton, Stat } from '../ui'
 
 interface TeamMember {
@@ -189,7 +190,7 @@ function BarberProfile({ member, shopId, timezone, admin, onClose, onChanged, no
         {admin && <label className="button outline barber-photo-button"><Camera size={16}/> {member.avatar_path ? 'Trocar foto' : 'Adicionar foto'}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={event => void changePhoto(event)} hidden disabled={busy}/></label>}
       </div>
       <div className="barber-profile-info">
-        <div className="barber-profile-days"><span>Dias de atendimento</span><div className="barber-days large">{dayLabels.map((label, day) => <i key={label} className={member.work_days.includes(day) ? 'on' : ''}>{label}</i>)}</div><small>Os horários de cada dia ficam em Serviços e horários.</small></div>
+        <BarberHours shopId={shopId} membershipId={member.membership_id} active={member.active} canEdit={admin} notify={notify} onSaved={() => void onChanged()}/>
         <p className="barber-profile-meta">{member.has_login ? member.last_sign_in_at ? `Último acesso em ${new Date(member.last_sign_in_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}` : 'Ainda não fez o primeiro acesso.' : 'Sem acesso ao sistema: aparece na agenda, mas não entra no painel.'}{member.imported ? ' · Cadastro trazido do Cashbarber.' : ''}</p>
         {admin && <form className="form-grid" onSubmit={saveName}>
           <Field label="Nome exibido"><div className="barber-inline"><input value={name} onChange={event => setName(event.target.value)} maxLength={120}/><button className="button outline" type="submit" disabled={busy || name.trim() === member.display_name}>Salvar</button></div></Field>

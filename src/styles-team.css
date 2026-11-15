@@ -172,3 +172,25 @@
 .barber-expense-table th:nth-child(2){text-align:left}
 .barber-expense-table .icon-button{width:30px;height:30px;color:#b4554d}
 @media(max-width:560px){.barber-expense-form{grid-template-columns:1fr 1fr}.barber-expense-form>.field:nth-child(2){grid-column:1/-1}.barber-expense-actions{grid-column:1/-1}.barber-expense-actions .button{width:100%}.barber-expense-kinds button{flex:1 1 40%;min-width:0}}
+
+/* Dias e horários do barbeiro, no perfil */
+.barber-hours{display:grid;gap:10px}
+.barber-hours-title{font-size:12px;font-weight:700;color:#4f5c54}
+.barber-hours>small,.barber-hours-actions small{color:#7a867d;font-size:11.5px;line-height:1.45}
+.barber-hours-grid{display:grid;border:1px solid #e9ede7;border-radius:12px;overflow:hidden}
+.barber-hours-day{display:grid;grid-template-columns:86px 1fr auto;align-items:center;gap:10px;padding:8px 12px;border-top:1px solid #eef1ec;background:#fafbf9}
+.barber-hours-day:first-child{border-top:0}
+.barber-hours-day.on{background:#fff}
+.barber-hours-day>strong{font-size:12.5px;color:#a3aca5}
+.barber-hours-day.on>strong{color:#17211c}
+.barber-hours-windows{display:flex;flex-wrap:wrap;gap:6px 14px;min-width:0}
+.barber-hours-off{font-size:12px;color:#a3aca5}
+.barber-hours-window{display:flex;align-items:center;gap:6px}
+.barber-hours-window span{font-size:11.5px;color:#7a867d}
+.barber-hours-window input{width:auto;min-width:0;height:32px;padding:0 8px;font-size:12.5px}
+.barber-hours-window .icon-button{width:26px;height:26px}
+.barber-hours-add{display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;font:inherit;font-size:11.5px;font-weight:700;color:#4f5c54;cursor:pointer;padding:4px 2px;white-space:nowrap}
+.barber-hours-add:disabled{opacity:.5;cursor:default}
+.barber-hours-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.barber-hours-actions small{flex:1;min-width:200px}
+@media(max-width:620px){.barber-hours-day{grid-template-columns:1fr auto}.barber-hours-windows{grid-column:1/-1;grid-row:2}}

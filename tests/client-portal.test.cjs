@@ -208,3 +208,12 @@ test('texto do termo vira parágrafos com os títulos das cláusulas destacados'
  const blocks=harness('SubscriptionTerms.tsx','termBlocks','1. Objetivo\n\nOs termos deste documento.\n\n\n(82) 993657663\n\nA BARBEARIA NÃO SE RESPONSABILIZARÁ\n\n(1) Por defeitos de projeto.\n\n10. Vigência e Extinção / Política de Cancelamento\n').render()
  assert.deepEqual(JSON.parse(JSON.stringify(blocks)),[{text:'1. Objetivo',heading:true},{text:'Os termos deste documento.',heading:false},{text:'(82) 993657663',heading:false},{text:'A BARBEARIA NÃO SE RESPONSABILIZARÁ',heading:true},{text:'(1) Por defeitos de projeto.',heading:false},{text:'10. Vigência e Extinção / Política de Cancelamento',heading:true}])
 })
+test('grade de horários do barbeiro: valida sobreposição e calcula só o que mudou',()=>{
+ const problem=list=>harness('BarberHours.tsx','hoursProblem',list).render()
+ assert.equal(problem([{weekday:1,start:'09:00',end:'12:00'},{weekday:1,start:'13:00',end:'18:00'}]),null)
+ assert.match(problem([{weekday:1,start:'09:00',end:'13:00'},{weekday:1,start:'12:00',end:'18:00'}]),/Segunda: os horários se sobrepõem/)
+ assert.match(problem([{weekday:6,start:'18:00',end:'09:00'}]),/Sábado: o fim precisa ser depois do início/)
+ const saved=[{id:'a',weekday:1,start_time:'09:00:00',end_time:'18:00:00'},{id:'b',weekday:2,start_time:'09:00:00',end_time:'18:00:00'},{id:'c',weekday:3,start_time:'09:00:00',end_time:'18:00:00'}]
+ const changes=harness('BarberHours.tsx','hoursChanges',{saved,windows:[{id:'a',weekday:1,start:'09:00',end:'18:00'},{id:'b',weekday:2,start:'10:00',end:'18:00'},{weekday:5,start:'09:00',end:'20:00'}]}).render()
+ assert.deepEqual(JSON.parse(JSON.stringify(changes)),{remove:['c'],update:[{id:'b',weekday:2,start:'10:00',end:'18:00'}],insert:[{weekday:5,start:'09:00',end:'20:00'}]})
+})
