@@ -26,7 +26,12 @@ export function useRows(table: string, barbershopId: string | null, enabled = tr
         : table === 'client_barbers' ? ['client_id','barber_membership_id'] : ['id']
       for (let page = 0; page < 100; page++) {
         let query = requireSupabase().from(table).select(columns).eq('barbershop_id', barbershopId)
-        for (const [key, value] of Object.entries(JSON.parse(filterKey) as Record<string,string|string[]>)) query = Array.isArray(value) ? query.in(key,value) : query.eq(key, value)
+        // Chave terminada em ">=" filtra a partir do valor; em "!null", só linhas com a coluna preenchida.
+        for (const [key, value] of Object.entries(JSON.parse(filterKey) as Record<string,string|string[]>)) {
+          if (key.endsWith('>=')) query = query.gte(key.slice(0, -2), String(value))
+          else if (key.endsWith('!null')) query = query.not(key.slice(0, -5), 'is', null)
+          else query = Array.isArray(value) ? query.in(key,value) : query.eq(key, value)
+        }
         if (orderBy) query = query.order(orderBy, { ascending: false })
         for (const key of keys) if (key !== orderBy) query = query.order(key)
         const result = await query.range(page * 1000, page * 1000 + 999)
