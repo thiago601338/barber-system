@@ -62,6 +62,7 @@ function harness(file, exported, props, mocks = {}) {
     './AgendaExtras': { RemindersModal: 'RemindersModal', StageChip: 'StageChip', StageLegend: 'StageLegend', TvBoardModal: 'TvBoardModal' },
     './SubscriptionCalendar': { SubscriptionCalendar: 'SubscriptionCalendar' },
     './SubscriptionInvite': { InviteLinkModal: 'InviteLinkModal' },
+    './ClientSearch': { ClientSearch: 'ClientSearch' },
     './SubscriptionTerms': { TermsAcceptance: 'TermsAcceptance', useSubscriptionTerms: () => mocks.terms || { terms: null, failed: false } },
     '../lib/appointmentStage': { clientStage: () => 'waiting', stageLabels: { waiting: 'Aguardando' } },
     '../TeamAvatar': { TeamAvatar: 'TeamAvatar' },
@@ -155,12 +156,12 @@ test('trocar cliente no agendamento remove assinatura do cliente anterior', asyn
   const props = { shopId: 'shop', timezone: 'America/Sao_Paulo', initialDay: '2026-10-05', barbers: [{ id: 'barber' }], clients: [{ id: 'a' }, { id: 'b' }], services: [{ id: 'service', price_cents: 2000 }], subscriptions: [{ id: 'plan-a', client_id: 'a', status: 'active' }], onClose() {}, onSaved() {} }
   const h = harness('SchedulingPage.tsx', 'BookingModal', props, { client: { rpc: async (name, values) => { calls.push({ name, values }); return { data: name === 'available_slots' ? [{ starts_at: '2026-10-05T12:00:00Z' }] : name==='booking_subscription_eligibility' ? {requires_subscription:false,eligible:true,subscriptions:values.p_client_id==='a'?[{id:'plan-a',plan_name:'Plano A',remaining_visits:1}]:[],reason:null} : null } } } })
   h.render()
-  h.find(n => n.type === 'select' && n.props.required && n.props.children[1]?.length === 2).props.onChange({ target: { value: 'a' } }); h.render()
+  h.find(n => n.type === 'ClientSearch').props.onChange('a'); h.render()
   h.find(n => n.type === 'select' && n.props.required && n.props.children[1]?.length === 1).props.onChange({ target: { value: 'barber' } }); h.render()
   h.find(n => n.type === 'input' && n.props.type === 'checkbox').props.onChange({ target: { checked: true } }); h.render(); await flush(); h.render()
   h.find(n => n.type === 'button' && n.props.className?.startsWith('slot ')).props.onClick(); h.render(); await flush(); h.render()
   h.find(n => n.type === 'select' && !n.props.required).props.onChange({ target: { value: 'plan-a' } }); h.render()
-  h.find(n => n.type === 'select' && n.props.required && n.props.children[1]?.length === 2).props.onChange({ target: { value: 'b' } }); h.render(); await flush(); h.render()
+  h.find(n => n.type === 'ClientSearch').props.onChange('b'); h.render(); await flush(); h.render()
   h.find(n => n.type === 'button' && n.props.className?.startsWith('slot ')).props.onClick(); h.render()
   await h.find(n => n.type === 'form').props.onSubmit(event)
   const booking = calls.find(call => call.name === 'book_appointment').values
@@ -238,7 +239,7 @@ test('serviço exclusivo não permite confirmar sem contrato com cobertura e sal
   h.render()
   const selects = []
   const collect = node => { if (node?.type==='select' && node.props.required) selects.push(node); if(node?.props) for(const value of Object.values(node.props)) { if(Array.isArray(value))value.forEach(collect);else if(value&&typeof value==='object')collect(value) } }
-  collect(h.render()); selects[0].props.onChange({target:{value:'a'}}); selects[1].props.onChange({target:{value:'barber'}}); h.render()
+  collect(h.render()); h.find(n=>n.type==='ClientSearch').props.onChange('a'); selects[0].props.onChange({target:{value:'barber'}}); h.render()
   h.find(n=>n.type==='input'&&n.props.type==='checkbox').props.onChange({target:{checked:true}});h.render();await flush();h.render()
   h.find(n=>n.type==='button'&&n.props.className?.startsWith('slot ')).props.onClick();h.render();await flush();h.render()
   assert.equal(h.find(n=>n.type==='PrimaryButton'&&n.props.type==='submit').props.disabled,true)
@@ -250,11 +251,11 @@ test('serviço exclusivo não permite confirmar sem contrato com cobertura e sal
 test('consulta de assinatura de cliente anterior não substitui os contratos do cliente atual', async () => {
   const old = deferred()
   const h = harness('SchedulingPage.tsx','BookingModal',{shopId:'shop',timezone:'UTC',initialDay:'2030-10-05',barbers:[{id:'barber'}],clients:[{id:'a'},{id:'b'}],services:[{id:'service',price_cents:2000}],subscriptions:[],onClose(){},onSaved(){}},{client:{rpc:async(name,values)=>name==='available_slots'?{data:[{starts_at:'2030-10-05T12:00:00Z'}]}:name==='booking_subscription_eligibility'&&values.p_client_id==='a'?old.promise:{data:{requires_subscription:false,eligible:true,subscriptions:[{id:'b-plan',plan_name:'Plano B',remaining_visits:2}],reason:null}}}})
-  h.render();h.find(n=>n.type==='select'&&n.props.required&&n.props.children[1]?.length===2).props.onChange({target:{value:'a'}});h.render()
+  h.render();h.find(n=>n.type==='ClientSearch').props.onChange('a');h.render()
   h.find(n=>n.type==='select'&&n.props.required&&n.props.children[1]?.length===1).props.onChange({target:{value:'barber'}});h.render()
   h.find(n=>n.type==='input'&&n.props.type==='checkbox').props.onChange({target:{checked:true}});h.render();await flush();h.render()
   h.find(n=>n.type==='button'&&n.props.className?.startsWith('slot ')).props.onClick();h.render()
-  h.find(n=>n.type==='select'&&n.props.required&&n.props.children[1]?.length===2).props.onChange({target:{value:'b'}});h.render();await flush();h.render()
+  h.find(n=>n.type==='ClientSearch').props.onChange('b');h.render();await flush();h.render()
   old.resolve({data:{requires_subscription:false,eligible:true,subscriptions:[{id:'a-plan',plan_name:'Plano A',remaining_visits:7}],reason:null}});await flush();h.render()
   const choice=h.find(n=>n.type==='select'&&!n.props.required)
   assert.match(JSON.stringify(choice.props.children),/Plano B/)
@@ -284,4 +285,18 @@ test('nova assinatura em barbearia com termo de aceite só gera checkout após a
   assert.equal(h.find(n => n.type === 'PrimaryButton' && n.props.type === 'submit').props.disabled, false)
   await startForm().props.onSubmit(event)
   assert.deepEqual(JSON.parse(JSON.stringify(calls)), [['/api/mercadopago/subscription-start', { barbershop_id: 'shop', client_id: 'client', plan_id: 'plan', terms_version: 'shop_terms_v2' }]])
+})
+
+test('busca de cliente no agendamento acha por nome sem acento ou por telefone em qualquer formato', () => {
+  const clients = [{ id: '1', full_name: 'João Pedro Lima', phone: '(82) 99988-7766' }, { id: '2', full_name: 'Pedro Álvares', phone: '5582988887777' }, { id: '3', full_name: 'Ana Joana', phone: null }]
+  const ids = term => [...harness('ClientSearch.tsx', 'searchClients', { clients, term }).render().map(row => row.id)]
+  assert.deepEqual(ids('pedro'), ['2', '1'])
+  assert.deepEqual(ids('joao lima'), ['1'])
+  assert.deepEqual(ids('alvares'), ['2'])
+  assert.deepEqual(ids('99988'), ['1'])
+  assert.deepEqual(ids('82 98888-7777'), ['2'])
+  assert.deepEqual(ids('+55 82 98888'), ['2'])
+  assert.deepEqual(ids('jo'), ['1', '3'])
+  assert.deepEqual(ids('12'), [])
+  assert.deepEqual(ids('  '), [])
 })

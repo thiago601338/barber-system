@@ -149,3 +149,16 @@
 .audit-changes s{color:var(--shop-muted,#8d968a)}
 .audit-changes i{font-style:normal;color:var(--shop-muted,#8d968a)}
 .audit-changes b{font-weight:750;color:var(--shop-text,#1d3025)}
+
+/* Busca de cliente por nome ou telefone (Novo agendamento) */
+.client-search{position:relative;display:flex;align-items:center;gap:8px;min-height:48px;padding:0 12px;border:1px solid var(--line,#ddd5c7);border-radius:12px;background:var(--surface,#fff)}
+.client-search>svg{flex:none;opacity:.55}
+.client-search input{flex:1;min-width:0;border:0;background:transparent;padding:0;height:46px;outline:none;box-shadow:none}
+.client-search:focus-within{border-color:var(--shop-accent,#8c6f3d);box-shadow:0 0 0 3px rgba(140,111,61,.12)}
+.client-search.chosen{justify-content:space-between}
+.client-search.chosen div{display:flex;flex-direction:column;line-height:1.25;padding:6px 0}
+.client-search small{font-size:11.5px;opacity:.65}
+.client-search-list{position:absolute;z-index:30;left:-1px;right:-1px;top:calc(100% + 4px);margin:0;padding:5px;list-style:none;max-height:300px;overflow:auto;background:var(--surface,#fff);border:1px solid var(--line,#ddd5c7);border-radius:12px;box-shadow:0 14px 32px rgba(20,24,20,.14)}
+.client-search-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px}
+.client-search-list li.on{background:#f4efe5}
+.client-search-list li.empty{cursor:default;opacity:.65}
