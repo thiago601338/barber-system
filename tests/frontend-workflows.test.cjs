@@ -300,3 +300,13 @@ test('busca de cliente no agendamento acha por nome sem acento ou por telefone e
   assert.deepEqual(ids('12'), [])
   assert.deepEqual(ids('  '), [])
 })
+
+test('no agendamento, ao escolher o profissional só aparecem os procedimentos que ele faz', async () => {
+  const from = table => { assert.equal(table, 'barber_services'); const b = { select: () => b, eq: () => b, then: resolve => resolve({ data: [{ service_id: 'corte' }], error: null }) }; return b }
+  const h = harness('SchedulingPage.tsx', 'BookingModal', { shopId: 'shop', timezone: 'UTC', initialDay: '2030-10-05', barbers: [{ id: 'barber' }], clients: [{ id: 'a' }], services: [{ id: 'corte', name: 'Corte', duration_minutes: 30, price_cents: 5000 }, { id: 'barba', name: 'Barba', duration_minutes: 20, price_cents: 3000 }], subscriptions: [], onClose() {}, onSaved() {} }, { client: { from, rpc: async () => ({ data: [] }) } })
+  h.render()
+  const labels = () => { const found = []; (function visit(node) { if (!node || typeof node !== 'object') return; if (Array.isArray(node)) return node.forEach(visit); if (node.type === 'label' && String(node.props.className || '').startsWith('choice-card')) found.push(JSON.stringify(node.props.children).includes('Barba') ? 'barba' : 'corte'); if (node.props) Object.values(node.props).forEach(visit) })(h.render()); return found }
+  assert.deepEqual(labels(), ['corte', 'barba'])
+  h.find(n => n.type === 'select' && n.props.required).props.onChange({ target: { value: 'barber' } }); h.render(); await flush(); await flush()
+  assert.deepEqual(labels(), ['corte'])
+})

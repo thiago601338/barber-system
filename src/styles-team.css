@@ -194,3 +194,11 @@
 .barber-hours-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .barber-hours-actions small{flex:1;min-width:200px}
 @media(max-width:620px){.barber-hours-day{grid-template-columns:1fr auto}.barber-hours-windows{grid-column:1/-1;grid-row:2}}
+
+.barber-hours-title em{font-style:normal;font-weight:600;color:#7a867d;margin-left:6px}
+.barber-services-warn{color:#a2582b!important}
+.barber-services-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px;max-height:280px;overflow:auto;padding:2px}
+.barber-services-grid label{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e9ede7;border-radius:9px;font-size:12.5px;cursor:pointer;background:#fafbf9}
+.barber-services-grid label.on{background:#fff;border-color:#cfd8cc}
+.barber-services-grid small{color:#7a867d;font-size:11px}
+.barber-services-grid span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
