@@ -1,4 +1,3 @@
--- PENDENTE DE APLICAÇÃO (rodar no SQL Editor do Supabase ou com `supabase db push`).
 -- Contratos migrados do CashBarber (snapshot com "migrated_from") carregam preço, serviços e dia de
 -- cobrança comprovados na origem. Esta migração permite concluir a revisão deles
 -- (contract_review_required true -> false) e conclui a revisão dos contratos da Kingsman, para que
