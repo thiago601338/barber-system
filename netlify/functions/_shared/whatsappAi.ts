@@ -100,12 +100,17 @@ class Bot {
     if (name === 'horarios_disponiveis') {
       const services = this.serviceIds(args.servicos)
       const day = this.day(args.data)
+      const period = typeof args.periodo === 'string' ? args.periodo : ''
+      const from = typeof args.a_partir_de === 'string' && /^\d{2}:\d{2}$/.test(args.a_partir_de) ? args.a_partir_de : ''
+      const fits = (time: string) => (!from || time >= from) && (period === 'manha' ? time < '12:00' : period === 'tarde' ? time >= '12:00' && time < '18:00' : period === 'noite' ? time >= '18:00' : true)
       const result = []
+      let total = 0
       for (const barberId of this.barberIds(args.barbeiro_id)) {
-        const slots = await this.slots(barberId, services, day)
-        result.push({ barbeiro_id: barberId, barbeiro: this.barbers.find(b => b.id === barberId)?.display_name, horarios: slots.map(s => localParts(new Date(s.starts_at), this.tz).time) })
+        const times = (await this.slots(barberId, services, day)).map(s => localParts(new Date(s.starts_at), this.tz).time).filter(fits)
+        total += times.length
+        if (times.length) result.push({ barbeiro_id: barberId, barbeiro: prettyName(this.barbers.find(b => b.id === barberId)?.display_name || ''), horarios: times.slice(0, 6), mais_horarios: Math.max(0, times.length - 6) })
       }
-      return { data: day, profissionais: result }
+      return { data: day, periodo: period || 'dia todo', a_partir_de: from || null, total_horarios_livres: total, profissionais: result, aviso: total ? undefined : 'Nenhum horário livre com esses filtros.' }
     }
     if (name === 'agendar') {
       const services = this.serviceIds(args.servicos)
@@ -161,7 +166,7 @@ class Bot {
 
 function tools(canBook: boolean): ChatCompletionTool[] {
   const list: ChatCompletionTool[] = [
-    { type: 'function', function: { name: 'horarios_disponiveis', description: 'Consulta os horários livres na agenda para os serviços escolhidos em uma data. Sem barbeiro_id, consulta todos os profissionais.', parameters: { type: 'object', properties: { data: { type: 'string', description: 'AAAA-MM-DD' }, servicos: { type: 'array', items: { type: 'string' }, description: 'IDs dos serviços' }, barbeiro_id: { type: 'string', description: 'ID do profissional (opcional)' } }, required: ['data', 'servicos'] } } },
+    { type: 'function', function: { name: 'horarios_disponiveis', description: 'Consulta os horários livres na agenda para os serviços escolhidos em uma data. Sem barbeiro_id, consulta todos os profissionais. Use periodo quando o cliente falar manhã, tarde ou noite, e a_partir_de quando ele falar um horário (ex.: "depois das 15h").', parameters: { type: 'object', properties: { data: { type: 'string', description: 'AAAA-MM-DD' }, servicos: { type: 'array', items: { type: 'string' }, description: 'IDs dos serviços' }, barbeiro_id: { type: 'string', description: 'ID do profissional (opcional)' }, periodo: { type: 'string', enum: ['manha', 'tarde', 'noite'], description: 'Filtra o período do dia (opcional)' }, a_partir_de: { type: 'string', description: 'HH:MM — só horários a partir deste (opcional)' } }, required: ['data', 'servicos'] } } },
     { type: 'function', function: { name: 'calcular_total', description: 'Soma preço e duração de vários serviços avulsos. Use sempre que precisar informar o total de mais de um serviço.', parameters: { type: 'object', properties: { servicos: { type: 'array', items: { type: 'string' }, description: 'IDs dos serviços' } }, required: ['servicos'] } } },
     { type: 'function', function: { name: 'chamar_atendente', description: 'Passa a conversa para uma pessoa da equipe (reclamação, pagamento, pedido para falar com humano, assunto que você não consegue resolver).', parameters: { type: 'object', properties: { motivo: { type: 'string' } }, required: ['motivo'] } } },
   ]
@@ -248,9 +253,10 @@ function systemPrompt(shop: Shop, services: Service[], barbers: Barber[], connec
     '- Assuntos que não são da barbearia (perguntas gerais, tarefas, piadas): responda em uma frase que só pode ajudar com a barbearia e ofereça ajuda com serviços, planos ou horários. Nunca chame atendente por isso.',
     '- Nunca escreva o nome do cliente no meio das frases. Seja natural, como um atendente de barbearia.',
     '- Nunca invente preços, serviços, horários ou informações. Para horários use sempre a ferramenta horarios_disponiveis.',
-    '- Perguntas como "tem horário hoje/amanhã/agora?": consulte horarios_disponiveis na hora. Se o cliente não disse o serviço, consulte para "corte" e avise que são horários de corte. Mostre até 4 opções, com o nome do profissional. Só diga que não há horário depois de consultar.',
+    '- Perguntas como "tem horário hoje/amanhã/agora?": consulte horarios_disponiveis na hora. Se o cliente não disse o serviço, consulte para o serviço chamado exatamente "Corte" e avise que são horários de corte. Mostre até 4 opções, com o nome do profissional. Só diga que não há horário depois de consultar.',
     '- Se o cliente pedir um profissional pelo primeiro nome, use o profissional da lista com esse nome.',
-    '- Respeite o período pedido: manhã = antes das 12:00, tarde = 12:00 às 18:00, noite = depois das 18:00. Só ofereça horários dentro do período; se não houver, diga isso e mostre os mais próximos fora dele.',
+    '- Respeite o período pedido: passe periodo (manha, tarde, noite) ou a_partir_de para horarios_disponiveis. Só ofereça horários dentro do que o cliente pediu; se não houver, diga isso e consulte sem o filtro para sugerir os mais próximos.',
+    '- Quando o cliente escolher "o primeiro" ou "o mais cedo", é o primeiro horário da última lista que você mostrou (respeitando o período pedido).',
     '- Se o dia pedido estiver como fechado no horário de funcionamento, diga claramente que a barbearia não abre nesse dia (ex.: "amanhã é domingo e não abrimos") e ofereça o próximo dia aberto.',
     '- Se a barbearia estiver FECHADA agora (veja a linha "Agora são..."), e o cliente perguntar se está aberta, ou pedir horário "agora", "daqui a pouco" ou "hoje": comece dizendo que agora está fechada e quando abre (ex.: "Agora estamos fechados; abrimos hoje às 09:00.") e só depois mostre os primeiros horários. Nunca diga que já passou do horário se ainda vai abrir hoje.',
     '- "Maquininha" quer dizer pagamento com cartão: responda pelas formas de pagamento listadas.',
