@@ -144,6 +144,13 @@ class Bot {
       const { error } = await this.client.rpc('whatsapp_bot_cancel', { p_barbershop_id: this.shop.id, p_client_id: clientId, p_appointment_id: args.agendamento_id })
       return error ? { ok: false, erro: error.message } : { ok: true }
     }
+    if (name === 'calcular_total') {
+      const ids = this.serviceIds(args.servicos)
+      const items = ids.map(id => this.services.find(s => s.id === id)!).filter(Boolean)
+      const total = items.reduce((sum, s) => sum + s.price_cents, 0)
+      const minutes = items.reduce((sum, s) => sum + s.duration_minutes, 0)
+      return { itens: items.map(s => ({ servico: prettyName(s.name), preco: money(s.price_cents), duracao_min: s.duration_minutes })), total: money(total), duracao_total_min: minutes }
+    }
     if (name === 'chamar_atendente') {
       if (this.conversation) await this.client.from('whatsapp_conversations').update({ ai_paused_until: new Date(Date.now() + 7 * 86_400_000).toISOString() }).eq('id', this.conversation.id)
       return { ok: true, instrucao: 'Avise o cliente que uma pessoa da equipe vai continuar o atendimento por aqui em breve. Não responda mais nada depois disso.' }
@@ -155,6 +162,7 @@ class Bot {
 function tools(canBook: boolean): ChatCompletionTool[] {
   const list: ChatCompletionTool[] = [
     { type: 'function', function: { name: 'horarios_disponiveis', description: 'Consulta os horários livres na agenda para os serviços escolhidos em uma data. Sem barbeiro_id, consulta todos os profissionais.', parameters: { type: 'object', properties: { data: { type: 'string', description: 'AAAA-MM-DD' }, servicos: { type: 'array', items: { type: 'string' }, description: 'IDs dos serviços' }, barbeiro_id: { type: 'string', description: 'ID do profissional (opcional)' } }, required: ['data', 'servicos'] } } },
+    { type: 'function', function: { name: 'calcular_total', description: 'Soma preço e duração de vários serviços avulsos. Use sempre que precisar informar o total de mais de um serviço.', parameters: { type: 'object', properties: { servicos: { type: 'array', items: { type: 'string' }, description: 'IDs dos serviços' } }, required: ['servicos'] } } },
     { type: 'function', function: { name: 'chamar_atendente', description: 'Passa a conversa para uma pessoa da equipe (reclamação, pagamento, pedido para falar com humano, assunto que você não consegue resolver).', parameters: { type: 'object', properties: { motivo: { type: 'string' } }, required: ['motivo'] } } },
   ]
   if (canBook) list.push(
@@ -189,8 +197,32 @@ function openNow(rules: Rule[], barbers: Barber[], tz: string): string {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()).map(p => [p.type, p.value]))
   const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(parts.weekday)
   const now = `${parts.hour}:${parts.minute}`
-  const open = rules.some(r => r.weekday === weekday && active.has(r.barber_membership_id) && r.start_time.slice(0, 5) <= now && now < r.end_time.slice(0, 5))
-  return open ? 'A barbearia está aberta agora.' : 'A barbearia está FECHADA agora (fora do horário de funcionamento).'
+  const dayRules = (d: number) => rules.filter(r => r.weekday === d && active.has(r.barber_membership_id))
+  const today = dayRules(weekday)
+  if (today.some(r => r.start_time.slice(0, 5) <= now && now < r.end_time.slice(0, 5))) {
+    const close = today.map(r => r.end_time.slice(0, 5)).sort().reverse()[0]
+    return `Agora são ${now}: a barbearia está ABERTA e fecha hoje às ${close}.`
+  }
+  const openToday = today.map(r => r.start_time.slice(0, 5)).sort()[0]
+  if (openToday && now < openToday) return `Agora são ${now}: a barbearia está FECHADA e abre HOJE às ${openToday}.`
+  for (let offset = 1; offset <= 7; offset++) {
+    const d = (weekday + offset) % 7
+    const start = dayRules(d).map(r => r.start_time.slice(0, 5)).sort()[0]
+    if (start) return `Agora são ${now}: a barbearia está FECHADA (já encerrou hoje ou não abre hoje) e abre ${offset === 1 ? 'amanhã' : WEEKDAYS[d]} às ${start}.`
+  }
+  return `Agora são ${now}: a barbearia está fechada.`
+}
+
+/** Idioma da mensagem do cliente (heurística simples para inglês e espanhol). */
+export function detectLanguage(text: string): 'en' | 'es' | 'pt' {
+  const t = ` ${text.toLowerCase().replace(/[^a-záéíóúñãõç0-9 ]/g, ' ')} `
+  const en = [' the ', ' you ', ' do ', ' does ', ' have ', ' how ', ' much ', ' haircut', ' tomorrow', ' hi ', ' hello', ' price', ' is ', ' are ', ' can i', ' what ', ' when ', ' open', ' book', ' appointment', ' thanks', ' please']
+  const es = [' cuanto', ' cuánto', ' cuesta', ' hola', ' mañana', ' por favor', ' tienen', ' pelo', ' usted', ' quisiera', ' gracias', ' horario disponible', ' cita', ' barba?', ' precio']
+  const score = (list: string[]) => list.reduce((n, w) => n + (t.includes(w) ? 1 : 0), 0)
+  const e = score(en), s = score(es)
+  if (e >= 2 && e > s) return 'en'
+  if (s >= 1 && s > e && !/ (quanto|você|vocês|amanhã|obrigad)/.test(t)) return 'es'
+  return 'pt'
 }
 
 function systemPrompt(shop: Shop, services: Service[], barbers: Barber[], connection: AiSettings, tz: string, contactName: string | null, plans: Plan[] = [], rules: Rule[] = []): string {
@@ -220,10 +252,14 @@ function systemPrompt(shop: Shop, services: Service[], barbers: Barber[], connec
     '- Se o cliente pedir um profissional pelo primeiro nome, use o profissional da lista com esse nome.',
     '- Respeite o período pedido: manhã = antes das 12:00, tarde = 12:00 às 18:00, noite = depois das 18:00. Só ofereça horários dentro do período; se não houver, diga isso e mostre os mais próximos fora dele.',
     '- Se o dia pedido estiver como fechado no horário de funcionamento, diga claramente que a barbearia não abre nesse dia (ex.: "amanhã é domingo e não abrimos") e ofereça o próximo dia aberto.',
-    '- Se a barbearia estiver fechada agora e o cliente pedir "agora" ou "daqui a pouco", diga que no momento está fechada e mostre os primeiros horários do próximo período aberto.',
+    '- Se a barbearia estiver FECHADA agora (veja a linha "Agora são..."), e o cliente perguntar se está aberta, ou pedir horário "agora", "daqui a pouco" ou "hoje": comece dizendo que agora está fechada e quando abre (ex.: "Agora estamos fechados; abrimos hoje às 09:00.") e só depois mostre os primeiros horários. Nunca diga que já passou do horário se ainda vai abrir hoje.',
+    '- "Maquininha" quer dizer pagamento com cartão: responda pelas formas de pagamento listadas.',
+    '- Público atendido (mulher, criança, idade): não afirme nada que não esteja nos dados; diga que não tem essa informação e ofereça passar a pergunta para a equipe.',
+    '- Para agendar só use agendar depois que o cliente confirmar UM horário e UM profissional que você apresentou. Se você mostrou mais de uma opção e ele respondeu algo vago ("pode ser", "ok", "qualquer um"), pergunte qual horário ele escolhe (ou proponha um só e peça confirmação) antes de agendar.',
+    '- Nunca diga que não há horário sem ter consultado horarios_disponiveis para aquele serviço e dia. Se depois aparecer horário, não contradiga o que disse antes sem explicar.',
     '- Ofereça poucas opções de horário por vez (até 4), perto do que o cliente pediu.',
     '- Quando o cliente perguntar algo genérico (ex.: "quanto é o corte", "tem barba?") e houver mais de um serviço que combine, liste já na resposta as opções que combinam, cada uma com preço e duração, e pergunte qual ele quer. Nunca escolha uma delas sozinho e nunca diga apenas "posso te passar outras opções".',
-    '- Para combinações (ex.: "corte e barba", "corte + barba + sobrancelha"): se existir um serviço combinado com esses itens no nome, mostre-o; mostre também a soma dos serviços separados. Nunca apresente um serviço simples como se fosse a combinação.',
+    '- Para combinações (ex.: "corte e barba", "corte + barba + sobrancelha"): se existir um serviço combinado com esses itens no nome, mostre-o; para a soma dos serviços separados use sempre a ferramenta calcular_total (nunca some de cabeça). Nunca apresente um serviço simples como se fosse a combinação.',
     '- Se pedirem um serviço que não existe na lista (ex.: corte infantil, progressiva), diga que esse serviço não aparece na lista da barbearia e, se houver, sugira o mais próximo deixando claro que é outro serviço.',
     '- Quando perguntarem sobre planos, assinatura, clube ou mensalidade, responda com os planos da lista acima (nome, preço e o que inclui). Se forem muitos, mostre os principais e pergunte qual serviço ele mais usa para indicar o plano certo. Nunca diga que não tem acesso aos planos. Dias liberados e regras de cada plano estão nas condições; não invente fidelidade ou regras.',
     '- Horário de funcionamento: use a linha de horário acima; no dia marcado como fechado a barbearia não abre.',
@@ -274,6 +310,9 @@ export async function aiReply(client: SupabaseClient, openai: OpenAI, shopId: st
     { role: 'developer', content: systemPrompt(shop, services, barbers, settings, tz, contactName, plans, (ruleRows ?? []) as Rule[]) },
     ...turns.filter(t => t.content.trim()).map(t => ({ role: t.role, content: t.content.slice(0, 2000) }) as ChatCompletionMessageParam),
   ]
+  const lastUser = [...turns].reverse().find(t => t.role === 'user')?.content || ''
+  const language = detectLanguage(lastUser)
+  if (language !== 'pt') chat.push({ role: 'developer', content: language === 'en' ? 'The customer wrote in English: reply in English (keep prices in R$).' : 'El cliente escribió en español: responde en español (precios en R$).' })
   for (let step = 0; step < 6; step++) {
     const completion = await openai.chat.completions.create({ model: MODEL, messages: chat, tools: tools(settings.ai_can_book), max_completion_tokens: 3000 })
     const choice = completion.choices[0]?.message
