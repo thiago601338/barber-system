@@ -19,6 +19,20 @@ type Barber = { id: string; display_name: string }
 type Plan = { id: string; name: string; description: string | null; price_cents: number; frequency_months: number; visits_per_cycle: number; services: string[] }
 type Slot = { starts_at: string; ends_at: string }
 
+const SMALL = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'a', 'o', 'na', 'no', 'ao', 'em', 'com', 'por', 'para'])
+const FIXES: [RegExp, string][] = [[/desingn|desing/gi, 'design'], [/pgmenta/gi, 'pigmenta'], [/pigmentaçao|pigmentacao/gi, 'pigmentação'], [/hidratacao/gi, 'hidratação'], [/terapsor/gi, 'terapsor'], [/fitns/gi, 'fitness'], [/mës/gi, 'mês']]
+/** Nome legível: sem CAIXA ALTA, sem espaços duplos, com erros de digitação comuns corrigidos. */
+export function prettyName(raw: string): string {
+  let text = raw.replace(/\s+/g, ' ').trim()
+  for (const [pattern, fix] of FIXES) text = text.replace(pattern, fix)
+  const lower = text.toLocaleLowerCase('pt-BR')
+  return lower.split(' ').map((word, index) => {
+    if (index > 0 && SMALL.has(word)) return word
+    const at = word.search(/\p{L}/u)
+    return at < 0 ? word : word.slice(0, at) + word.charAt(at).toLocaleUpperCase('pt-BR') + word.slice(at + 1)
+  }).join(' ').replace(/(\S)\(/g, '$1 (').replace(/\(\s+/g, '(').replace(/\s+\)/g, ')').replace(/\bkingsman\b/gi, 'Kingsman')
+}
+
 const money = (cents: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100)
 
 function localParts(date: Date, timeZone: string) {
@@ -153,9 +167,9 @@ function tools(canBook: boolean): ChatCompletionTool[] {
 
 const planLine = (p: Plan) => {
   const cycle = p.frequency_months === 1 ? 'por mês' : `a cada ${p.frequency_months} meses`
-  const visits = p.visits_per_cycle >= 30 ? 'uso ilimitado' : `${p.visits_per_cycle} visita${p.visits_per_cycle === 1 ? '' : 's'} por ciclo`
+  const visits = p.visits_per_cycle >= 30 || /ilimitad/i.test(p.description || '') ? 'uso ilimitado nos serviços incluídos' : `${p.visits_per_cycle} visita${p.visits_per_cycle === 1 ? '' : 's'} por ciclo`
   const extra = p.description ? ` | ${p.description.replace(/Plano migrado do CashBarber \(id \d+\)\.\s*/i, '').slice(0, 220)}` : ''
-  return `${p.name} | ${money(p.price_cents)} ${cycle} | ${visits} | inclui: ${p.services.join(', ') || 'serviços a confirmar'}${extra}`
+  return `${prettyName(p.name)} | ${money(p.price_cents)} ${cycle} | ${visits} | inclui: ${p.services.map(prettyName).join(', ') || 'serviços a confirmar'}${extra}`
 }
 
 const WEEKDAYS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
@@ -170,23 +184,33 @@ function openingHours(rules: Rule[], barbers: Barber[]): string {
   }).join('; ')
 }
 
+function openNow(rules: Rule[], barbers: Barber[], tz: string): string {
+  const active = new Set(barbers.map(b => b.id))
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()).map(p => [p.type, p.value]))
+  const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(parts.weekday)
+  const now = `${parts.hour}:${parts.minute}`
+  const open = rules.some(r => r.weekday === weekday && active.has(r.barber_membership_id) && r.start_time.slice(0, 5) <= now && now < r.end_time.slice(0, 5))
+  return open ? 'A barbearia está aberta agora.' : 'A barbearia está FECHADA agora (fora do horário de funcionamento).'
+}
+
 function systemPrompt(shop: Shop, services: Service[], barbers: Barber[], connection: AiSettings, tz: string, contactName: string | null, plans: Plan[] = [], rules: Rule[] = []): string {
   const now = new Intl.DateTimeFormat('pt-BR', { timeZone: tz, dateStyle: 'full', timeStyle: 'short' }).format(new Date())
   const bookingUrl = `https://sistemadebarbearia.com.br/b/${shop.slug}/agendar`
   return [
-    `Você é o atendente virtual da barbearia "${shop.name}" no WhatsApp. Responda sempre em português do Brasil, com tom cordial, simples e direto, em mensagens curtas (no máximo 3 ou 4 frases). Não use markdown com # ou tabelas; pode usar *negrito* do WhatsApp com moderação.`,
+    `IDIOMA: responda sempre no mesmo idioma da última mensagem do cliente (se ele escrever em inglês, responda em inglês; em espanhol, em espanhol; senão, português do Brasil).`,
+    `Você é o atendente virtual da barbearia "${shop.name}" no WhatsApp. Responda com tom cordial, simples e direto, em mensagens curtas (no máximo 3 ou 4 frases). Não use markdown com # ou tabelas; pode usar *negrito* do WhatsApp com moderação.`,
     `Agora: ${now} (fuso ${tz}). Use esta tabela para entender "hoje", "amanhã", "sábado" etc.:\n${calendar(tz)}`,
     `Dados da barbearia: ${[shop.address && `endereço ${shop.address}`, shop.phone && `telefone ${shop.phone}`, shop.instagram_url && `Instagram ${shop.instagram_url}`].filter(Boolean).join('; ') || 'sem endereço cadastrado'}. Página de agendamento: ${bookingUrl}`,
-    `Horário de funcionamento (pela agenda dos profissionais): ${rules.length ? openingHours(rules, barbers) : 'não cadastrado'}.`,
+    `Horário de funcionamento (pela agenda dos profissionais): ${rules.length ? openingHours(rules, barbers) : 'não cadastrado'}. ${rules.length ? openNow(rules, barbers, tz) : ''}`,
     `Formas de pagamento aceitas: ${shop.payment_methods?.length ? shop.payment_methods.join(', ') : 'não informadas'}.`,
-    `Serviços (id | nome | duração | preço):\n${services.map(s => `${s.id} | ${s.name} | ${s.duration_minutes} min | ${money(s.price_cents)}${s.requires_subscription ? ' | só para assinantes' : ''}${s.description ? ` | ${s.description.slice(0, 120)}` : ''}`).join('\n') || 'nenhum serviço cadastrado'}`,
+    `Serviços (id | nome | duração | preço):\n${services.map(s => `${s.id} | ${prettyName(s.name)} | ${s.duration_minutes} min | ${money(s.price_cents)}${s.requires_subscription ? ' | só para assinantes' : ''}${s.description ? ` | ${s.description.slice(0, 120)}` : ''}`).join('\n') || 'nenhum serviço cadastrado'}`,
     `Planos de assinatura (nome | preço | uso | o que inclui | condições):\n${plans.map(planLine).join('\n') || 'nenhum plano disponível'}\nPara assinar, o cliente usa a página da barbearia: https://sistemadebarbearia.com.br/b/${shop.slug}`,
-    `Profissionais (id | nome):\n${barbers.map(b => `${b.id} | ${b.display_name}`).join('\n') || 'nenhum profissional ativo'}`,
+    `Profissionais (id | nome):\n${barbers.map(b => `${b.id} | ${prettyName(b.display_name)}`).join('\n') || 'nenhum profissional ativo'}`,
     contactName ? `Nome do cliente no WhatsApp: ${contactName}.` : '',
     'Regras:',
     '- Responda no idioma em que o cliente escreveu (português, inglês, espanhol...).',
     '- Formatação do WhatsApp: negrito só com *um asterisco* de cada lado; nunca use **, #, tabelas ou listas com "*". Para listas use "• " no início da linha.',
-    '- Escreva nomes de serviços e planos com capitalização normal (ex.: "Acabamento de barba", não "ACABAMENTO DE BARBA") e corrija erros de digitação óbvios (ex.: "Design de sobrancelha"). Não mostre IDs.',
+    '- Escreva os nomes de serviços, planos e profissionais exatamente como aparecem nas listas acima (já estão revisados). Não mostre IDs.',
     '- Use somente as informações desta mensagem e das ferramentas. Nunca invente preço, serviço, horário, política, desconto, convênio, estrutura (estacionamento, wi-fi, animais, bebidas), público atendido ou forma de pagamento.',
     '- Quando perguntarem algo que não está aqui (ex.: estacionamento, wi-fi, desconto, convênio, idade mínima de criança, vale-presente, pacote de noivo, nota fiscal, CNPJ), diga com naturalidade que não tem essa informação por aqui e pergunte se o cliente quer que você passe a pergunta para a equipe. Só chame chamar_atendente se ele aceitar.',
     '- Assuntos que não são da barbearia (perguntas gerais, tarefas, piadas): responda em uma frase que só pode ajudar com a barbearia e ofereça ajuda com serviços, planos ou horários. Nunca chame atendente por isso.',
@@ -194,6 +218,9 @@ function systemPrompt(shop: Shop, services: Service[], barbers: Barber[], connec
     '- Nunca invente preços, serviços, horários ou informações. Para horários use sempre a ferramenta horarios_disponiveis.',
     '- Perguntas como "tem horário hoje/amanhã/agora?": consulte horarios_disponiveis na hora. Se o cliente não disse o serviço, consulte para "corte" e avise que são horários de corte. Mostre até 4 opções, com o nome do profissional. Só diga que não há horário depois de consultar.',
     '- Se o cliente pedir um profissional pelo primeiro nome, use o profissional da lista com esse nome.',
+    '- Respeite o período pedido: manhã = antes das 12:00, tarde = 12:00 às 18:00, noite = depois das 18:00. Só ofereça horários dentro do período; se não houver, diga isso e mostre os mais próximos fora dele.',
+    '- Se o dia pedido estiver como fechado no horário de funcionamento, diga claramente que a barbearia não abre nesse dia (ex.: "amanhã é domingo e não abrimos") e ofereça o próximo dia aberto.',
+    '- Se a barbearia estiver fechada agora e o cliente pedir "agora" ou "daqui a pouco", diga que no momento está fechada e mostre os primeiros horários do próximo período aberto.',
     '- Ofereça poucas opções de horário por vez (até 4), perto do que o cliente pediu.',
     '- Quando o cliente perguntar algo genérico (ex.: "quanto é o corte", "tem barba?") e houver mais de um serviço que combine, liste já na resposta as opções que combinam, cada uma com preço e duração, e pergunte qual ele quer. Nunca escolha uma delas sozinho e nunca diga apenas "posso te passar outras opções".',
     '- Para combinações (ex.: "corte e barba", "corte + barba + sobrancelha"): se existir um serviço combinado com esses itens no nome, mostre-o; mostre também a soma dos serviços separados. Nunca apresente um serviço simples como se fosse a combinação.',
