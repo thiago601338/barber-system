@@ -385,6 +385,17 @@ export async function transcribe(openai: OpenAI, mediaId: string, token: string)
 }
 
 
+// A OpenAI às vezes devolve 403/429/5xx passageiros (sem corpo) com muitas conversas ao mesmo tempo: tenta de novo com espera.
+async function withRetry<T>(call: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try { return await call() } catch (error) {
+      const status = (error as { status?: number }).status
+      if (attempt >= 4 || !(status === 403 || status === 408 || status === 409 || status === 429 || (status !== undefined && status >= 500))) throw error
+      await new Promise(resolve => setTimeout(resolve, 800 * 2 ** attempt + Math.random() * 400))
+    }
+  }
+}
+
 export async function aiReply(client: SupabaseClient, openai: OpenAI, shopId: string, settings: AiSettings, turns: ChatTurn[], contactName: string | null, conversation: Conversation | null): Promise<string> {
   const [{ data: shopRow, error: shopError }, { data: serviceRows }, { data: barberRows }, { data: planRows }, { data: ruleRows }, { data: offerRows }] = await Promise.all([
     client.from('barbershops').select('id,name,slug,timezone,address,phone,whatsapp,instagram_url,payment_methods').eq('id', shopId).single(),
@@ -421,7 +432,7 @@ export async function aiReply(client: SupabaseClient, openai: OpenAI, shopId: st
   const language = detectLanguage(lastUser)
   if (language !== 'pt') chat.push({ role: 'developer', content: language === 'en' ? 'The customer wrote in English: reply in English (keep prices in R$).' : 'El cliente escribió en español: responde en español (precios en R$).' })
   for (let step = 0; step < 8; step++) {
-    const completion = await openai.chat.completions.create({ model: MODEL, messages: chat, tools: tools(settings.ai_can_book), max_completion_tokens: 3000 })
+    const completion = await withRetry(() => openai.chat.completions.create({ model: MODEL, messages: chat, tools: tools(settings.ai_can_book), max_completion_tokens: 3000 }))
     const choice = completion.choices[0]?.message
     if (!choice) break
     const calls = choice.tool_calls ?? []
@@ -442,6 +453,6 @@ export async function aiReply(client: SupabaseClient, openai: OpenAI, shopId: st
   }
   // Limite de passos atingido: pede a resposta final sem ferramentas, para o cliente nunca ficar sem retorno.
   chat.push({ role: 'developer', content: 'Responda ao cliente agora com o que você já sabe, sem usar ferramentas. Se faltou algo, faça uma pergunta objetiva.' })
-  const last = await openai.chat.completions.create({ model: MODEL, messages: chat, max_completion_tokens: 1500 })
+  const last = await withRetry(() => openai.chat.completions.create({ model: MODEL, messages: chat, max_completion_tokens: 1500 }))
   return last.choices[0]?.message?.content?.trim() || ''
 }
