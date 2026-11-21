@@ -140,7 +140,7 @@ class Bot {
       if (!able.length) {
         const others = this.barbers.filter(b => this.doesAll(b.id, services)).map(b => prettyName(b.display_name))
         const own = requested.length === 1 ? this.offers.get(requested[0]) : undefined
-        return { aviso: `${requested.length === 1 ? prettyName(this.barbers.find(b => b.id === requested[0])?.display_name || '') + ' não faz' : 'Nenhum profissional faz'} ${serviceNames.join(' + ')}.`, profissionais_que_fazem: others, servicos_que_esse_profissional_faz: own ? this.services.filter(s => own.has(s.id)).map(s => prettyName(s.name)) : undefined, instrucao: 'Diga isso ao cliente, cite o que esse profissional faz e pergunte se prefere outro profissional para o serviço ou outro serviço com ele.' }
+        return { aviso: `${requested.length === 1 ? prettyName(this.barbers.find(b => b.id === requested[0])?.display_name || '') + ' não faz' : 'Nenhum profissional faz'} ${serviceNames.join(' + ')}${services.length > 1 ? ' (todos no mesmo atendimento). Se o cliente quer só um deles, consulte de novo com um serviço só' : ''}.`, profissionais_que_fazem: others, servicos_que_esse_profissional_faz: own ? this.services.filter(s => own.has(s.id)).map(s => prettyName(s.name)) : undefined, instrucao: 'Diga isso ao cliente, cite o que esse profissional faz e pergunte se prefere outro profissional para o serviço ou outro serviço com ele.' }
       }
       const search = async (date: string) => {
         const all = await Promise.all(able.map(id => this.slots(id, services, date).catch(() => [] as Slot[])))
@@ -153,18 +153,19 @@ class Bot {
         }
         return { total, result }
       }
+      const lastOf = (list: { barbeiro: string; ultimo_horario: string }[]) => { const t = list.reduce((m, r) => r.ultimo_horario > m ? r.ultimo_horario : m, ''); return t ? { hora: t, profissionais: list.filter(r => r.ultimo_horario === t).map(r => r.barbeiro) } : null }
       const weekday = (date: string) => new Intl.DateTimeFormat('pt-BR', { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))
       const base = { servicos: serviceNames, periodo: period || 'dia todo', a_partir_de: from || null }
       if (this.openOn(day)) {
         const found = await search(day)
-        if (found.total) return { ...base, data: day, dia_semana: weekday(day), total_horarios_livres: found.total, profissionais: found.result }
+        if (found.total) return { ...base, data: day, dia_semana: weekday(day), total_horarios_livres: found.total, ultimo_horario_do_dia: lastOf(found.result), profissionais: found.result }
       }
       // Sem horário (ou dia fechado): procura sozinho os próximos dias com o mesmo filtro.
       for (let offset = 1; offset <= 10; offset++) {
         const next = new Date(Date.parse(`${day}T12:00:00Z`) + offset * 86_400_000).toISOString().slice(0, 10)
         if (!this.openOn(next)) continue
         const found = await search(next)
-        if (found.total) return { ...base, data_pedida: day, dia_pedido_fechado: !this.openOn(day), aviso: `Sem horário livre em ${day} com esses filtros.`, proxima_data_com_horario: next, dia_semana: weekday(next), profissionais: found.result }
+        if (found.total) return { ...base, data_pedida: day, dia_pedido_fechado: !this.openOn(day), aviso: `Sem horário livre em ${day} com esses filtros.`, proxima_data_com_horario: next, dia_semana: weekday(next), ultimo_horario_do_dia: lastOf(found.result), profissionais: found.result }
       }
       return { ...base, data_pedida: day, dia_pedido_fechado: !this.openOn(day), aviso: 'Nenhum horário livre nos próximos 10 dias com esses filtros.' }
     }
@@ -318,6 +319,9 @@ function systemPrompt(shop: Shop, services: Service[], barbers: Barber[], connec
     '- Perguntas como "tem horário hoje/amanhã/agora?": consulte horarios_disponiveis na hora. Se o cliente não disse o serviço, consulte para o serviço chamado exatamente "Corte" e avise que são horários de corte. Mostre até 4 opções, com o nome do profissional. Só diga que não há horário depois de consultar.',
     '- Se o cliente pedir um profissional pelo primeiro nome, use o profissional da lista com esse nome.',
     '- Respeite o período pedido: passe periodo (manha, tarde, noite) ou a_partir_de para horarios_disponiveis. Só ofereça horários dentro do que o cliente pediu; se não houver, diga isso e consulte sem o filtro para sugerir os mais próximos.',
+    '- servicos em horarios_disponiveis/agendar é o que será feito JUNTO no mesmo atendimento. Quando houver dúvida entre serviços alternativos (ex.: barba = Barboterapia ou Acabamento de Barba), pergunte qual ou consulte um serviço por vez; nunca passe alternativas juntas.',
+    '- "O mais tarde" sem profissional definido = ultimo_horario_do_dia.',
+    '- "Tanto faz o barbeiro"/"qualquer um" depois de uma lista: agende direto o primeiro item da lista (sem perguntar de novo) e diga com quem ficou.',
     '- "Fim da tarde" = a_partir_de 16:00 e antes das 18:00; "início da tarde" = 12:00 às 14:00; "depois do almoço" = a_partir_de 13:00; "depois do trabalho" = a_partir_de 18:00.',
     '- Se você mostrou uma lista com várias opções e o cliente responde só "pode ser", "esse", "ok" ou "fechado" sem dizer qual, pergunte qual opção ele quer. Só escolha por ele quando ele disser "tanto faz"/"qualquer um" (aí use a primeira da lista e diga qual foi).',
     '- Quando agendar devolver simulacao, responda como se fosse um agendamento real; nunca repita o texto da simulação para o cliente.',
