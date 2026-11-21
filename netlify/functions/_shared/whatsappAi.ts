@@ -15,6 +15,7 @@ const MODEL = 'gpt-5.4-mini'
 type Shop = { id: string; name: string; slug: string; timezone: string | null; address: string | null; phone: string | null; whatsapp: string | null; instagram_url: string | null }
 type Service = { id: string; name: string; description: string | null; duration_minutes: number; price_cents: number; requires_subscription: boolean }
 type Barber = { id: string; display_name: string }
+type Plan = { id: string; name: string; description: string | null; price_cents: number; frequency_months: number; visits_per_cycle: number; services: string[] }
 type Slot = { starts_at: string; ends_at: string }
 
 const money = (cents: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100)
@@ -149,7 +150,14 @@ function tools(canBook: boolean): ChatCompletionTool[] {
   return list
 }
 
-function systemPrompt(shop: Shop, services: Service[], barbers: Barber[], connection: AiSettings, tz: string, contactName: string | null): string {
+const planLine = (p: Plan) => {
+  const cycle = p.frequency_months === 1 ? 'por mês' : `a cada ${p.frequency_months} meses`
+  const visits = p.visits_per_cycle >= 30 ? 'uso ilimitado' : `${p.visits_per_cycle} visita${p.visits_per_cycle === 1 ? '' : 's'} por ciclo`
+  const extra = p.description ? ` | ${p.description.replace(/Plano migrado do CashBarber \(id \d+\)\.\s*/i, '').slice(0, 220)}` : ''
+  return `${p.name} | ${money(p.price_cents)} ${cycle} | ${visits} | inclui: ${p.services.join(', ') || 'serviços a confirmar'}${extra}`
+}
+
+function systemPrompt(shop: Shop, services: Service[], barbers: Barber[], connection: AiSettings, tz: string, contactName: string | null, plans: Plan[] = []): string {
   const now = new Intl.DateTimeFormat('pt-BR', { timeZone: tz, dateStyle: 'full', timeStyle: 'short' }).format(new Date())
   const bookingUrl = `https://sistemadebarbearia.com.br/b/${shop.slug}/agendar`
   return [
@@ -157,11 +165,14 @@ function systemPrompt(shop: Shop, services: Service[], barbers: Barber[], connec
     `Agora: ${now} (fuso ${tz}). Use esta tabela para entender "hoje", "amanhã", "sábado" etc.:\n${calendar(tz)}`,
     `Dados da barbearia: ${[shop.address && `endereço ${shop.address}`, shop.phone && `telefone ${shop.phone}`, shop.instagram_url && `Instagram ${shop.instagram_url}`].filter(Boolean).join('; ') || 'sem endereço cadastrado'}. Página de agendamento: ${bookingUrl}`,
     `Serviços (id | nome | duração | preço):\n${services.map(s => `${s.id} | ${s.name} | ${s.duration_minutes} min | ${money(s.price_cents)}${s.requires_subscription ? ' | só para assinantes' : ''}${s.description ? ` | ${s.description.slice(0, 120)}` : ''}`).join('\n') || 'nenhum serviço cadastrado'}`,
+    `Planos de assinatura (nome | preço | uso | o que inclui | condições):\n${plans.map(planLine).join('\n') || 'nenhum plano disponível'}\nPara assinar, o cliente usa a página da barbearia: https://sistemadebarbearia.com.br/b/${shop.slug}`,
     `Profissionais (id | nome):\n${barbers.map(b => `${b.id} | ${b.display_name}`).join('\n') || 'nenhum profissional ativo'}`,
     contactName ? `Nome do cliente no WhatsApp: ${contactName}.` : '',
     'Regras:',
     '- Nunca invente preços, serviços, horários ou informações. Para horários use sempre a ferramenta horarios_disponiveis.',
     '- Ofereça poucas opções de horário por vez (até 4), perto do que o cliente pediu.',
+    '- Quando o cliente perguntar algo genérico (ex.: "quanto é o corte", "tem barba?") e houver mais de um serviço que combine, liste já na resposta as opções que combinam, cada uma com preço e duração, e pergunte qual ele quer. Nunca escolha uma delas sozinho e nunca diga apenas "posso te passar outras opções".',
+    '- Quando perguntarem sobre planos, assinatura, clube ou mensalidade, responda com os planos da lista acima (nome, preço e o que inclui). Se forem muitos, mostre os principais e pergunte qual serviço ele mais usa para indicar o plano certo. Nunca diga que não tem acesso aos planos.',
     connection.ai_can_book
       ? '- Para agendar: confirme serviço, profissional, data e hora com o cliente e só então chame agendar. Depois, confirme o agendamento com um resumo.'
       : `- Você não agenda diretamente: mostre os horários livres e envie a página de agendamento (${bookingUrl}).`,
@@ -187,19 +198,24 @@ export async function transcribe(openai: OpenAI, mediaId: string, token: string)
 
 
 export async function aiReply(client: SupabaseClient, openai: OpenAI, shopId: string, settings: AiSettings, turns: ChatTurn[], contactName: string | null, conversation: Conversation | null): Promise<string> {
-  const [{ data: shopRow, error: shopError }, { data: serviceRows }, { data: barberRows }] = await Promise.all([
+  const [{ data: shopRow, error: shopError }, { data: serviceRows }, { data: barberRows }, { data: planRows }] = await Promise.all([
     client.from('barbershops').select('id,name,slug,timezone,address,phone,whatsapp,instagram_url').eq('id', shopId).single(),
     client.from('services').select('id,name,description,duration_minutes,price_cents,requires_subscription').eq('barbershop_id', shopId).eq('active', true).order('name'),
     client.rpc('public_barber_profiles', { p_barbershop_id: shopId }),
+    client.from('subscription_plans').select('id,name,description,price_cents,frequency_months,visits_per_cycle,subscription_plan_services(services(name))').eq('barbershop_id', shopId).eq('active', true).order('price_cents'),
   ])
   if (shopError || !shopRow) throw new Error('Barbearia não encontrada.')
   const shop = shopRow as Shop
   const tz = shop.timezone || 'America/Sao_Paulo'
   const services = (serviceRows ?? []) as Service[]
   const barbers = (barberRows ?? []) as Barber[]
+  type PlanRow = Omit<Plan, 'services'> & { subscription_plan_services: { services: { name: string } | null }[] | null }
+  const plans: Plan[] = ((planRows ?? []) as unknown as PlanRow[])
+    .filter(p => !/^demo\b/i.test(p.name))
+    .map(({ subscription_plan_services, ...p }) => ({ ...p, services: (subscription_plan_services ?? []).map(x => x.services?.name).filter((n): n is string => !!n) }))
   const bot = new Bot(client, shop, conversation, services, barbers, tz)
   const chat: ChatCompletionMessageParam[] = [
-    { role: 'developer', content: systemPrompt(shop, services, barbers, settings, tz, contactName) },
+    { role: 'developer', content: systemPrompt(shop, services, barbers, settings, tz, contactName, plans) },
     ...turns.filter(t => t.content.trim()).map(t => ({ role: t.role, content: t.content.slice(0, 2000) }) as ChatCompletionMessageParam),
   ]
   for (let step = 0; step < 6; step++) {
