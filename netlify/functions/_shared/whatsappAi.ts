@@ -52,7 +52,7 @@ function calendar(timeZone: string): string {
 
 class Bot {
   clientId: string | null
-  constructor(private client: SupabaseClient, private shop: Shop, private conversation: Conversation | null, private services: Service[], private barbers: Barber[], private tz: string) {
+  constructor(private client: SupabaseClient, private shop: Shop, private conversation: Conversation | null, private services: Service[], private barbers: Barber[], private tz: string, private offers: Map<string, Set<string>> = new Map(), private rules: Rule[] = []) {
     this.clientId = conversation?.client_id ?? null
   }
 
@@ -79,12 +79,31 @@ class Bot {
   }
 
   barberIds(value: unknown): string[] {
-    if (typeof value === 'string' && value) {
-      if (!this.barbers.some(b => b.id === value)) throw new Error('Profissional não encontrado.')
-      return [value]
+    if (typeof value === 'string' && value.trim()) {
+      const norm = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+      const byId = this.barbers.find(b => b.id === value)
+      if (byId) return [byId.id]
+      // Aceita o nome ou só o primeiro nome do profissional.
+      const wanted = norm(value)
+      const matches = this.barbers.filter(b => norm(b.display_name) === wanted || norm(b.display_name).split(' ')[0] === wanted.split(' ')[0])
+      if (matches.length === 1) return [matches[0].id]
+      if (matches.length > 1) throw new Error(`Há mais de um profissional com esse nome: ${matches.map(b => prettyName(b.display_name)).join(', ')}. Pergunte qual.`)
+      throw new Error('Profissional não encontrado.')
     }
     return this.barbers.map(b => b.id)
   }
+  /** Profissionais que fazem todos os serviços pedidos (sem cadastro de serviços por barbeiro, todos fazem). */
+  doesAll(barberId: string, services: string[]): boolean {
+    const own = this.offers.get(barberId)
+    return !own || services.every(id => own.has(id))
+  }
+  openOn(day: string): boolean {
+    if (!this.rules.length) return true
+    const weekday = new Date(`${day}T12:00:00Z`).getUTCDay()
+    const active = new Set(this.barbers.map(b => b.id))
+    return this.rules.some(r => r.weekday === weekday && active.has(r.barber_membership_id))
+  }
+
 
   day(value: unknown): string {
     if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error('Data inválida: use AAAA-MM-DD.')
@@ -108,17 +127,38 @@ class Bot {
       const period = typeof args.periodo === 'string' ? args.periodo : ''
       const from = typeof args.a_partir_de === 'string' && /^\d{2}:\d{2}$/.test(args.a_partir_de) ? args.a_partir_de : ''
       const fits = (time: string) => (!from || time >= from) && (period === 'manha' ? time < '12:00' : period === 'tarde' ? time >= '12:00' && time < '18:00' : period === 'noite' ? time >= '18:00' : true)
-      const result = []
-      let total = 0
-      const ids = this.barberIds(args.barbeiro_id)
-      // Consulta todos os profissionais em paralelo (mais rápido que um por vez).
-      const all = await Promise.all(ids.map(id => this.slots(id, services, day).catch(() => [] as Slot[])))
-      for (const [index, barberId] of ids.entries()) {
-        const times = all[index].map(s => localParts(new Date(s.starts_at), this.tz).time).filter(fits)
-        total += times.length
-        if (times.length) result.push({ barbeiro_id: barberId, barbeiro: prettyName(this.barbers.find(b => b.id === barberId)?.display_name || ''), horarios: times.slice(0, 6), mais_horarios: Math.max(0, times.length - 6) })
+      const requested = this.barberIds(args.barbeiro_id)
+      const serviceNames = services.map(id => prettyName(this.services.find(s => s.id === id)?.name || ''))
+      const able = requested.filter(id => this.doesAll(id, services))
+      if (!able.length) {
+        const others = this.barbers.filter(b => this.doesAll(b.id, services)).map(b => prettyName(b.display_name))
+        return { aviso: `${requested.length === 1 ? prettyName(this.barbers.find(b => b.id === requested[0])?.display_name || '') + ' não faz' : 'Nenhum profissional faz'} ${serviceNames.join(' + ')}.`, profissionais_que_fazem: others }
       }
-      return { data: day, periodo: period || 'dia todo', a_partir_de: from || null, total_horarios_livres: total, profissionais: result, aviso: total ? undefined : 'Nenhum horário livre com esses filtros.' }
+      const search = async (date: string) => {
+        const all = await Promise.all(able.map(id => this.slots(id, services, date).catch(() => [] as Slot[])))
+        const result: { barbeiro_id: string; barbeiro: string; horarios: string[]; ultimo_horario: string; total: number }[] = []
+        let total = 0
+        for (const [index, barberId] of able.entries()) {
+          const times = all[index].map(s => localParts(new Date(s.starts_at), this.tz).time).filter(fits)
+          total += times.length
+          if (times.length) result.push({ barbeiro_id: barberId, barbeiro: prettyName(this.barbers.find(b => b.id === barberId)?.display_name || ''), horarios: times.slice(0, 6), ultimo_horario: times[times.length - 1], total: times.length })
+        }
+        return { total, result }
+      }
+      const weekday = (date: string) => new Intl.DateTimeFormat('pt-BR', { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))
+      const base = { servicos: serviceNames, periodo: period || 'dia todo', a_partir_de: from || null }
+      if (this.openOn(day)) {
+        const found = await search(day)
+        if (found.total) return { ...base, data: day, dia_semana: weekday(day), total_horarios_livres: found.total, profissionais: found.result }
+      }
+      // Sem horário (ou dia fechado): procura sozinho os próximos dias com o mesmo filtro.
+      for (let offset = 1; offset <= 10; offset++) {
+        const next = new Date(Date.parse(`${day}T12:00:00Z`) + offset * 86_400_000).toISOString().slice(0, 10)
+        if (!this.openOn(next)) continue
+        const found = await search(next)
+        if (found.total) return { ...base, data_pedida: day, dia_pedido_fechado: !this.openOn(day), aviso: `Sem horário livre em ${day} com esses filtros.`, proxima_data_com_horario: next, dia_semana: weekday(next), profissionais: found.result }
+      }
+      return { ...base, data_pedida: day, dia_pedido_fechado: !this.openOn(day), aviso: 'Nenhum horário livre nos próximos 10 dias com esses filtros.' }
     }
     if (name === 'agendar') {
       const services = this.serviceIds(args.servicos)
@@ -264,7 +304,12 @@ function systemPrompt(shop: Shop, services: Service[], barbers: Barber[], connec
     '- Perguntas como "tem horário hoje/amanhã/agora?": consulte horarios_disponiveis na hora. Se o cliente não disse o serviço, consulte para o serviço chamado exatamente "Corte" e avise que são horários de corte. Mostre até 4 opções, com o nome do profissional. Só diga que não há horário depois de consultar.',
     '- Se o cliente pedir um profissional pelo primeiro nome, use o profissional da lista com esse nome.',
     '- Respeite o período pedido: passe periodo (manha, tarde, noite) ou a_partir_de para horarios_disponiveis. Só ofereça horários dentro do que o cliente pediu; se não houver, diga isso e consulte sem o filtro para sugerir os mais próximos.',
-    '- Quando o cliente escolher "o primeiro" ou "o mais cedo", é o primeiro horário da última lista que você mostrou (respeitando o período pedido).',
+    '- Quando o cliente escolher "o primeiro" ou "o mais cedo", é o primeiro horário da última lista que você mostrou; "o mais tarde" é o ultimo_horario do profissional (não o último da lista curta); "o segundo da lista" é o segundo item da última lista que você mostrou.',
+    '- Quando horarios_disponiveis devolver proxima_data_com_horario, diga que no dia pedido não há horário (ou que a barbearia não abre) e já ofereça os horários dessa próxima data. Não fique perguntando dia por dia.',
+    '- Se o profissional pedido não faz o serviço, diga isso e mostre quem faz (profissionais_que_fazem).',
+    '- Quando o cliente pedir um profissional que não tem horário, mostre os horários mais próximos DELE (outro período ou dia) antes de sugerir outro profissional. Nunca misture horários de um profissional com o nome de outro.',
+    '- Nunca diga "vou agendar" ou "agendado" sem ter chamado a ferramenta agendar e recebido a confirmação. Depois de agendar, responda com um resumo curto: serviço, profissional, dia da semana, data e hora.',
+    '- Se o cliente confirmar ("pode ser", "fechado", "confirma", "sim") um único horário que você acabou de propor, agende. Se havia várias opções, pergunte qual.',
     '- Se o dia pedido estiver como fechado no horário de funcionamento, diga claramente que a barbearia não abre nesse dia (ex.: "amanhã é domingo e não abrimos") e ofereça o próximo dia aberto.',
     '- Se a barbearia estiver FECHADA agora (veja a linha "Agora são..."), e o cliente perguntar se está aberta, ou pedir horário "agora", "daqui a pouco" ou "hoje": comece dizendo que agora está fechada e quando abre (ex.: "Agora estamos fechados; abrimos hoje às 09:00.") e só depois mostre os primeiros horários. Nunca diga que já passou do horário se ainda vai abrir hoje.',
     '- "Maquininha" quer dizer pagamento com cartão: responda pelas formas de pagamento listadas.',
@@ -304,23 +349,33 @@ export async function transcribe(openai: OpenAI, mediaId: string, token: string)
 
 
 export async function aiReply(client: SupabaseClient, openai: OpenAI, shopId: string, settings: AiSettings, turns: ChatTurn[], contactName: string | null, conversation: Conversation | null): Promise<string> {
-  const [{ data: shopRow, error: shopError }, { data: serviceRows }, { data: barberRows }, { data: planRows }, { data: ruleRows }] = await Promise.all([
+  const [{ data: shopRow, error: shopError }, { data: serviceRows }, { data: barberRows }, { data: planRows }, { data: ruleRows }, { data: offerRows }] = await Promise.all([
     client.from('barbershops').select('id,name,slug,timezone,address,phone,whatsapp,instagram_url,payment_methods').eq('id', shopId).single(),
     client.from('services').select('id,name,description,duration_minutes,price_cents,requires_subscription').eq('barbershop_id', shopId).eq('active', true).order('name'),
     client.rpc('public_barber_profiles', { p_barbershop_id: shopId }),
     client.from('subscription_plans').select('id,name,description,price_cents,frequency_months,visits_per_cycle,subscription_plan_services(services(name))').eq('barbershop_id', shopId).eq('active', true).eq('listed', true).order('price_cents'),
     client.from('availability_rules').select('barber_membership_id,weekday,start_time,end_time').eq('barbershop_id', shopId),
+    client.from('barber_services').select('barber_membership_id,service_id,active').eq('barbershop_id', shopId),
   ])
   if (shopError || !shopRow) throw new Error('Barbearia não encontrada.')
   const shop = shopRow as Shop
   const tz = shop.timezone || 'America/Sao_Paulo'
-  const services = (serviceRows ?? []) as Service[]
   const barbers = (barberRows ?? []) as Barber[]
+  const offers = new Map<string, Set<string>>()
+  for (const row of (offerRows ?? []) as { barber_membership_id: string; service_id: string; active: boolean }[]) {
+    if (!row.active) continue
+    if (!offers.has(row.barber_membership_id)) offers.set(row.barber_membership_id, new Set())
+    offers.get(row.barber_membership_id)!.add(row.service_id)
+  }
+  // Só oferece serviços que algum profissional ativo faz (evita serviço que ninguém atende).
+  const activeIds = new Set(barbers.map(b => b.id))
+  const usesOffers = [...offers.keys()].some(id => activeIds.has(id))
+  const services = ((serviceRows ?? []) as Service[]).filter(s => !usesOffers || barbers.some(b => !offers.has(b.id) || offers.get(b.id)!.has(s.id)))
   type PlanRow = Omit<Plan, 'services'> & { subscription_plan_services: { services: { name: string } | null }[] | null }
   const plans: Plan[] = ((planRows ?? []) as unknown as PlanRow[])
     .filter(p => !/^demo\b/i.test(p.name))
     .map(({ subscription_plan_services, ...p }) => ({ ...p, services: (subscription_plan_services ?? []).map(x => x.services?.name).filter((n): n is string => !!n) }))
-  const bot = new Bot(client, shop, conversation, services, barbers, tz)
+  const bot = new Bot(client, shop, conversation, services, barbers, tz, offers, (ruleRows ?? []) as Rule[])
   const chat: ChatCompletionMessageParam[] = [
     { role: 'developer', content: systemPrompt(shop, services, barbers, settings, tz, contactName, plans, (ruleRows ?? []) as Rule[]) },
     ...turns.filter(t => t.content.trim()).map(t => ({ role: t.role, content: t.content.slice(0, 2000) }) as ChatCompletionMessageParam),

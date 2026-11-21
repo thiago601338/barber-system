@@ -47,7 +47,7 @@ export default async (request: Request): Promise<void> => {
 
   try {
     const secret = await loadSecret(client, conversation.barbershop_id)
-    const openai = new OpenAI()
+    const openai = new OpenAI({ maxRetries: 6 })
     const { data: history } = await client.from('whatsapp_messages').select('id,wa_message_id,direction,author,kind,body,created_at').eq('conversation_id', conversation.id).order('created_at', { ascending: false }).limit(24)
     const messages = ((history ?? []) as StoredMessage[]).reverse()
     const lastInbound = [...messages].reverse().find(m => m.direction === 'in')
