@@ -133,7 +133,8 @@ class Bot {
       const able = requested.filter(id => this.doesAll(id, services))
       if (!able.length) {
         const others = this.barbers.filter(b => this.doesAll(b.id, services)).map(b => prettyName(b.display_name))
-        return { aviso: `${requested.length === 1 ? prettyName(this.barbers.find(b => b.id === requested[0])?.display_name || '') + ' não faz' : 'Nenhum profissional faz'} ${serviceNames.join(' + ')}.`, profissionais_que_fazem: others }
+        const own = requested.length === 1 ? this.offers.get(requested[0]) : undefined
+        return { aviso: `${requested.length === 1 ? prettyName(this.barbers.find(b => b.id === requested[0])?.display_name || '') + ' não faz' : 'Nenhum profissional faz'} ${serviceNames.join(' + ')}.`, profissionais_que_fazem: others, servicos_que_esse_profissional_faz: own ? this.services.filter(s => own.has(s.id)).map(s => prettyName(s.name)) : undefined, instrucao: 'Diga isso ao cliente, cite o que esse profissional faz e pergunte se prefere outro profissional para o serviço ou outro serviço com ele.' }
       }
       const search = async (date: string) => {
         const all = await Promise.all(able.map(id => this.slots(id, services, date).catch(() => [] as Slot[])))
@@ -315,6 +316,7 @@ function systemPrompt(shop: Shop, services: Service[], barbers: Barber[], connec
     '- Quando horarios_disponiveis devolver proxima_data_com_horario, diga que no dia pedido não há horário (ou que a barbearia não abre) e já ofereça os horários dessa próxima data. Não fique perguntando dia por dia.',
     '- Se o profissional pedido não faz o serviço, diga isso e mostre quem faz (profissionais_que_fazem).',
     '- Quando o cliente pedir um profissional que não tem horário, mostre os horários mais próximos DELE (outro período ou dia) antes de sugerir outro profissional. Nunca misture horários de um profissional com o nome de outro.',
+    '- Nunca responda "vou verificar", "já te confirmo" ou "um momento": consulte as ferramentas e responda com o resultado na mesma mensagem.',
     '- Nunca diga "vou agendar" ou "agendado" sem ter chamado a ferramenta agendar e recebido a confirmação. Depois de agendar, responda com um resumo curto: serviço, profissional, dia da semana, data e hora.',
     '- Só chame agendar quando estiverem definidos UM serviço, UM profissional e UM horário: escolhidos pelo cliente (ex.: "o segundo", "às 15h com o Remy") ou propostos por você como opção única e confirmados por ele ("pode ser", "fechado", "confirma", "sim"). Se havia várias opções e a resposta foi vaga, pergunte qual. Se o profissional pedido não pode, não agende com outro sem o cliente aceitar.',
     '- Se o dia pedido estiver como fechado no horário de funcionamento, diga claramente que a barbearia não abre nesse dia (ex.: "amanhã é domingo e não abrimos") e ofereça o próximo dia aberto.',
@@ -393,12 +395,17 @@ export async function aiReply(client: SupabaseClient, openai: OpenAI, shopId: st
   const lastUser = [...turns].reverse().find(t => t.role === 'user')?.content || ''
   const language = detectLanguage(lastUser)
   if (language !== 'pt') chat.push({ role: 'developer', content: language === 'en' ? 'The customer wrote in English: reply in English (keep prices in R$).' : 'El cliente escribió en español: responde en español (precios en R$).' })
-  for (let step = 0; step < 6; step++) {
+  for (let step = 0; step < 8; step++) {
     const completion = await openai.chat.completions.create({ model: MODEL, messages: chat, tools: tools(settings.ai_can_book), max_completion_tokens: 3000 })
     const choice = completion.choices[0]?.message
     if (!choice) break
     const calls = choice.tool_calls ?? []
-    if (!calls.length) return choice.content?.trim() || ''
+    if (!calls.length) {
+      const text = choice.content?.trim() || ''
+      if (text) return text
+      chat.push({ role: 'developer', content: 'Escreva agora a resposta para o cliente.' })
+      continue
+    }
     chat.push({ role: 'assistant', content: choice.content ?? null, tool_calls: calls })
     for (const call of calls) {
       if (call.type !== 'function') continue
@@ -408,5 +415,8 @@ export async function aiReply(client: SupabaseClient, openai: OpenAI, shopId: st
       chat.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) })
     }
   }
-  return ''
+  // Limite de passos atingido: pede a resposta final sem ferramentas, para o cliente nunca ficar sem retorno.
+  chat.push({ role: 'developer', content: 'Responda ao cliente agora com o que você já sabe, sem usar ferramentas. Se faltou algo, faça uma pergunta objetiva.' })
+  const last = await openai.chat.completions.create({ model: MODEL, messages: chat, max_completion_tokens: 1500 })
+  return last.choices[0]?.message?.content?.trim() || ''
 }
