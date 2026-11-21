@@ -6,3 +6,5 @@
 -- * subscription_plans.listed + sincronização de preço/visibilidade dos planos (protect_sold_plan libera só durante a sincronização)
 -- * cashbarber_sync_dataset: conjuntos clients, appointments, order_payments, expenses, plans
 alter table public.subscription_plans add column if not exists listed boolean not null default true;
+alter table public.barbershops add column if not exists payment_methods text[];
+grant execute on function app_private.public_barber_profiles(uuid) to service_role;
