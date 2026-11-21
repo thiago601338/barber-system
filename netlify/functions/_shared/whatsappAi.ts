@@ -78,9 +78,12 @@ class Bot {
     if (!ids.length) throw new Error('Informe ao menos um serviço válido da lista.')
     // Serviços separados que formam um combo da lista (ex.: Corte + Barboterapia) viram o combo, com o preço dele.
     if (ids.length >= 2) {
-      const names = ids.map(id => norm(this.services.find(s => s.id === id)!.name)).sort().join('|')
-      const combo = this.services.find(s => s.name.includes('+') && s.name.split('+').map(norm).sort().join('|') === names)
-      if (combo) return [combo.id]
+      const nameOf = (id: string) => norm(this.services.find(s => s.id === id)!.name)
+      for (const combo of this.services.filter(s => s.name.includes('+'))) {
+        const parts = combo.name.split('+').map(norm)
+        const used = parts.map(part => ids.find(id => nameOf(id) === part))
+        if (used.every(Boolean)) return [combo.id, ...ids.filter(id => !used.includes(id))]
+      }
     }
     return ids
   }
@@ -320,6 +323,8 @@ function systemPrompt(shop: Shop, services: Service[], barbers: Barber[], connec
     '- Se o cliente pedir um profissional pelo primeiro nome, use o profissional da lista com esse nome.',
     '- Respeite o período pedido: passe periodo (manha, tarde, noite) ou a_partir_de para horarios_disponiveis. Só ofereça horários dentro do que o cliente pediu; se não houver, diga isso e consulte sem o filtro para sugerir os mais próximos.',
     '- servicos em horarios_disponiveis/agendar é o que será feito JUNTO no mesmo atendimento. Quando houver dúvida entre serviços alternativos (ex.: barba = Barboterapia ou Acabamento de Barba), pergunte qual ou consulte um serviço por vez; nunca passe alternativas juntas.',
+    '- Sinônimos: "pezinho", "contorno" e "acabamento do cabelo" = Acabamento de Cabelo; "degradê", "disfarce", "social", "corte masculino" = Corte; "barba" = Barboterapia ou Acabamento de Barba (pergunte qual se não estiver claro); "sobrancelha" = Design de Sobrancelha.',
+    '- "E no dia seguinte?" = o dia depois da última data que você mostrou (não repita a mesma data). "Tem mais tarde?" = consulte de novo com a_partir_de depois do último horário mostrado e liste os horários.',
     '- "O mais tarde" sem profissional definido = ultimo_horario_do_dia.',
     '- "Tanto faz o barbeiro"/"qualquer um" depois de uma lista: agende direto o primeiro item da lista (sem perguntar de novo) e diga com quem ficou.',
     '- "Fim da tarde" = a_partir_de 16:00 e antes das 18:00; "início da tarde" = 12:00 às 14:00; "depois do almoço" = a_partir_de 13:00; "depois do trabalho" = a_partir_de 18:00.',
