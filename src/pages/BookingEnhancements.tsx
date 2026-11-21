@@ -7,7 +7,9 @@ import { money } from '../types'
 import { Field, Loading, Modal, Notice, PrimaryButton } from '../ui'
 import '../styles-scheduling-advanced.css'
 
-export type EligibleSubscription = { id: string; plan_name: string; remaining_visits: number; period_start: string; period_end: string }
+export type EligibleSubscription = { id: string; plan_name: string; remaining_visits: number | null; unlimited?: boolean; period_start: string; period_end: string; covered_service_ids?: string[]; covers_all?: boolean; uncovered_price_cents?: number }
+export const usesLabel = (s: { remaining_visits: number | null }) => s.remaining_visits == null ? 'uso ilimitado' : `${s.remaining_visits} uso(s) disponível(is)`
+export const bestSubscription = (list: EligibleSubscription[]) => list.find(s => s.covers_all !== false) || list[0] || null
 export type BookingEligibility = { requires_subscription: boolean; eligible: boolean; subscriptions: EligibleSubscription[]; reason: string | null }
 export function useBookingEligibility(shopId: string, clientId: string | null, serviceIds: string[], startsAt: string) {
   const [value, setValue] = useState<BookingEligibility | null>(null)
@@ -34,7 +36,13 @@ export function useBookingEligibility(shopId: string, clientId: string | null, s
 export function problemMessage(problem: unknown, fallback: string) { return problem && typeof problem === 'object' && 'message' in problem ? String(problem.message) : fallback }
 export function EligibilityChoice({ eligibility, selected, onChange, required }: { eligibility: ReturnType<typeof useBookingEligibility>; selected: string; onChange: (id: string) => void; required: boolean }) {
   const subscriptions = eligibility.value?.subscriptions || []
-  return <section className="booking-eligibility"><div className="schedule-section-label"><ShieldCheck size={18}/><strong>Cobertura da assinatura</strong></div>{eligibility.loading ? <Loading text="Conferindo cobertura, ciclo e usos disponíveis..."/> : eligibility.error ? <Notice text={eligibility.error}/> : eligibility.value ? <><Field label={required ? 'Selecione uma assinatura elegível' : 'Usar plano do cliente'}><select value={subscriptions.some(s => s.id === selected) ? selected : ''} onChange={e => onChange(e.target.value)}><option value="">{required ? 'Escolha um plano para este serviço' : 'Pagar atendimento avulso'}</option>{subscriptions.map(s => <option value={s.id} key={s.id}>{s.plan_name} · {s.remaining_visits} uso(s) disponível(is)</option>)}</select></Field>{required && !subscriptions.length && <Notice text={eligibility.value.reason || 'Este serviço exige um plano ativo com cobertura e saldo.'}/>}<p className="muted">São exibidos somente os contratos que cobrem todos os procedimentos e o horário escolhido.</p></> : <p className="muted">Escolha cliente, procedimentos e horário para conferir os benefícios do plano.</p>}</section>
+  // Cliente com plano ativo: o plano já vem escolhido. A equipe ainda pode trocar para avulso.
+  useEffect(() => {
+    const list = eligibility.value?.subscriptions || []
+    if (list.length && !list.some(s => s.id === selected)) onChange(bestSubscription(list)!.id)
+  }, [eligibility.value]) // eslint-disable-line react-hooks/exhaustive-deps
+  const chosen = subscriptions.find(s => s.id === selected)
+  return <section className="booking-eligibility"><div className="schedule-section-label"><ShieldCheck size={18}/><strong>Cobertura da assinatura</strong></div>{eligibility.loading ? <Loading text="Conferindo cobertura, ciclo e usos disponíveis..."/> : eligibility.error ? <Notice text={eligibility.error}/> : eligibility.value ? <><Field label={required ? 'Selecione uma assinatura elegível' : 'Usar plano do cliente'}><select value={subscriptions.some(s => s.id === selected) ? selected : ''} onChange={e => onChange(e.target.value)}><option value="">{required ? 'Escolha um plano para este serviço' : 'Pagar atendimento avulso'}</option>{subscriptions.map(s => <option value={s.id} key={s.id}>{s.plan_name} · {usesLabel(s)}{s.covers_all === false ? ' · cobre parte dos serviços' : ''}</option>)}</select></Field>{required && !subscriptions.length && <Notice text={eligibility.value.reason || 'Este serviço exige um plano ativo com cobertura e saldo.'}/>}{chosen && chosen.covers_all === false && <Notice kind="info" text={`O plano cobre parte dos serviços. Fica a cobrar: ${money(chosen.uncovered_price_cents || 0)}.`}/>}<p className="muted">O plano ativo do cliente cobre os serviços do plano; o que não estiver no plano é cobrado.</p></> : <p className="muted">Escolha cliente, procedimentos e horário para conferir os benefícios do plano.</p>}</section>
 }
 export type BookingPolicy = { cancellation_hours: number; reschedule_hours: number; confirmation_required: boolean; deposit_amount_cents: number; deposit_collection_ready: boolean }
 export function useBookingPolicy(shopId: string) {
