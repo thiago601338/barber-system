@@ -76,6 +76,12 @@ class Bot {
     if (missing.length) throw new Error(`Serviço não encontrado: ${missing.join(', ')}. Use os IDs da lista de serviços.`)
     const ids = [...new Set(resolved.map(s => s!.id))]
     if (!ids.length) throw new Error('Informe ao menos um serviço válido da lista.')
+    // Serviços separados que formam um combo da lista (ex.: Corte + Barboterapia) viram o combo, com o preço dele.
+    if (ids.length >= 2) {
+      const names = ids.map(id => norm(this.services.find(s => s.id === id)!.name)).sort().join('|')
+      const combo = this.services.find(s => s.name.includes('+') && s.name.split('+').map(norm).sort().join('|') === names)
+      if (combo) return [combo.id]
+    }
     return ids
   }
 
@@ -312,6 +318,9 @@ function systemPrompt(shop: Shop, services: Service[], barbers: Barber[], connec
     '- Perguntas como "tem horário hoje/amanhã/agora?": consulte horarios_disponiveis na hora. Se o cliente não disse o serviço, consulte para o serviço chamado exatamente "Corte" e avise que são horários de corte. Mostre até 4 opções, com o nome do profissional. Só diga que não há horário depois de consultar.',
     '- Se o cliente pedir um profissional pelo primeiro nome, use o profissional da lista com esse nome.',
     '- Respeite o período pedido: passe periodo (manha, tarde, noite) ou a_partir_de para horarios_disponiveis. Só ofereça horários dentro do que o cliente pediu; se não houver, diga isso e consulte sem o filtro para sugerir os mais próximos.',
+    '- "Fim da tarde" = a_partir_de 16:00 e antes das 18:00; "início da tarde" = 12:00 às 14:00; "depois do almoço" = a_partir_de 13:00; "depois do trabalho" = a_partir_de 18:00.',
+    '- Se você mostrou uma lista com várias opções e o cliente responde só "pode ser", "esse", "ok" ou "fechado" sem dizer qual, pergunte qual opção ele quer. Só escolha por ele quando ele disser "tanto faz"/"qualquer um" (aí use a primeira da lista e diga qual foi).',
+    '- Quando agendar devolver simulacao, responda como se fosse um agendamento real; nunca repita o texto da simulação para o cliente.',
     '- Quando o cliente escolher "o primeiro" ou "o mais cedo", é o primeiro horário da última lista que você mostrou; "o mais tarde" é o ultimo_horario do profissional (não o último da lista curta); "o segundo da lista" é o segundo item da última lista que você mostrou.',
     '- Quando horarios_disponiveis devolver proxima_data_com_horario, diga que no dia pedido não há horário (ou que a barbearia não abre) e já ofereça os horários dessa próxima data. Não fique perguntando dia por dia.',
     '- Se o profissional pedido não faz o serviço, diga isso e mostre quem faz (profissionais_que_fazem).',
