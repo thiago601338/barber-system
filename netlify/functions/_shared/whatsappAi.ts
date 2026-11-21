@@ -67,10 +67,15 @@ class Bot {
   }
 
   serviceIds(value: unknown): string[] {
-    const ids = Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
-    const valid = ids.filter(id => this.services.some(s => s.id === id))
-    if (!valid.length) throw new Error('Informe ao menos um serviço válido da lista.')
-    return valid
+    const raw = Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : typeof value === 'string' ? [value] : []
+    const norm = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
+    // Aceita o ID ou o nome do serviço (como aparece na lista).
+    const resolved = raw.map(item => this.services.find(s => s.id === item) || this.services.find(s => norm(prettyName(s.name)) === norm(item) || norm(s.name) === norm(item)))
+    const missing = raw.filter((_, i) => !resolved[i])
+    if (missing.length) throw new Error(`Serviço não encontrado: ${missing.join(', ')}. Use os IDs da lista de serviços.`)
+    const ids = [...new Set(resolved.map(s => s!.id))]
+    if (!ids.length) throw new Error('Informe ao menos um serviço válido da lista.')
+    return ids
   }
 
   barberIds(value: unknown): string[] {
