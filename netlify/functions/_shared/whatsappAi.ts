@@ -19,6 +19,7 @@ type Barber = { id: string; display_name: string }
 type Plan = { id: string; name: string; description: string | null; price_cents: number; frequency_months: number; visits_per_cycle: number; services: string[] }
 type Slot = { starts_at: string; ends_at: string }
 
+const toMin = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5))
 const SMALL = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'a', 'o', 'na', 'no', 'ao', 'em', 'com', 'por', 'para'])
 const FIXES: [RegExp, string][] = [[/desingn|desing/gi, 'design'], [/pgmenta/gi, 'pigmenta'], [/pigmentaçao|pigmentacao/gi, 'pigmentação'], [/hidratacao/gi, 'hidratação'], [/terapsor/gi, 'terapsor'], [/fitns/gi, 'fitness'], [/mës/gi, 'mês']]
 /** Nome legível: sem CAIXA ALTA, sem espaços duplos, com erros de digitação comuns corrigidos. */
@@ -88,7 +89,7 @@ class Bot {
       const matches = this.barbers.filter(b => norm(b.display_name) === wanted || norm(b.display_name).split(' ')[0] === wanted.split(' ')[0])
       if (matches.length === 1) return [matches[0].id]
       if (matches.length > 1) throw new Error(`Há mais de um profissional com esse nome: ${matches.map(b => prettyName(b.display_name)).join(', ')}. Pergunte qual.`)
-      throw new Error('Profissional não encontrado.')
+      throw new Error(`Profissional "${value}" não encontrado. Use um destes barbeiro_id: ${this.barbers.map(b => `${b.id} (${prettyName(b.display_name)})`).join('; ')}.`)
     }
     return this.barbers.map(b => b.id)
   }
@@ -167,9 +168,15 @@ class Bot {
       const day = this.day(args.data)
       const time = typeof args.hora === 'string' && /^\d{2}:\d{2}$/.test(args.hora) ? args.hora : ''
       if (!time) throw new Error('Hora inválida: use HH:MM.')
-      const slot = (await this.slots(barberId, services, day)).find(s => localParts(new Date(s.starts_at), this.tz).time === time)
-      if (!slot) return { ok: false, erro: 'Esse horário não está mais disponível. Consulte os horários de novo.' }
-      if (!this.conversation) return { ok: true, simulacao: 'Teste no painel: nada foi gravado na agenda.', resumo: { servicos: this.services.filter(s => services.includes(s.id)).map(s => s.name), profissional: this.barbers.find(b => b.id === barberId)?.display_name, data: day, hora: time } }
+      if (!this.doesAll(barberId, services)) return { ok: false, erro: `${prettyName(this.barbers.find(b => b.id === barberId)?.display_name || '')} não faz esse serviço.`, profissionais_que_fazem: this.barbers.filter(b => this.doesAll(b.id, services)).map(b => prettyName(b.display_name)) }
+      const free = await this.slots(barberId, services, day)
+      const slot = free.find(s => localParts(new Date(s.starts_at), this.tz).time === time)
+      if (!slot) {
+        const times = free.map(s => localParts(new Date(s.starts_at), this.tz).time)
+        const near = times.sort((a, b) => Math.abs(toMin(a) - toMin(time)) - Math.abs(toMin(b) - toMin(time))).slice(0, 4).sort()
+        return { ok: false, erro: 'Esse horário não está livre com esse profissional.', horarios_proximos_do_mesmo_profissional: near }
+      }
+      if (!this.conversation) return { ok: true, simulacao: 'Teste no painel: nada foi gravado na agenda.', resumo: { servicos: this.services.filter(s => services.includes(s.id)).map(s => prettyName(s.name)), profissional: prettyName(this.barbers.find(b => b.id === barberId)?.display_name || ''), data: day, hora: time } }
       const clientId = await this.ensureClient()
       const { data, error } = await this.client.rpc('whatsapp_bot_book', { p_barbershop_id: this.shop.id, p_client_id: clientId, p_barber_membership_id: barberId, p_service_ids: services, p_starts_at: slot.starts_at })
       if (error) return { ok: false, erro: error.message }
@@ -397,7 +404,7 @@ export async function aiReply(client: SupabaseClient, openai: OpenAI, shopId: st
       if (call.type !== 'function') continue
       let result: unknown
       try { result = await bot.run(call.function.name, JSON.parse(call.function.arguments || '{}') as Record<string, unknown>) }
-      catch (error) { result = { ok: false, erro: error instanceof Error ? error.message : 'Falha ao consultar.' } }
+      catch (error) { result = { ok: false, erro: error instanceof Error ? error.message : 'Falha ao consultar.', instrucao: 'Corrija os parâmetros e chame a ferramenta de novo. Não fale desse erro técnico para o cliente.' } }
       chat.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) })
     }
   }
