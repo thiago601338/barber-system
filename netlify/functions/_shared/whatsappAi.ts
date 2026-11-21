@@ -110,8 +110,11 @@ class Bot {
       const fits = (time: string) => (!from || time >= from) && (period === 'manha' ? time < '12:00' : period === 'tarde' ? time >= '12:00' && time < '18:00' : period === 'noite' ? time >= '18:00' : true)
       const result = []
       let total = 0
-      for (const barberId of this.barberIds(args.barbeiro_id)) {
-        const times = (await this.slots(barberId, services, day)).map(s => localParts(new Date(s.starts_at), this.tz).time).filter(fits)
+      const ids = this.barberIds(args.barbeiro_id)
+      // Consulta todos os profissionais em paralelo (mais rápido que um por vez).
+      const all = await Promise.all(ids.map(id => this.slots(id, services, day).catch(() => [] as Slot[])))
+      for (const [index, barberId] of ids.entries()) {
+        const times = all[index].map(s => localParts(new Date(s.starts_at), this.tz).time).filter(fits)
         total += times.length
         if (times.length) result.push({ barbeiro_id: barberId, barbeiro: prettyName(this.barbers.find(b => b.id === barberId)?.display_name || ''), horarios: times.slice(0, 6), mais_horarios: Math.max(0, times.length - 6) })
       }
