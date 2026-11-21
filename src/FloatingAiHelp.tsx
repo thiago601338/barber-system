@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Check, CheckCircle2, LoaderCircle, MessageCircle, Minimize2, Send, ShieldCheck, Sparkles, X } from 'lucide-react'
+import { requestAiHelp } from './lib/aiHelpRequest'
 import { authedApi } from './lib/supabase'
 import { SpeechInputButton } from './SpeechInputButton'
 import type { Identity, Role } from './types'
@@ -52,7 +53,7 @@ export function FloatingAiHelp({ identity, role, notify }: { identity: Identity;
     setPrompt('')
     setBusy('request')
     try {
-      const response = await authedApi<Plan | Answer>('/api/ai-help/plan', { ...(identity.shop?.id ? { barbershop_id: identity.shop.id } : {}), prompt: text })
+      const response = await requestAiHelp<Plan | Answer>({ ...(identity.shop?.id ? { barbershop_id: identity.shop.id } : {}), prompt: text })
       if (response.quota) setQuota(response.quota)
       if ('mode' in response && response.mode === 'answer') {
         setTurns(current => current.map(turn => turn.id === id ? { ...turn, status: 'answer', answer: response.answer } : turn))
@@ -75,7 +76,7 @@ export function FloatingAiHelp({ identity, role, notify }: { identity: Identity;
       const response = await authedApi<Execution>('/api/ai-help/execute', { plan_id: turn.plan.plan_id })
       if (response.status !== 'completed') throw new Error('A ação não foi confirmada pelo servidor.')
       setTurns(current => current.map(item => item.id === turnId ? { ...item, execution: response, error: undefined } : item))
-      notify('Ação criada pela Ajuda de IA.')
+      notify('Pronto: ação salva pela Ajuda de IA.')
     } catch (problem) {
       setTurns(current => current.map(item => item.id === turnId ? { ...item, error: problem instanceof Error ? problem.message : 'Não foi possível concluir a ação.' } : item))
     } finally {

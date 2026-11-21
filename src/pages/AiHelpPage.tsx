@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { ArrowRight, BookOpen, Building2, Check, CheckCircle2, Clock3, Crown, History, Lightbulb, LoaderCircle, RotateCcw, Scissors, Send, ShieldCheck, Sparkles } from 'lucide-react'
 import type { PageProps } from '../App'
+import { requestAiHelp } from '../lib/aiHelpRequest'
 import { authedApi, authedGet } from '../lib/supabase'
 import { date, dateTime, money, type Shop } from '../types'
 import { Notice, PageHeader } from '../ui'
 import { AiPage } from './GrowthPage'
 import { SpeechInputButton } from '../SpeechInputButton'
 import { AiOperationalActions } from '../AiOperationalActions'
-import { aiActionLabels, aiDisplayFields } from '../lib/aiActionDisplay'
+import { aiChatActionLabels, aiDisplayFields } from '../lib/aiActionDisplay'
 
 type Action = { type: string; label: string; values: Record<string, unknown> }
 type Quota = { daily_limit: number; remaining: number }
@@ -43,7 +44,7 @@ function readableValue(key: string, value: unknown, shop: Shop | null, values: R
 }
 
 function ActionFields({ action, shop }: { action: Action; shop: Shop | null }) {
-  if(action.type in aiActionLabels) return <dl className="ai-help-fields">{aiDisplayFields(action.values,shop?.timezone??undefined).map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+  if(action.type in aiChatActionLabels) return <dl className="ai-help-fields">{aiDisplayFields(action.values,shop?.timezone??undefined).map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
   const fields = Object.entries(action.values || {})
   if (!fields.length) return <p className="ai-help-muted">A proposta não trouxe campos para revisar. Faça outro pedido antes de confirmar.</p>
   return <dl className="ai-help-fields">{fields.map(([key, value]) => <div key={key}><dt>{fieldNames[key] || key.replace(/_/g, ' ')}</dt><dd>{readableValue(key, value, shop, action.values)}</dd></div>)}</dl>
@@ -151,7 +152,7 @@ export function AiHelpPage({ identity, role, notify }: PageProps) {
     setTurns(current => [...current, { id, prompt: text, status: 'loading' }])
     setPrompt(''); setBusy('request')
     try {
-      const response = await authedApi<Plan | Answer>('/api/ai-help/plan', { ...(effectiveShopId ? { barbershop_id: effectiveShopId } : {}), prompt: text })
+      const response = await requestAiHelp<Plan | Answer>({ ...(effectiveShopId ? { barbershop_id: effectiveShopId } : {}), prompt: text })
       if (response.quota) setQuota(response.quota)
       if ('mode' in response && response.mode === 'answer' && typeof response.answer === 'string') {
         setTurns(current => current.map(turn => turn.id === id ? { ...turn, status: 'answer', answer: response.answer } : turn))

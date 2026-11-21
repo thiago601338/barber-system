@@ -5,7 +5,8 @@ import type { ActionType } from './aiHelpActions'
 
 export type HelpAccess = HelpScope & { allowed: ActionType[]; dailyLimit: number }
 const administration: ActionType[] = ['create_service','create_product','create_shop_goal','create_marketing_task',
-  'book_appointment','create_schedule_block','update_service','update_product','create_client','update_client']
+  'book_appointment','create_schedule_block','update_service','update_product','create_client','update_client',
+  'manage_appointment','quick_service','register_sale','receive_payment','cash_register','create_expense','stock_entry','stock_adjust']
 
 export function actionsForProfile(role: HelpScope['role'], hasShop: boolean, modules: readonly string[]): ActionType[] {
   if(role==='master' && !hasShop) return ['create_shop']
@@ -14,9 +15,10 @@ export function actionsForProfile(role: HelpScope['role'], hasShop: boolean, mod
   return [
     ...(modules.includes('goals') ? ['create_personal_goal'] as const : []),
     ...(modules.includes('marketing') ? ['create_marketing_task'] as const : []),
-    ...(modules.includes('appointments') ? ['book_appointment'] as const : []),
+    ...(modules.includes('appointments') ? ['book_appointment','manage_appointment','quick_service'] as const : []),
     ...(modules.includes('availability') ? ['create_schedule_block'] as const : []),
     ...(modules.includes('clients') ? ['create_client','update_client'] as const : []),
+    ...(modules.includes('products') ? ['register_sale'] as const : []),
   ]
 }
 
