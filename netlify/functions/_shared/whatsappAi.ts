@@ -202,7 +202,7 @@ export async function aiReply(client: SupabaseClient, openai: OpenAI, shopId: st
     client.from('barbershops').select('id,name,slug,timezone,address,phone,whatsapp,instagram_url').eq('id', shopId).single(),
     client.from('services').select('id,name,description,duration_minutes,price_cents,requires_subscription').eq('barbershop_id', shopId).eq('active', true).order('name'),
     client.rpc('public_barber_profiles', { p_barbershop_id: shopId }),
-    client.from('subscription_plans').select('id,name,description,price_cents,frequency_months,visits_per_cycle,subscription_plan_services(services(name))').eq('barbershop_id', shopId).eq('active', true).order('price_cents'),
+    client.from('subscription_plans').select('id,name,description,price_cents,frequency_months,visits_per_cycle,subscription_plan_services(services(name))').eq('barbershop_id', shopId).eq('active', true).eq('listed', true).order('price_cents'),
   ])
   if (shopError || !shopRow) throw new Error('Barbearia não encontrada.')
   const shop = shopRow as Shop
