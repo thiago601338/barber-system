@@ -146,7 +146,13 @@ async function simulate(client: SupabaseClient, shopId: string, input: Input) {
     ai_instructions: typeof input.ai_instructions === 'string' ? input.ai_instructions.slice(0, 4000) : connection?.ai_instructions ?? null,
     ai_can_book: typeof input.ai_can_book === 'boolean' ? input.ai_can_book : connection?.ai_can_book ?? true,
   }
-  const reply = await aiReply(client, new OpenAI({ maxRetries: 6 }), shopId, settings, turns, 'Cliente de teste', null)
+  let reply = ''
+  try {
+    reply = await aiReply(client, new OpenAI({ maxRetries: 6 }), shopId, settings, turns, 'Cliente de teste', null)
+  } catch (error) {
+    console.error(error)
+    throw new HttpError(502, `A IA falhou: ${error instanceof Error ? error.message : String(error)}`.slice(0, 300))
+  }
   return { reply: reply || 'A IA não conseguiu responder agora. Tente de novo.' }
 }
 

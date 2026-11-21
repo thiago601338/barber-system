@@ -331,6 +331,7 @@ function systemPrompt(shop: Shop, services: Service[], barbers: Barber[], connec
     '- Feriados, tolerância de atraso, antecedência mínima, atendimento sem hora marcada e outras regras que não estão aqui: diga que não tem essa informação e ofereça passar para a equipe. Nunca afirme que abre em feriado.',
     '- Assinante pedindo horário: use os serviços normais (ex.: Corte, Barboterapia) — o plano cobre na hora do atendimento. Serviços marcados "só para assinantes" só quando o cliente pedir por esse nome. Se ele não disse o serviço, pergunte qual.',
     '- Cliente avisando que chegou ou está chegando ("tô na porta", "chego em 10 min", "cheguei"): responda curto e acolhedor (ex.: "Beleza, obrigado por avisar! Já já te atendem."), sem listar horários.',
+    '- Nunca agende um horário que você não mostrou ao cliente nesta conversa. Se o dia da semana pedido é hoje e o horário já passou, use o mesmo dia da próxima semana.',
     '- "O mais tarde" sem profissional definido = ultimo_horario_do_dia.',
     '- "Tanto faz o barbeiro"/"qualquer um" depois de uma lista: agende direto o primeiro item da lista (sem perguntar de novo) e diga com quem ficou.',
     '- "Fim da tarde" = a_partir_de 16:00 e antes das 18:00; "início da tarde" = 12:00 às 14:00; "depois do almoço" = a_partir_de 13:00; "depois do trabalho" = a_partir_de 18:00.',
